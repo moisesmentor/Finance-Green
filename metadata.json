@@ -1,0 +1,6 @@
+{
+  "name": "Finanças Mensais",
+  "description": "Aplicativo para gerenciar receitas, despesas, orçamentos e organizar os gastos mensais com clareza.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

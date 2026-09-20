@@ -1,0 +1,315 @@
+import { Category, PaymentMethod, Transaction, CategoryBudget } from '../types';
+
+export const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: string }[] = [
+  { id: 'pix', label: 'Pix', icon: 'Zap' },
+  { id: 'credit_card', label: 'Cartão de Crédito', icon: 'CreditCard' },
+  { id: 'debit_card', label: 'Cartão de Débito', icon: 'CreditCard' },
+  { id: 'boleto', label: 'Boleto Bancário', icon: 'Barcode' },
+  { id: 'cash', label: 'Dinheiro', icon: 'Banknote' },
+  { id: 'transfer', label: 'Transferência / TED', icon: 'ArrowRightLeft' },
+];
+
+export const CATEGORIES: Category[] = [
+  // Despesas
+  {
+    id: 'moradia',
+    name: 'Moradia & Contas',
+    icon: 'Home',
+    color: '#0284c7', // sky-600
+    bgLight: 'bg-sky-50 text-sky-700 border-sky-200',
+    textColor: 'text-sky-700',
+    type: 'expense',
+  },
+  {
+    id: 'alimentacao',
+    name: 'Alimentação & Mercado',
+    icon: 'Utensils',
+    color: '#ea580c', // orange-600
+    bgLight: 'bg-orange-50 text-orange-700 border-orange-200',
+    textColor: 'text-orange-700',
+    type: 'expense',
+  },
+  {
+    id: 'transporte',
+    name: 'Transporte & Combustível',
+    icon: 'Car',
+    color: '#ca8a04', // yellow-600
+    bgLight: 'bg-amber-50 text-amber-700 border-amber-200',
+    textColor: 'text-amber-700',
+    type: 'expense',
+  },
+  {
+    id: 'saude',
+    name: 'Saúde & Farmácia',
+    icon: 'HeartPulse',
+    color: '#e11d48', // rose-600
+    bgLight: 'bg-rose-50 text-rose-700 border-rose-200',
+    textColor: 'text-rose-700',
+    type: 'expense',
+  },
+  {
+    id: 'lazer',
+    name: 'Lazer & Restaurantes',
+    icon: 'Coffee',
+    color: '#9333ea', // purple-600
+    bgLight: 'bg-purple-50 text-purple-700 border-purple-200',
+    textColor: 'text-purple-700',
+    type: 'expense',
+  },
+  {
+    id: 'educacao',
+    name: 'Educação & Cursos',
+    icon: 'GraduationCap',
+    color: '#2563eb', // blue-600
+    bgLight: 'bg-blue-50 text-blue-700 border-blue-200',
+    textColor: 'text-blue-700',
+    type: 'expense',
+  },
+  {
+    id: 'compras',
+    name: 'Compras & Vestuário',
+    icon: 'ShoppingBag',
+    color: '#db2777', // pink-600
+    bgLight: 'bg-pink-50 text-pink-700 border-pink-200',
+    textColor: 'text-pink-700',
+    type: 'expense',
+  },
+  {
+    id: 'servicos',
+    name: 'Serviços & Assinaturas',
+    icon: 'Tv',
+    color: '#4f46e5', // indigo-600
+    bgLight: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    textColor: 'text-indigo-700',
+    type: 'expense',
+  },
+  {
+    id: 'outros_gastos',
+    name: 'Outros Gastos',
+    icon: 'MoreHorizontal',
+    color: '#64748b', // slate-500
+    bgLight: 'bg-slate-100 text-slate-700 border-slate-200',
+    textColor: 'text-slate-700',
+    type: 'expense',
+  },
+  // Receitas
+  {
+    id: 'salario',
+    name: 'Salário Principal',
+    icon: 'Briefcase',
+    color: '#059669', // emerald-600
+    bgLight: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    textColor: 'text-emerald-700',
+    type: 'income',
+  },
+  {
+    id: 'freelance',
+    name: 'Freelance & Extras',
+    icon: 'Sparkles',
+    color: '#0d9488', // teal-600
+    bgLight: 'bg-teal-50 text-teal-700 border-teal-200',
+    textColor: 'text-teal-700',
+    type: 'income',
+  },
+  {
+    id: 'investimentos',
+    name: 'Rendimentos & Dividendos',
+    icon: 'TrendingUp',
+    color: '#16a34a', // green-600
+    bgLight: 'bg-green-50 text-green-700 border-green-200',
+    textColor: 'text-green-700',
+    type: 'income',
+  },
+  {
+    id: 'outras_receitas',
+    name: 'Outras Entradas',
+    icon: 'Wallet',
+    color: '#047857', // emerald-700
+    bgLight: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    textColor: 'text-emerald-800',
+    type: 'income',
+  },
+];
+
+export const MONTH_NAMES = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+];
+
+export const DEFAULT_BUDGETS: CategoryBudget[] = [
+  { categoryId: 'moradia', limit: 2200 },
+  { categoryId: 'alimentacao', limit: 1200 },
+  { categoryId: 'transporte', limit: 500 },
+  { categoryId: 'saude', limit: 400 },
+  { categoryId: 'lazer', limit: 600 },
+  { categoryId: 'servicos', limit: 250 },
+  { categoryId: 'compras', limit: 400 },
+];
+
+export function getSampleTransactions(): Transaction[] {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+
+  return [
+    {
+      id: 'tx-1',
+      description: 'Salário Mensal',
+      amount: 5400.00,
+      type: 'income',
+      categoryId: 'salario',
+      date: `${year}-${month}-05`,
+      paymentMethod: 'transfer',
+      status: 'paid',
+      isRecurring: true,
+      notes: 'Depósito em conta corrente',
+      createdAt: Date.now() - 100000,
+    },
+    {
+      id: 'tx-2',
+      description: 'Projeto Freelance Design',
+      amount: 1200.00,
+      type: 'income',
+      categoryId: 'freelance',
+      date: `${year}-${month}-12`,
+      paymentMethod: 'pix',
+      status: 'paid',
+      isRecurring: false,
+      notes: 'Desenvolvimento de landing page',
+      createdAt: Date.now() - 95000,
+    },
+    {
+      id: 'tx-3',
+      description: 'Aluguel do Apartamento',
+      amount: 1750.00,
+      type: 'expense',
+      categoryId: 'moradia',
+      date: `${year}-${month}-10`,
+      paymentMethod: 'boleto',
+      status: 'paid',
+      isRecurring: true,
+      notes: 'Condomínio e IPTU inclusos',
+      createdAt: Date.now() - 90000,
+    },
+    {
+      id: 'tx-4',
+      description: 'Compras no Supermercado Pão de Açúcar',
+      amount: 684.50,
+      type: 'expense',
+      categoryId: 'alimentacao',
+      date: `${year}-${month}-07`,
+      paymentMethod: 'credit_card',
+      status: 'paid',
+      isRecurring: false,
+      createdAt: Date.now() - 85000,
+    },
+    {
+      id: 'tx-5',
+      description: 'Combustível Posto Shell',
+      amount: 210.00,
+      type: 'expense',
+      categoryId: 'transporte',
+      date: `${year}-${month}-08`,
+      paymentMethod: 'debit_card',
+      status: 'paid',
+      isRecurring: false,
+      createdAt: Date.now() - 80000,
+    },
+    {
+      id: 'tx-6',
+      description: 'Conta de Energia Elétrica (Enel)',
+      amount: 195.30,
+      type: 'expense',
+      categoryId: 'moradia',
+      date: `${year}-${month}-15`,
+      paymentMethod: 'pix',
+      status: 'paid',
+      isRecurring: true,
+      createdAt: Date.now() - 75000,
+    },
+    {
+      id: 'tx-7',
+      description: 'Internet Fibra Óptica 600MB',
+      amount: 119.90,
+      type: 'expense',
+      categoryId: 'servicos',
+      date: `${year}-${month}-16`,
+      paymentMethod: 'credit_card',
+      status: 'paid',
+      isRecurring: true,
+      createdAt: Date.now() - 70000,
+    },
+    {
+      id: 'tx-8',
+      description: 'Farmácia Droga Raia',
+      amount: 145.80,
+      type: 'expense',
+      categoryId: 'saude',
+      date: `${year}-${month}-18`,
+      paymentMethod: 'credit_card',
+      status: 'paid',
+      isRecurring: false,
+      notes: 'Vitaminas e antialérgico',
+      createdAt: Date.now() - 65000,
+    },
+    {
+      id: 'tx-9',
+      description: 'Jantar Restaurante Italiano',
+      amount: 220.00,
+      type: 'expense',
+      categoryId: 'lazer',
+      date: `${year}-${month}-14`,
+      paymentMethod: 'credit_card',
+      status: 'paid',
+      isRecurring: false,
+      createdAt: Date.now() - 60000,
+    },
+    {
+      id: 'tx-10',
+      description: 'Hortifruti & Feira da Semana',
+      amount: 115.40,
+      type: 'expense',
+      categoryId: 'alimentacao',
+      date: `${year}-${month}-18`,
+      paymentMethod: 'pix',
+      status: 'paid',
+      isRecurring: false,
+      createdAt: Date.now() - 55000,
+    },
+    {
+      id: 'tx-11',
+      description: 'Fatura Cartão Nubank (Assinaturas)',
+      amount: 89.90,
+      type: 'expense',
+      categoryId: 'servicos',
+      date: `${year}-${month}-25`,
+      paymentMethod: 'credit_card',
+      status: 'pending',
+      isRecurring: true,
+      notes: 'Netflix, Spotify e iCloud',
+      createdAt: Date.now() - 50000,
+    },
+    {
+      id: 'tx-12',
+      description: 'Curso Online de Finanças & Gestão',
+      amount: 197.00,
+      type: 'expense',
+      categoryId: 'educacao',
+      date: `${year}-${month}-22`,
+      paymentMethod: 'credit_card',
+      status: 'pending',
+      isRecurring: false,
+      createdAt: Date.now() - 45000,
+    },
+  ];
+}
