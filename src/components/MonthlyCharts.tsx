@@ -6,7 +6,9 @@ import {
   CheckCircle, 
   Calendar,
   CreditCard,
-  ChevronRight
+  ChevronRight,
+  TrendingUp,
+  Sparkles
 } from 'lucide-react';
 import { Transaction, CategoryBudget, CategorySpending, MonthPeriod } from '../types';
 import { calculateCategorySpending } from '../utils/storage';
@@ -94,24 +96,24 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs p-4 sm:p-5 mb-6 transition-colors">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs p-5 mb-6 transition-all">
       
-      {/* Header with visual tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+      {/* Header with segmented pills */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
         <div>
-          <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            Análise Visual dos Gastos
+          <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            Análise Visual & Tendências
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Acompanhe onde seu dinheiro foi investido e o ritmo das despesas
+            Compreenda a distribuição de despesas e os dias com maiores gastos
           </p>
         </div>
 
-        {/* Tab Buttons */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 self-start sm:self-auto text-xs">
+        {/* Tab Buttons Segmented Control */}
+        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl border border-slate-200/70 dark:border-slate-700/70 self-start sm:self-auto text-xs font-bold">
           <button
             onClick={() => setActiveTab('categories')}
-            className={`px-3 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'categories'
                 ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -122,24 +124,24 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('daily')}
-            className={`px-3 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'daily'
                 ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <BarChart3 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
             Evolução Diária
           </button>
           <button
             onClick={() => setActiveTab('payments')}
-            className={`px-3 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'payments'
                 ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <CreditCard className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <CreditCard className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
             Formas de Pagamento
           </button>
         </div>
@@ -156,32 +158,32 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
               return (
                 <div 
                   key={item.category.id}
-                  className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                  className="p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70 hover:shadow-xs transition-all"
                 >
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center border shrink-0 ${item.category.bgLight} dark:bg-slate-800 dark:border-slate-700`}>
-                        <CategoryIcon name={item.category.icon} className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center border shadow-xs shrink-0 ${item.category.bgLight} dark:bg-slate-800 dark:border-slate-700`}>
+                        <CategoryIcon name={item.category.icon} className="w-4 h-4" />
                       </div>
-                      <span className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                      <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
                         {item.category.name}
                       </span>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <div className="text-xs sm:text-sm font-bold font-mono-num text-slate-900 dark:text-white">
+                      <div className="text-xs sm:text-sm font-extrabold font-mono-num text-slate-900 dark:text-white">
                         {formatCurrency(item.total)}
                       </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
                         {item.percentage.toFixed(1)}% do total
                       </div>
                     </div>
                   </div>
 
                   {/* Relative visual bar against total spending */}
-                  <div className="w-full bg-slate-200/70 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-slate-200/80 dark:bg-slate-700/80 rounded-full h-2 overflow-hidden">
                     <div
-                      className="h-full rounded-full transition-all duration-300"
+                      className="h-full rounded-full transition-all duration-500"
                       style={{ 
                         width: `${Math.min(100, item.percentage)}%`,
                         backgroundColor: item.category.color 
@@ -191,17 +193,17 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
 
                   {/* Budget comparison if configured */}
                   {hasBudget && (
-                    <div className="mt-2 pt-1.5 border-t border-slate-200/50 dark:border-slate-700/50 flex items-center justify-between text-[11px]">
+                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px]">
                       <span className="text-slate-500 dark:text-slate-400">
-                        Meta: <strong className="font-mono-num text-slate-700 dark:text-slate-300">{formatCurrency(item.budgetLimit!)}</strong>
+                        Meta: <strong className="font-mono-num text-slate-700 dark:text-slate-300 font-bold">{formatCurrency(item.budgetLimit!)}</strong>
                       </span>
                       {isOverBudget ? (
-                        <span className="text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" />
+                        <span className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5" />
                           Estourou {(item.budgetPercentage! - 100).toFixed(0)}%
                         </span>
                       ) : (
-                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                        <span className="text-emerald-700 dark:text-emerald-400 font-bold">
                           {(item.budgetPercentage!).toFixed(0)}% da meta
                         </span>
                       )}
@@ -216,9 +218,9 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
           <div className="pt-2 text-right">
             <button
               onClick={onOpenBudgets}
-              className="text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-semibold inline-flex items-center gap-1 cursor-pointer"
+              className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-bold inline-flex items-center gap-1 cursor-pointer"
             >
-              Configurar metas por categoria
+              Ajustar orçamentos por categoria
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -229,11 +231,13 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
       {activeTab === 'daily' && (
         <div className="pt-4">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-3">
-            <span>Distribuição dos gastos ao longo do mês (dias 1 a {dailySpending.daysInMonth})</span>
-            {hoveredDay && hoveredDay.amount > 0 && (
-              <span className="font-semibold text-emerald-700 dark:text-emerald-400 font-mono-num">
-                Dia {hoveredDay.day}: {formatCurrency(hoveredDay.amount)} ({hoveredDay.count} transação/ões)
+            <span>Ritmo diário de despesas (dias 1 a {dailySpending.daysInMonth})</span>
+            {hoveredDay && hoveredDay.amount > 0 ? (
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono-num bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                Dia {hoveredDay.day}: {formatCurrency(hoveredDay.amount)} ({hoveredDay.count} compras)
               </span>
+            ) : (
+              <span className="text-[11px] text-slate-400">Passe o cursor sobre as barras</span>
             )}
           </div>
 
@@ -254,26 +258,26 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                 >
                   {/* Tooltip on hover */}
                   {d.amount > 0 && (
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-slate-900 text-white text-[10px] py-0.5 px-2 rounded font-mono-num whitespace-nowrap shadow-md">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-9 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-slate-900 text-white text-[10px] py-1 px-2 rounded-lg font-mono-num whitespace-nowrap shadow-lg">
                       {formatCurrency(d.amount)}
                     </div>
                   )}
 
-                  {/* Bar */}
+                  {/* Capsule Bar */}
                   <div
-                    className={`w-full rounded-t-sm transition-all duration-200 ${
+                    className={`w-full rounded-t-md transition-all duration-200 ${
                       d.amount > 0
                         ? isToday
-                          ? 'bg-emerald-600 group-hover:bg-emerald-700'
-                          : 'bg-emerald-500/80 dark:bg-emerald-500 group-hover:bg-emerald-600'
-                        : 'bg-slate-100 dark:bg-slate-800 h-1'
+                          ? 'bg-gradient-to-t from-emerald-600 to-teal-400 ring-2 ring-emerald-400/50'
+                          : 'bg-emerald-500/80 dark:bg-emerald-500 hover:bg-emerald-400'
+                        : 'bg-slate-100 dark:bg-slate-800 h-1 rounded-full'
                     }`}
                     style={{ height: d.amount > 0 ? `${heightPercent}%` : '4px' }}
                   />
 
                   {/* Day label */}
-                  <span className={`text-[9px] sm:text-[10px] mt-1 font-mono-num ${
-                    isToday ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300'
+                  <span className={`text-[9px] sm:text-[10px] mt-1.5 font-mono-num font-semibold ${
+                    isToday ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200'
                   }`}>
                     {d.day % 2 !== 0 || dailySpending.daysInMonth <= 15 ? d.day : ''}
                   </span>
@@ -282,10 +286,10 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
             })}
           </div>
 
-          <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
-            <span>Início do mês</span>
-            <span>Meio do mês</span>
-            <span>Fim do mês</span>
+          <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+            <span>Início do mês (Dia 1)</span>
+            <span>Meio do mês (Dia 15)</span>
+            <span>Fim do mês (Dia {dailySpending.daysInMonth})</span>
           </div>
         </div>
       )}
@@ -296,23 +300,23 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
           {paymentBreakdown.map(pm => (
             <div 
               key={pm.id}
-              className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex items-center justify-between"
+              className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70 hover:shadow-xs transition-all flex items-center justify-between"
             >
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-xs">
-                  <CategoryIcon name={pm.icon} className="w-4 h-4" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-xs">
+                  <CategoryIcon name={pm.icon} className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                     {pm.label}
                   </span>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono-num font-bold">
-                    {pm.percentage.toFixed(1)}% das despesas
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono-num font-semibold">
+                    {pm.percentage.toFixed(1)}% dos gastos
                   </span>
                 </div>
               </div>
 
-              <div className="text-right font-mono-num font-bold text-sm text-slate-900 dark:text-white">
+              <div className="text-right font-mono-num font-extrabold text-sm text-slate-900 dark:text-white">
                 {formatCurrency(pm.amount)}
               </div>
             </div>
