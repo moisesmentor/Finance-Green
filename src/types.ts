@@ -28,6 +28,10 @@ export interface Transaction {
   paymentMethod: PaymentMethod;
   status: 'paid' | 'pending';
   isRecurring?: boolean;
+  recurringFrequency?: 'monthly' | 'yearly';
+  installmentGroupId?: string;
+  installmentCurrent?: number;
+  installmentTotal?: number;
   notes?: string;
   createdAt: number;
 }
@@ -69,3 +73,56 @@ export interface FilterOptions {
   status: 'all' | 'paid' | 'pending';
   sortBy: 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc';
 }
+
+export interface GoalContribution {
+  id: string;
+  amount: number;
+  date: string;
+  type: 'deposit' | 'withdraw';
+  note?: string;
+  createdAt: number;
+}
+
+export interface FinancialGoal {
+  id: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline?: string; // YYYY-MM-DD
+  categoryIcon: string;
+  color: string;
+  createdAt: number;
+  history?: GoalContribution[];
+}
+
+export type ThemeMode = 'light' | 'dark' | 'system';
+
+export interface AnnualMonthSummary {
+  month: number;
+  year: number;
+  income: number;
+  expense: number;
+  net: number;
+  savingsRate: number;
+  transactionCount: number;
+}
+
+export interface AnnualSummary {
+  year: number;
+  totalIncome: number;
+  totalExpense: number;
+  netBalance: number;
+  avgMonthlyIncome: number;
+  avgMonthlyExpense: number;
+  savingsRate: number;
+  months: AnnualMonthSummary[];
+}
+
+export interface CloudConfig {
+  enabled: boolean;
+  provider: 'supabase';
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+  lastSyncedAt?: string;
+}
+

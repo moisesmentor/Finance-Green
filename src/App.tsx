@@ -4,15 +4,22 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Transaction, CategoryBudget, MonthPeriod } from './types';
+import { Transaction, CategoryBudget, MonthPeriod, FinancialGoal, CloudConfig } from './types';
 import { 
   loadStoredTransactions, 
   saveStoredTransactions, 
   loadStoredBudgets, 
   saveStoredBudgets, 
-  calculateSummary 
+  loadStoredGoals,
+  saveStoredGoals,
+  loadStoredCloudConfig,
+  saveStoredCloudConfig,
+  calculateSummary,
+  generateInstallmentTransactions,
+  generateRecurringTransactions
 } from './utils/storage';
 import { getSampleTransactions, DEFAULT_BUDGETS } from './utils/constants';
+import { useTheme } from './utils/useTheme';
 import { Header } from './components/Header';
 import { SummaryCards } from './components/SummaryCards';
 import { MonthlyCharts } from './components/MonthlyCharts';
@@ -20,10 +27,17 @@ import { TransactionList } from './components/TransactionList';
 import { TransactionModal } from './components/TransactionModal';
 import { BudgetModal } from './components/BudgetModal';
 import { ExportImportModal } from './components/ExportImportModal';
+import { GoalsModal } from './components/GoalsModal';
+import { AnnualReportModal } from './components/AnnualReportModal';
+import { CloudConfigModal } from './components/CloudConfigModal';
 
 export default function App() {
+  const { theme, toggleTheme } = useTheme();
+
   const [transactions, setTransactions] = useState<Transaction[]>(() => loadStoredTransactions());
   const [budgets, setBudgets] = useState<CategoryBudget[]>(() => loadStoredBudgets());
+  const [goals, setGoals] = useState<FinancialGoal[]>(() => loadStoredGoals());
+  const [cloudConfig, setCloudConfig] = useState<CloudConfig>(() => loadStoredCloudConfig());
 
   // Current active month period
   const [period, setPeriod] = useState<MonthPeriod>(() => {
@@ -36,6 +50,9 @@ export default function App() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
+  const [isAnnualReportModalOpen, setIsAnnualReportModalOpen] = useState(false);
+  const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
 
   // Synchronize state changes to localStorage
   useEffect(() => {
@@ -45,6 +62,14 @@ export default function App() {
   useEffect(() => {
     saveStoredBudgets(budgets);
   }, [budgets]);
+
+  useEffect(() => {
+    saveStoredGoals(goals);
+  }, [goals]);
+
+  useEffect(() => {
+    saveStoredCloudConfig(cloudConfig);
+  }, [cloudConfig]);
 
   // Transactions filtered for the active month
   const monthTransactions = useMemo(() => {
@@ -65,15 +90,25 @@ export default function App() {
   // Handlers for transactions
   const handleSaveTransaction = (
     data: Omit<Transaction, 'id' | 'createdAt'>,
-    id?: string
+    id?: string,
+    installmentsCount?: number,
+    recurringMonths?: number
   ) => {
     if (id) {
       // Editing existing
       setTransactions(prev =>
         prev.map(t => (t.id === id ? { ...t, ...data } : t))
       );
+    } else if (installmentsCount && installmentsCount > 1) {
+      // Create batch of installments
+      const installmentTxs = generateInstallmentTransactions(data, installmentsCount);
+      setTransactions(prev => [...installmentTxs, ...prev]);
+    } else if (recurringMonths && recurringMonths > 1) {
+      // Create recurring projections
+      const recurringTxs = generateRecurringTransactions(data, recurringMonths);
+      setTransactions(prev => [...recurringTxs, ...prev]);
     } else {
-      // Creating new
+      // Creating single new
       const newTx: Transaction = {
         ...data,
         id: `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -85,6 +120,10 @@ export default function App() {
 
   const handleDeleteTransaction = (id: string) => {
     setTransactions(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handleDeleteInstallmentGroup = (groupId: string) => {
+    setTransactions(prev => prev.filter(t => t.installmentGroupId !== groupId));
   };
 
   const handleToggleStatus = (id: string) => {
@@ -114,11 +153,23 @@ export default function App() {
     setBudgets(newBudgets);
   };
 
+  // Handlers for Goals
+  const handleSaveGoals = (newGoals: FinancialGoal[]) => {
+    setGoals(newGoals);
+  };
+
   // Handlers for Backup & Reset
-  const handleImportData = (newTransactions: Transaction[], newBudgets: CategoryBudget[]) => {
+  const handleImportData = (
+    newTransactions: Transaction[], 
+    newBudgets: CategoryBudget[],
+    newGoals?: FinancialGoal[]
+  ) => {
     setTransactions(newTransactions);
     if (newBudgets && newBudgets.length > 0) {
       setBudgets(newBudgets);
+    }
+    if (newGoals && newGoals.length > 0) {
+      setGoals(newGoals);
     }
   };
 
@@ -134,8 +185,19 @@ export default function App() {
     setTransactions([]);
   };
 
+  // Cloud sync apply
+  const handleApplyCloudData = (
+    cloudTxs: Transaction[],
+    cloudBudgets: CategoryBudget[],
+    cloudGoals: FinancialGoal[]
+  ) => {
+    setTransactions(cloudTxs);
+    setBudgets(cloudBudgets);
+    setGoals(cloudGoals);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-emerald-100 selection:text-emerald-900 transition-colors">
       
       {/* Top Header */}
       <Header
@@ -144,6 +206,11 @@ export default function App() {
         onOpenNewTransaction={handleOpenNewTransaction}
         onOpenBudgets={() => setIsBudgetModalOpen(true)}
         onOpenBackup={() => setIsBackupModalOpen(true)}
+        onOpenGoals={() => setIsGoalsModalOpen(true)}
+        onOpenAnnualReport={() => setIsAnnualReportModalOpen(true)}
+        onOpenCloud={() => setIsCloudModalOpen(true)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Main Content Area */}
@@ -168,6 +235,7 @@ export default function App() {
           transactions={monthTransactions}
           onEdit={handleEditTransaction}
           onDelete={handleDeleteTransaction}
+          onDeleteGroup={handleDeleteInstallmentGroup}
           onToggleStatus={handleToggleStatus}
           onAddNew={handleOpenNewTransaction}
         />
@@ -175,22 +243,36 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 bg-white">
+      <footer className="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 transition-colors no-print">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Finanças Mensais • Seus dados estão salvos com segurança no seu navegador</span>
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setIsBackupModalOpen(true)}
-              className="text-slate-600 hover:text-emerald-700 font-medium cursor-pointer"
+              onClick={() => setIsGoalsModalOpen(true)}
+              className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
             >
-              Exportar / Fazer Backup
+              Cofrinhos & Metas
             </button>
             <span>•</span>
             <button
-              onClick={() => setIsBudgetModalOpen(true)}
-              className="text-slate-600 hover:text-emerald-700 font-medium cursor-pointer"
+              onClick={() => setIsAnnualReportModalOpen(true)}
+              className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
             >
-              Metas do Mês
+              Visão Anual
+            </button>
+            <span>•</span>
+            <button
+              onClick={() => setIsCloudModalOpen(true)}
+              className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
+            >
+              Sincronização Nuvem
+            </button>
+            <span>•</span>
+            <button
+              onClick={() => setIsBackupModalOpen(true)}
+              className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
+            >
+              Backup JSON
             </button>
           </div>
         </div>
@@ -216,11 +298,37 @@ export default function App() {
         transactionsThisMonth={monthTransactions}
       />
 
+      <GoalsModal
+        isOpen={isGoalsModalOpen}
+        onClose={() => setIsGoalsModalOpen(false)}
+        goals={goals}
+        onSaveGoals={handleSaveGoals}
+      />
+
+      <AnnualReportModal
+        isOpen={isAnnualReportModalOpen}
+        onClose={() => setIsAnnualReportModalOpen(false)}
+        transactions={transactions}
+        currentYear={period.year}
+      />
+
+      <CloudConfigModal
+        isOpen={isCloudModalOpen}
+        onClose={() => setIsCloudModalOpen(false)}
+        cloudConfig={cloudConfig}
+        onSaveCloudConfig={setCloudConfig}
+        transactions={transactions}
+        budgets={budgets}
+        goals={goals}
+        onApplyCloudData={handleApplyCloudData}
+      />
+
       <ExportImportModal
         isOpen={isBackupModalOpen}
         onClose={() => setIsBackupModalOpen(false)}
         transactions={transactions}
         budgets={budgets}
+        goals={goals}
         onImportData={handleImportData}
         onResetToSample={handleResetToSample}
         onClearAll={handleClearAll}
