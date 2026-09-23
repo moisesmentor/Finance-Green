@@ -100,38 +100,41 @@ export default function App() {
   // Detectar emparelhamento automático via link/QR Code (?sync=CHAVE)
   useEffect(() => {
     const urlSyncKey = checkUrlForSyncKey();
-    if (urlSyncKey && urlSyncKey !== firebaseSettings.syncKey) {
-      setFirebaseSettings(prev => ({
-        ...prev,
-        syncKey: urlSyncKey,
-      }));
+    if (urlSyncKey) {
+      setFirebaseSettings(prev => {
+        const next = {
+          ...prev,
+          syncKey: urlSyncKey,
+          enabled: true,
+        };
+        saveStoredFirebaseSettings(next);
+        return next;
+      });
     }
   }, []);
 
   // Iniciar ou reconectar escuta em tempo real do Firebase Firestore
   useEffect(() => {
-    if (!firebaseSettings.enabled || !firebaseSettings.config || !firebaseSettings.syncKey) {
-      setFirebaseStatus('unconfigured');
-      return;
-    }
+    const config = firebaseSettings.config || DEFAULT_FIREBASE_CONFIG;
+    const syncKey = firebaseSettings.syncKey || 'FIN-MOISES';
 
     setFirebaseStatus('syncing');
 
     const unsubscribe = subscribeToWorkspaceRealtime(
-      firebaseSettings.config,
-      firebaseSettings.syncKey,
-      (remoteData, isRemoteChange) => {
+      config,
+      syncKey,
+      (remoteData, shouldApply) => {
         setFirebaseStatus('connected');
-        if (isRemoteChange) {
-          // Recebeu alteração em tempo real do outro dispositivo (Desktop ou Celular)
-          if (Array.isArray(remoteData.transactions)) {
+        if (shouldApply) {
+          // Atualização da nuvem recebida
+          if (Array.isArray(remoteData.transactions) && remoteData.transactions.length > 0) {
             setTransactions(remoteData.transactions);
-          }
-          if (Array.isArray(remoteData.budgets) && remoteData.budgets.length > 0) {
-            setBudgets(remoteData.budgets);
-          }
-          if (Array.isArray(remoteData.goals)) {
-            setGoals(remoteData.goals);
+            if (Array.isArray(remoteData.budgets) && remoteData.budgets.length > 0) {
+              setBudgets(remoteData.budgets);
+            }
+            if (Array.isArray(remoteData.goals) && remoteData.goals.length > 0) {
+              setGoals(remoteData.goals);
+            }
           }
         }
       },
@@ -144,7 +147,7 @@ export default function App() {
     return () => {
       unsubscribe();
     };
-  }, [firebaseSettings.enabled, firebaseSettings.config, firebaseSettings.syncKey]);
+  }, [firebaseSettings.syncKey]);
 
   // Enviar alterações em segundo plano para a nuvem
   const syncToCloudInBackground = (partialData: {
@@ -152,18 +155,23 @@ export default function App() {
     budgets?: CategoryBudget[];
     goals?: FinancialGoal[];
   }) => {
-    if (firebaseSettings.enabled && firebaseSettings.config && firebaseSettings.syncKey) {
-      setFirebaseStatus('syncing');
-      pushWorkspaceData(firebaseSettings.config, firebaseSettings.syncKey, partialData)
-        .then((res) => {
-          if (res.success) {
-            setFirebaseStatus('connected');
-          } else {
-            setFirebaseStatus('error');
-          }
-        })
-        .catch(() => setFirebaseStatus('error'));
-    }
+    const config = firebaseSettings.config || DEFAULT_FIREBASE_CONFIG;
+    const syncKey = firebaseSettings.syncKey || 'FIN-MOISES';
+
+    setFirebaseStatus('syncing');
+    pushWorkspaceData(config, syncKey, partialData)
+      .then((res) => {
+        if (res.success) {
+          setFirebaseStatus('connected');
+        } else {
+          console.warn('Erro no salvamento remoto:', res.error);
+          setFirebaseStatus('error');
+        }
+      })
+      .catch((err) => {
+        console.warn('Exceção ao sincronizar:', err);
+        setFirebaseStatus('error');
+      });
   };
 
   // Transactions filtered for the active month

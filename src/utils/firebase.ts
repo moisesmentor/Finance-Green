@@ -54,33 +54,26 @@ export const DEFAULT_FIREBASE_CONFIG: FirebaseConfig = {
 
 // Configurações padrão ou provenientes de variáveis de ambiente VITE_
 export function loadStoredFirebaseSettings(): FirebaseSyncSettings {
-  if (typeof window === 'undefined') {
-    return {
-      enabled: true,
-      syncKey: 'FIN-MOISES',
-      config: DEFAULT_FIREBASE_CONFIG,
-    };
-  }
+  let syncKey = 'FIN-MOISES';
 
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.FIREBASE_SETTINGS);
-    if (raw) {
-      const parsed = JSON.parse(raw) as FirebaseSyncSettings;
-      // Se não tiver config válida gravada, usa a padrão
-      if (!parsed.config || !parsed.config.apiKey) {
-        parsed.config = DEFAULT_FIREBASE_CONFIG;
-        parsed.enabled = true;
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.FIREBASE_SETTINGS);
+      if (raw) {
+        const parsed = JSON.parse(raw) as FirebaseSyncSettings;
+        if (parsed.syncKey && parsed.syncKey.trim()) {
+          syncKey = parsed.syncKey.trim().toUpperCase();
+        }
       }
-      return parsed;
+    } catch (err) {
+      console.warn('Erro ao carregar configurações do Firebase do localStorage:', err);
     }
-  } catch (err) {
-    console.warn('Erro ao carregar configurações do Firebase do localStorage:', err);
   }
 
   // Tentar carregar de variáveis de ambiente se configuradas no Vercel/Vite
-  const envApiKey = import.meta.env.VITE_FIREBASE_API_KEY;
-  const envProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
-  const envAppId = import.meta.env.VITE_FIREBASE_APP_ID;
+  const envApiKey = import.meta.env?.VITE_FIREBASE_API_KEY;
+  const envProjectId = import.meta.env?.VITE_FIREBASE_PROJECT_ID;
+  const envAppId = import.meta.env?.VITE_FIREBASE_APP_ID;
 
   const envConfig: FirebaseConfig = (envApiKey && envProjectId && envAppId) ? {
     apiKey: envApiKey,
@@ -93,7 +86,7 @@ export function loadStoredFirebaseSettings(): FirebaseSyncSettings {
 
   return {
     enabled: true,
-    syncKey: 'FIN-MOISES',
+    syncKey,
     config: envConfig,
   };
 }
@@ -196,17 +189,27 @@ export function subscribeToWorkspaceRealtime(
     const safeKey = syncKey.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
     const workspaceRef = doc(db, 'finance_workspaces', safeKey);
     const myDeviceId = getDeviceId();
+    let isFirstSnapshot = true;
 
     const unsubscribe = onSnapshot(
       workspaceRef,
       (docSnap) => {
         if (!docSnap.exists()) {
+          onData({
+            transactions: [],
+            budgets: [],
+            goals: [],
+            updatedAt: 0,
+            updatedByDeviceId: '',
+          }, false);
           return;
         }
 
         const raw = docSnap.data() as Partial<WorkspaceRemoteData>;
         const updatedBy = raw.updatedByDeviceId || '';
         const isRemoteChange = updatedBy !== myDeviceId;
+        const shouldApply = isFirstSnapshot || isRemoteChange;
+        isFirstSnapshot = false;
 
         const data: WorkspaceRemoteData = {
           transactions: Array.isArray(raw.transactions) ? raw.transactions : [],
@@ -216,7 +219,7 @@ export function subscribeToWorkspaceRealtime(
           updatedByDeviceId: updatedBy,
         };
 
-        onData(data, isRemoteChange);
+        onData(data, shouldApply);
       },
       (error) => {
         console.error('Erro no listener em tempo real do Firebase Firestore:', error);
