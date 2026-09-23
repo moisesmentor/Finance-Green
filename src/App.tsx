@@ -4,7 +4,15 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Transaction, CategoryBudget, MonthPeriod, FinancialGoal, CloudConfig } from './types';
+import { 
+  Transaction, 
+  CategoryBudget, 
+  MonthPeriod, 
+  FinancialGoal, 
+  CloudConfig,
+  FirebaseSyncSettings,
+  FirebaseSyncStatus 
+} from './types';
 import { 
   loadStoredTransactions, 
   saveStoredTransactions, 
@@ -18,6 +26,13 @@ import {
   generateInstallmentTransactions,
   generateRecurringTransactions
 } from './utils/storage';
+import { 
+  loadStoredFirebaseSettings, 
+  saveStoredFirebaseSettings, 
+  subscribeToWorkspaceRealtime, 
+  pushWorkspaceData, 
+  checkUrlForSyncKey 
+} from './utils/firebase';
 import { getSampleTransactions, DEFAULT_BUDGETS } from './utils/constants';
 import { useTheme } from './utils/useTheme';
 import { Header } from './components/Header';
@@ -30,6 +45,7 @@ import { ExportImportModal } from './components/ExportImportModal';
 import { GoalsModal } from './components/GoalsModal';
 import { AnnualReportModal } from './components/AnnualReportModal';
 import { CloudConfigModal } from './components/CloudConfigModal';
+import { FirebaseSyncModal } from './components/FirebaseSyncModal';
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
@@ -38,6 +54,11 @@ export default function App() {
   const [budgets, setBudgets] = useState<CategoryBudget[]>(() => loadStoredBudgets());
   const [goals, setGoals] = useState<FinancialGoal[]>(() => loadStoredGoals());
   const [cloudConfig, setCloudConfig] = useState<CloudConfig>(() => loadStoredCloudConfig());
+  
+  // Firebase Realtime State
+  const [firebaseSettings, setFirebaseSettings] = useState<FirebaseSyncSettings>(() => loadStoredFirebaseSettings());
+  const [firebaseStatus, setFirebaseStatus] = useState<FirebaseSyncStatus>('unconfigured');
+  const [isFirebaseModalOpen, setIsFirebaseModalOpen] = useState(false);
 
   // Current active month period
   const [period, setPeriod] = useState<MonthPeriod>(() => {
@@ -71,6 +92,80 @@ export default function App() {
     saveStoredCloudConfig(cloudConfig);
   }, [cloudConfig]);
 
+  // Salvar configurações do Firebase localmente
+  useEffect(() => {
+    saveStoredFirebaseSettings(firebaseSettings);
+  }, [firebaseSettings]);
+
+  // Detectar emparelhamento automático via link/QR Code (?sync=CHAVE)
+  useEffect(() => {
+    const urlSyncKey = checkUrlForSyncKey();
+    if (urlSyncKey && urlSyncKey !== firebaseSettings.syncKey) {
+      setFirebaseSettings(prev => ({
+        ...prev,
+        syncKey: urlSyncKey,
+      }));
+    }
+  }, []);
+
+  // Iniciar ou reconectar escuta em tempo real do Firebase Firestore
+  useEffect(() => {
+    if (!firebaseSettings.enabled || !firebaseSettings.config || !firebaseSettings.syncKey) {
+      setFirebaseStatus('unconfigured');
+      return;
+    }
+
+    setFirebaseStatus('syncing');
+
+    const unsubscribe = subscribeToWorkspaceRealtime(
+      firebaseSettings.config,
+      firebaseSettings.syncKey,
+      (remoteData, isRemoteChange) => {
+        setFirebaseStatus('connected');
+        if (isRemoteChange) {
+          // Recebeu alteração em tempo real do outro dispositivo (Desktop ou Celular)
+          if (Array.isArray(remoteData.transactions)) {
+            setTransactions(remoteData.transactions);
+          }
+          if (Array.isArray(remoteData.budgets) && remoteData.budgets.length > 0) {
+            setBudgets(remoteData.budgets);
+          }
+          if (Array.isArray(remoteData.goals)) {
+            setGoals(remoteData.goals);
+          }
+        }
+      },
+      (error) => {
+        console.warn('Erro na conexão com Firebase:', error);
+        setFirebaseStatus('error');
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [firebaseSettings.enabled, firebaseSettings.config, firebaseSettings.syncKey]);
+
+  // Enviar alterações em segundo plano para a nuvem
+  const syncToCloudInBackground = (partialData: {
+    transactions?: Transaction[];
+    budgets?: CategoryBudget[];
+    goals?: FinancialGoal[];
+  }) => {
+    if (firebaseSettings.enabled && firebaseSettings.config && firebaseSettings.syncKey) {
+      setFirebaseStatus('syncing');
+      pushWorkspaceData(firebaseSettings.config, firebaseSettings.syncKey, partialData)
+        .then((res) => {
+          if (res.success) {
+            setFirebaseStatus('connected');
+          } else {
+            setFirebaseStatus('error');
+          }
+        })
+        .catch(() => setFirebaseStatus('error'));
+    }
+  };
+
   // Transactions filtered for the active month
   const monthTransactions = useMemo(() => {
     const targetMonthStr = String(period.month + 1).padStart(2, '0');
@@ -94,48 +189,55 @@ export default function App() {
     installmentsCount?: number,
     recurringMonths?: number
   ) => {
+    let nextTransactions: Transaction[] = [];
+
     if (id) {
-      // Editing existing
-      setTransactions(prev =>
-        prev.map(t => (t.id === id ? { ...t, ...data } : t))
-      );
+      // Edit existing
+      nextTransactions = transactions.map(t => (t.id === id ? { ...t, ...data } : t));
     } else if (installmentsCount && installmentsCount > 1) {
       // Create batch of installments
       const installmentTxs = generateInstallmentTransactions(data, installmentsCount);
-      setTransactions(prev => [...installmentTxs, ...prev]);
+      nextTransactions = [...installmentTxs, ...transactions];
     } else if (recurringMonths && recurringMonths > 1) {
       // Create recurring projections
       const recurringTxs = generateRecurringTransactions(data, recurringMonths);
-      setTransactions(prev => [...recurringTxs, ...prev]);
+      nextTransactions = [...recurringTxs, ...transactions];
     } else {
-      // Creating single new
+      // Single new
       const newTx: Transaction = {
         ...data,
         id: `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         createdAt: Date.now(),
       };
-      setTransactions(prev => [newTx, ...prev]);
+      nextTransactions = [newTx, ...transactions];
     }
+
+    setTransactions(nextTransactions);
+    syncToCloudInBackground({ transactions: nextTransactions });
   };
 
   const handleDeleteTransaction = (id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
+    const nextTransactions = transactions.filter(t => t.id !== id);
+    setTransactions(nextTransactions);
+    syncToCloudInBackground({ transactions: nextTransactions });
   };
 
   const handleDeleteInstallmentGroup = (groupId: string) => {
-    setTransactions(prev => prev.filter(t => t.installmentGroupId !== groupId));
+    const nextTransactions = transactions.filter(t => t.installmentGroupId !== groupId);
+    setTransactions(nextTransactions);
+    syncToCloudInBackground({ transactions: nextTransactions });
   };
 
   const handleToggleStatus = (id: string) => {
-    setTransactions(prev =>
-      prev.map(t => {
-        if (t.id === id) {
-          const nextStatus = t.status === 'paid' ? 'pending' : 'paid';
-          return { ...t, status: nextStatus };
-        }
-        return t;
-      })
-    );
+    const nextTransactions = transactions.map(t => {
+      if (t.id === id) {
+        const nextStatus = t.status === 'paid' ? 'pending' : 'paid';
+        return { ...t, status: nextStatus };
+      }
+      return t;
+    });
+    setTransactions(nextTransactions);
+    syncToCloudInBackground({ transactions: nextTransactions });
   };
 
   const handleOpenNewTransaction = () => {
@@ -151,11 +253,13 @@ export default function App() {
   // Handlers for Budgets
   const handleSaveBudgets = (newBudgets: CategoryBudget[]) => {
     setBudgets(newBudgets);
+    syncToCloudInBackground({ budgets: newBudgets });
   };
 
   // Handlers for Goals
   const handleSaveGoals = (newGoals: FinancialGoal[]) => {
     setGoals(newGoals);
+    syncToCloudInBackground({ goals: newGoals });
   };
 
   // Handlers for Backup & Reset
@@ -171,6 +275,11 @@ export default function App() {
     if (newGoals && newGoals.length > 0) {
       setGoals(newGoals);
     }
+    syncToCloudInBackground({
+      transactions: newTransactions,
+      budgets: newBudgets && newBudgets.length > 0 ? newBudgets : undefined,
+      goals: newGoals && newGoals.length > 0 ? newGoals : undefined,
+    });
   };
 
   const handleResetToSample = () => {
@@ -179,10 +288,12 @@ export default function App() {
     setBudgets(DEFAULT_BUDGETS);
     const now = new Date();
     setPeriod({ year: now.getFullYear(), month: now.getMonth() });
+    syncToCloudInBackground({ transactions: samples, budgets: DEFAULT_BUDGETS });
   };
 
   const handleClearAll = () => {
     setTransactions([]);
+    syncToCloudInBackground({ transactions: [] });
   };
 
   // Cloud sync apply
@@ -209,6 +320,9 @@ export default function App() {
         onOpenGoals={() => setIsGoalsModalOpen(true)}
         onOpenAnnualReport={() => setIsAnnualReportModalOpen(true)}
         onOpenCloud={() => setIsCloudModalOpen(true)}
+        onOpenFirebaseSync={() => setIsFirebaseModalOpen(true)}
+        firebaseStatus={firebaseStatus}
+        syncKey={firebaseSettings.syncKey}
         theme={theme}
         onToggleTheme={toggleTheme}
       />
@@ -321,6 +435,22 @@ export default function App() {
         budgets={budgets}
         goals={goals}
         onApplyCloudData={handleApplyCloudData}
+      />
+
+      <FirebaseSyncModal
+        isOpen={isFirebaseModalOpen}
+        onClose={() => setIsFirebaseModalOpen(false)}
+        settings={firebaseSettings}
+        onSaveSettings={(newSettings) => setFirebaseSettings(newSettings)}
+        syncStatus={firebaseStatus}
+        localTransactions={transactions}
+        localBudgets={budgets}
+        localGoals={goals}
+        onApplyCloudData={(cloudTxs, cloudBudgets, cloudGoals) => {
+          setTransactions(cloudTxs);
+          setBudgets(cloudBudgets);
+          setGoals(cloudGoals);
+        }}
       />
 
       <ExportImportModal

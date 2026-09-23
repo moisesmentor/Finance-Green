@@ -126,3 +126,30 @@ export interface CloudConfig {
   lastSyncedAt?: string;
 }
 
+export interface FirebaseConfig {
+  apiKey: string;
+  authDomain?: string;
+  projectId: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId: string;
+}
+
+export type FirebaseSyncStatus = 'connected' | 'syncing' | 'offline' | 'unconfigured' | 'error';
+
+export interface FirebaseSyncSettings {
+  enabled: boolean;
+  syncKey: string;
+  config: FirebaseConfig | null;
+  lastSyncedAt?: string;
+}
+
+export interface WorkspaceRemoteData {
+  transactions: Transaction[];
+  budgets: CategoryBudget[];
+  goals: FinancialGoal[];
+  updatedAt: number;
+  updatedByDeviceId?: string;
+}
+
+
