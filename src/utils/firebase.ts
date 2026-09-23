@@ -42,13 +42,23 @@ export function generateDefaultSyncKey(): string {
   return `FIN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 }
 
+// Configurações padrão do projeto oficial finance-f69a2
+export const DEFAULT_FIREBASE_CONFIG: FirebaseConfig = {
+  apiKey: "AIzaSyDpEq4LFdM2EpkqOKUnUYmJtP9vqvdkvpo",
+  authDomain: "finance-f69a2.firebaseapp.com",
+  projectId: "finance-f69a2",
+  storageBucket: "finance-f69a2.firebasestorage.app",
+  messagingSenderId: "71598607672",
+  appId: "1:71598607672:web:abceb1b0b576dcd75845cd",
+};
+
 // Configurações padrão ou provenientes de variáveis de ambiente VITE_
 export function loadStoredFirebaseSettings(): FirebaseSyncSettings {
   if (typeof window === 'undefined') {
     return {
-      enabled: false,
+      enabled: true,
       syncKey: 'FIN-MOISES',
-      config: null,
+      config: DEFAULT_FIREBASE_CONFIG,
     };
   }
 
@@ -56,6 +66,11 @@ export function loadStoredFirebaseSettings(): FirebaseSyncSettings {
     const raw = localStorage.getItem(STORAGE_KEYS.FIREBASE_SETTINGS);
     if (raw) {
       const parsed = JSON.parse(raw) as FirebaseSyncSettings;
+      // Se não tiver config válida gravada, usa a padrão
+      if (!parsed.config || !parsed.config.apiKey) {
+        parsed.config = DEFAULT_FIREBASE_CONFIG;
+        parsed.enabled = true;
+      }
       return parsed;
     }
   } catch (err) {
@@ -67,17 +82,17 @@ export function loadStoredFirebaseSettings(): FirebaseSyncSettings {
   const envProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
   const envAppId = import.meta.env.VITE_FIREBASE_APP_ID;
 
-  const envConfig: FirebaseConfig | null = (envApiKey && envProjectId && envAppId) ? {
+  const envConfig: FirebaseConfig = (envApiKey && envProjectId && envAppId) ? {
     apiKey: envApiKey,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${envProjectId}.firebaseapp.com`,
     projectId: envProjectId,
     storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || `${envProjectId}.appspot.com`,
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
     appId: envAppId,
-  } : null;
+  } : DEFAULT_FIREBASE_CONFIG;
 
   return {
-    enabled: !!envConfig,
+    enabled: true,
     syncKey: 'FIN-MOISES',
     config: envConfig,
   };
