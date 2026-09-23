@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
+  initializeFirestore,
   doc, 
   onSnapshot, 
   setDoc, 
@@ -117,7 +118,12 @@ export function getFirebaseInstance(config: FirebaseConfig): { app: FirebaseApp;
     ? getApp() 
     : initializeApp(config);
 
-  const db = getFirestore(app);
+  let db: Firestore;
+  try {
+    db = initializeFirestore(app, { ignoreUndefinedProperties: true });
+  } catch {
+    db = getFirestore(app);
+  }
 
   cachedApp = app;
   cachedDb = db;
@@ -260,7 +266,10 @@ export async function pushWorkspaceData(
     if (data.budgets !== undefined) payload.budgets = data.budgets;
     if (data.goals !== undefined) payload.goals = data.goals;
 
-    await setDoc(workspaceRef, payload, { merge: true });
+    // Remove qualquer propriedade undefined para compatibilidade garantida com Firestore
+    const cleanPayload = JSON.parse(JSON.stringify(payload));
+
+    await setDoc(workspaceRef, cleanPayload, { merge: true });
 
     return { success: true };
   } catch (err: any) {
