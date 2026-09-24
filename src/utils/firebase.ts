@@ -188,8 +188,12 @@ export function translateAuthError(errorCode: string): string {
       return 'Muitas tentativas sem sucesso. Por segurança, aguarde alguns minutos e tente novamente.';
     case 'auth/network-request-failed':
       return 'Falha de conexão com a internet. Verifique sua rede.';
+    case 'auth/operation-not-allowed':
+      return 'O login por E-mail/Senha ainda não foi ativado no Firebase Console (Vá em Authentication > Sign-in method e ative "E-mail/senha").';
     default:
-      return 'Ocorreu um erro ao processar. Tente novamente.';
+      return errorCode
+        ? `Erro de autenticação (${errorCode}). Verifique as configurações do Firebase.`
+        : 'Ocorreu um erro ao processar. Tente novamente.';
   }
 }
 
