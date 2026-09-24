@@ -53,9 +53,11 @@ import { GoalsModal } from './components/GoalsModal';
 import { AnnualReportModal } from './components/AnnualReportModal';
 import { CloudConfigModal } from './components/CloudConfigModal';
 import { AuthScreen } from './components/AuthScreen';
+import { ToastProvider, useToast } from './components/Toast';
 
-export default function App() {
+function FinanceApp() {
   const { theme, toggleTheme } = useTheme();
+  const { showToast } = useToast();
 
   // Authentication State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -202,7 +204,7 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await logoutUser();
-      // Limpeza imediata da memória
+      showToast('Sessão encerrada com sucesso', 'info');
       setTransactions([]);
       setBudgets(DEFAULT_BUDGETS);
       setGoals([]);
@@ -231,16 +233,19 @@ export default function App() {
       };
       setTransactions(prev => prev.map(t => (t.id === id ? updatedTx : t)));
       await saveUserTransaction(currentUser.uid, updatedTx);
+      showToast('Transação atualizada com sucesso!');
     } else if (installmentsCount && installmentsCount > 1) {
       // Criação de parcelamento
       const installmentTxs = generateInstallmentTransactions(data, installmentsCount);
       setTransactions(prev => [...installmentTxs, ...prev]);
       await batchSaveUserTransactions(currentUser.uid, installmentTxs);
+      showToast(`Compra parcelada em ${installmentsCount}x cadastrada!`);
     } else if (recurringMonths && recurringMonths > 1) {
       // Criação de lançamentos recorrentes
       const recurringTxs = generateRecurringTransactions(data, recurringMonths);
       setTransactions(prev => [...recurringTxs, ...prev]);
       await batchSaveUserTransactions(currentUser.uid, recurringTxs);
+      showToast(`Lançamento recorrente projetado para ${recurringMonths} meses!`);
     } else {
       // Nova transação individual
       const newTx: Transaction = {
@@ -250,6 +255,7 @@ export default function App() {
       };
       setTransactions(prev => [newTx, ...prev]);
       await saveUserTransaction(currentUser.uid, newTx);
+      showToast('Lançamento adicionado com sucesso!');
     }
   };
 
@@ -257,12 +263,14 @@ export default function App() {
     if (!currentUser?.uid) return;
     setTransactions(prev => prev.filter(t => t.id !== id));
     await deleteUserTransaction(currentUser.uid, id);
+    showToast('Lançamento removido', 'info');
   };
 
   const handleDeleteInstallmentGroup = async (groupId: string) => {
     if (!currentUser?.uid) return;
     await deleteUserInstallmentGroup(currentUser.uid, groupId, transactions);
     setTransactions(prev => prev.filter(t => t.installmentGroupId !== groupId));
+    showToast('Todas as parcelas foram excluídas', 'info');
   };
 
   const handleToggleStatus = async (id: string) => {
@@ -273,6 +281,7 @@ export default function App() {
     const updated = { ...target, status: nextStatus as 'paid' | 'pending' };
     setTransactions(prev => prev.map(t => (t.id === id ? updated : t)));
     await saveUserTransaction(currentUser.uid, updated);
+    showToast(nextStatus === 'paid' ? 'Marcado como pago' : 'Marcado como pendente');
   };
 
   const handleOpenNewTransaction = () => {
@@ -290,6 +299,7 @@ export default function App() {
     if (!currentUser?.uid) return;
     setBudgets(newBudgets);
     await saveUserBudgets(currentUser.uid, newBudgets);
+    showToast('Tetos orçamentários atualizados com sucesso!');
   };
 
   // Handlers para Metas (Subcoleção /users/{uid}/goals)
@@ -297,6 +307,7 @@ export default function App() {
     if (!currentUser?.uid) return;
     setGoals(newGoals);
     await saveUserGoals(currentUser.uid, newGoals);
+    showToast('Metas financeiras salvas!');
   };
 
   // Handlers para Backup / Importação
@@ -319,12 +330,13 @@ export default function App() {
     if (newGoals && newGoals.length > 0) {
       await saveUserGoals(currentUser.uid, newGoals);
     }
+    showToast('Dados restaurados com sucesso!');
   };
 
   const handleResetToSample = () => {
-    // Apenas reinicializa localmente se o usuário expressamente clicar em resetar no modal de backup
     setTransactions([]);
     setBudgets(DEFAULT_BUDGETS);
+    showToast('Dados reinicializados', 'info');
   };
 
   const handleClearAll = async () => {
@@ -333,6 +345,7 @@ export default function App() {
       await deleteUserTransaction(currentUser.uid, tx.id);
     }
     setTransactions([]);
+    showToast('Todas as transações foram excluídas', 'info');
   };
 
   const handleApplyCloudData = (
@@ -343,18 +356,19 @@ export default function App() {
     setTransactions(cloudTxs);
     setBudgets(cloudBudgets);
     setGoals(cloudGoals);
+    showToast('Dados da nuvem aplicados!');
   };
 
   // 1. Tela de Carregamento da Sessão
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-4 ring-emerald-500/20 animate-pulse">
-            <Wallet className="w-7 h-7 text-white" />
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-500/20 animate-pulse">
+            <Wallet className="w-6 h-6 text-white" />
           </div>
-          <div className="flex items-center gap-2.5 text-slate-400 text-sm font-medium">
-            <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <div className="flex items-center gap-2.5 text-slate-400 text-xs font-medium">
+            <div className="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             <span>Carregando ambiente seguro...</span>
           </div>
         </div>
@@ -368,7 +382,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-emerald-50/20 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/20 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-emerald-100 selection:text-emerald-900 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-emerald-100 selection:text-emerald-900 transition-colors">
       
       {/* Top Header */}
       <Header
@@ -418,9 +432,9 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 transition-colors no-print">
+      <footer className="border-t border-slate-200/80 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-950 transition-colors no-print">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Finanças Pro • Seus dados estão salvos com isolamento criptográfico no seu usuário</span>
+          <span>Finance Pro • Ambiente executivo isolado por credencial autenticada</span>
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsGoalsModalOpen(true)}
@@ -510,5 +524,13 @@ export default function App() {
       />
 
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <FinanceApp />
+    </ToastProvider>
   );
 }

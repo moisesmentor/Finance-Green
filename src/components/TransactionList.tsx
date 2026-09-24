@@ -15,7 +15,8 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Calendar,
-  X
+  X,
+  CreditCard
 } from 'lucide-react';
 import { Transaction, FilterOptions, Category } from '../types';
 import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
@@ -140,7 +141,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   const handleDeleteItem = (tx: Transaction) => {
     if (tx.installmentGroupId && tx.installmentTotal && onDeleteGroup) {
       const choice = window.confirm(
-        `Esta transação faz parte de uma compra parcelada (${tx.installmentCurrent}/${tx.installmentTotal}).\n\nClique em OK para excluir TODAS as parcelas deste parcelamento, ou Cancelar para excluir apenas esta.`
+        `Esta transação faz parte de um parcelamento (${tx.installmentCurrent}/${tx.installmentTotal}).\n\nClique em OK para excluir TODAS as parcelas deste grupo, ou Cancelar para excluir somente este mês.`
       );
       if (choice) {
         onDeleteGroup(tx.installmentGroupId);
@@ -160,23 +161,23 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
-              Extrato & Transações
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono-num">
+              Extrato & Movimentações
+              <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono-num border border-slate-200/60 dark:border-slate-700/60">
                 {filteredTransactions.length}
               </span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Histórico detalhado das movimentações financeiras deste mês
+              Histórico detalhado das entradas e saídas deste período
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={onAddNew}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              Adicionar
+              Novo Lançamento
             </button>
           </div>
         </div>
@@ -233,7 +234,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             )}
           </div>
 
-          {/* Category & Order controls */}
+          {/* Category & Order Controls */}
           <div className="flex gap-2">
             <select
               value={categoryFilter}
@@ -289,7 +290,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-4">
             {hasActiveFilters
               ? 'Nenhum lançamento corresponde aos filtros selecionados.'
-              : 'Você ainda não registrou nenhum gasto ou receita para este mês.'}
+              : 'Você ainda não registrou nenhum gasto ou receita para este período.'}
           </p>
           <button
             onClick={hasActiveFilters ? resetFilters : onAddNew}
@@ -318,12 +319,17 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               <div
                 key={tx.id}
                 id={`tx-row-${tx.id}`}
-                className="p-4 hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                className="p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
               >
                 {/* Left Side: Icon & Details */}
                 <div className="flex items-start sm:items-center gap-3.5 min-w-0">
                   <div
-                    className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border shadow-xs ${cat.bgLight} dark:bg-slate-800 dark:border-slate-700`}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border shadow-xs"
+                    style={{
+                      backgroundColor: `${cat.color}15`,
+                      borderColor: `${cat.color}30`,
+                      color: cat.color
+                    }}
                   >
                     <CategoryIcon name={cat.icon} className="w-5 h-5" />
                   </div>
@@ -337,7 +343,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       {/* Installment Badge */}
                       {tx.installmentTotal && tx.installmentTotal > 1 && (
                         <span 
-                          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800"
+                          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800"
                           title={`Compra parcelada em ${tx.installmentTotal} vezes`}
                         >
                           <Layers className="w-2.5 h-2.5 text-indigo-500" />
@@ -348,7 +354,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       {/* Recurrent Badge */}
                       {tx.isRecurring && (
                         <span 
-                          className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                           title="Gasto mensal fixo / recorrente"
                         >
                           <Repeat className="w-2.5 h-2.5 text-slate-500" />
@@ -357,7 +363,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 flex-wrap font-medium">
+                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex-wrap font-medium">
                       <span className="text-slate-700 dark:text-slate-300">{cat.name}</span>
                       <span>•</span>
                       <span>{paymentMethodMap.get(tx.paymentMethod) || tx.paymentMethod}</span>
@@ -369,7 +375,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                     </div>
 
                     {tx.notes && (
-                      <p className="text-[11px] text-slate-400 dark:text-slate-500 italic mt-1 truncate max-w-md">
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 italic mt-0.5 truncate max-w-md">
                         Nota: {tx.notes}
                       </p>
                     )}
@@ -379,7 +385,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 {/* Right Side: Status Toggle, Amount & Actions */}
                 <div className="flex items-center justify-between sm:justify-end gap-3.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
                   
-                  {/* Status clickable toggle pill */}
+                  {/* Status Clickable Toggle Pill */}
                   <button
                     onClick={() => onToggleStatus(tx.id)}
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer active:scale-95 ${
