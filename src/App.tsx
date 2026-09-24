@@ -34,11 +34,13 @@ import {
   logoutUser,
   subscribeToUserWorkspaceRealtime, 
   pushUserWorkspaceData, 
-  migrateLegacyDataToUser 
+  migrateLegacyDataToUser,
+  restoreLegacyWorkspaceData,
+  isSampleTransactions
 } from './utils/firebase';
 import { getSampleTransactions, DEFAULT_BUDGETS } from './utils/constants';
 import { useTheme } from './utils/useTheme';
-import { Wallet } from 'lucide-react';
+import { Wallet, Sparkles, RefreshCw } from 'lucide-react';
 import { Header } from './components/Header';
 import { SummaryCards } from './components/SummaryCards';
 import { MonthlyCharts } from './components/MonthlyCharts';
@@ -207,6 +209,38 @@ export default function App() {
       await logoutUser();
     } catch (err) {
       console.error('Erro ao sair da conta:', err);
+    }
+  };
+
+  // Restauração manual das finanças anteriores do FIN-MOISES
+  const [isRestoringLegacy, setIsRestoringLegacy] = useState(false);
+  const [restoreFeedback, setRestoreFeedback] = useState<string | null>(null);
+
+  const handleRestoreLegacy = async () => {
+    if (!currentUser?.uid) return;
+    setIsRestoringLegacy(true);
+    setRestoreFeedback(null);
+    try {
+      const res = await restoreLegacyWorkspaceData(currentUser.uid);
+      if (res.success && res.data) {
+        setTransactions(res.data.transactions);
+        if (res.data.budgets) setBudgets(res.data.budgets);
+        if (res.data.goals) setGoals(res.data.goals);
+
+        // Se tiver transações de Outubro de 2026, muda a visualização para Outubro automaticamente
+        const hasOctober = res.data.transactions.some(t => t.date && t.date.startsWith('2026-10'));
+        if (hasOctober) {
+          setPeriod({ year: 2026, month: 9 });
+        }
+
+        setRestoreFeedback(`Sucesso! ${res.data.transactions.length} lançamentos recuperados do FIN-MOISES.`);
+      } else {
+        setRestoreFeedback(res.error || 'Nenhum dado encontrado no FIN-MOISES.');
+      }
+    } catch (err: any) {
+      setRestoreFeedback('Erro ao restaurar: ' + err.message);
+    } finally {
+      setIsRestoringLegacy(false);
     }
   };
 
@@ -398,6 +432,42 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         
+        {/* Banner de Restauração de Dados Anteriores do FIN-MOISES */}
+        {(isSampleTransactions(transactions) || restoreFeedback) && (
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-teal-500/10 border border-amber-500/30 dark:border-amber-500/20 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                  Recuperar Finanças Anteriores (Outubro / FIN-MOISES)
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  {restoreFeedback || 'Seu painel está com os dados iniciais. Clique ao lado para resgatar automaticamente seus lançamentos anteriores de Outubro.'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleRestoreLegacy}
+              disabled={isRestoringLegacy}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0"
+            >
+              {isRestoringLegacy ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Resgatando...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Resgatar Meus Dados</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Key Metrics Cards */}
         <SummaryCards
           summary={summary}

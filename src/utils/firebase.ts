@@ -288,6 +288,69 @@ export async function pushUserWorkspaceData(
   }
 }
 
+// Detectar se a lista contém apenas as transações de exemplo padrão
+export function isSampleTransactions(txs: Transaction[]): boolean {
+  if (!txs || txs.length === 0) return true;
+  return txs.some(t => t.id === 'tx-1' && t.description === 'Salário Mensal');
+}
+
+// Forçar a restauração dos dados anteriores vinculados ao FIN-MOISES
+export async function restoreLegacyWorkspaceData(
+  userId: string
+): Promise<{ success: boolean; data?: WorkspaceRemoteData; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    let foundData: WorkspaceRemoteData | null = null;
+
+    // 1. Tentar ler de finance_workspaces/FIN-MOISES
+    try {
+      const snap1 = await getDoc(doc(db, 'finance_workspaces', 'FIN-MOISES'));
+      if (snap1.exists()) {
+        const d1 = snap1.data() as Partial<WorkspaceRemoteData>;
+        if (Array.isArray(d1.transactions) && d1.transactions.length > 0) {
+          foundData = d1 as WorkspaceRemoteData;
+        }
+      }
+    } catch (e1: any) {
+      console.warn('Erro ao ler finance_workspaces/FIN-MOISES:', e1?.message);
+    }
+
+    // 2. Tentar ler de workspaces/FIN-MOISES
+    if (!foundData) {
+      try {
+        const snap2 = await getDoc(doc(db, 'workspaces', 'FIN-MOISES'));
+        if (snap2.exists()) {
+          const d2 = snap2.data() as Partial<WorkspaceRemoteData>;
+          if (Array.isArray(d2.transactions) && d2.transactions.length > 0) {
+            foundData = d2 as WorkspaceRemoteData;
+          }
+        }
+      } catch (e2: any) {
+        console.warn('Erro ao ler workspaces/FIN-MOISES:', e2?.message);
+      }
+    }
+
+    if (foundData && Array.isArray(foundData.transactions) && foundData.transactions.length > 0) {
+      const cleanedData: WorkspaceRemoteData = {
+        transactions: foundData.transactions,
+        budgets: Array.isArray(foundData.budgets) ? foundData.budgets : [],
+        goals: Array.isArray(foundData.goals) ? foundData.goals : [],
+        updatedAt: Date.now(),
+        updatedByDeviceId: getDeviceId(),
+      };
+      await pushUserWorkspaceData(userId, cleanedData);
+      return { success: true, data: cleanedData };
+    }
+
+    return { 
+      success: false, 
+      error: 'Não foi possível ler os dados do FIN-MOISES no Firestore. Verifique se a permissão para finance_workspaces está ativa nas regras.' 
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 // Migrar dados locais anteriores ou da base FIN-MOISES para a conta do usuário recém-criada
 export async function migrateLegacyDataToUser(
   userId: string,
@@ -302,42 +365,33 @@ export async function migrateLegacyDataToUser(
     const userDocRef = doc(db, 'users', userId);
     const docSnap = await getDoc(userDocRef);
 
-    // Se o documento na nuvem já existe e tem transações, preserva o que está na nuvem
+    // Se o documento na nuvem já existe e tem transações personalizadas (não exemplo), preserva
     if (docSnap.exists()) {
       const existing = docSnap.data() as Partial<WorkspaceRemoteData>;
-      if (Array.isArray(existing.transactions) && existing.transactions.length > 0) {
+      if (Array.isArray(existing.transactions) && existing.transactions.length > 0 && !isSampleTransactions(existing.transactions)) {
         return { success: true, data: existing as WorkspaceRemoteData };
       }
     }
 
-    // Preparar dados a serem migrados
-    let toMigrate: WorkspaceRemoteData = {
-      transactions: Array.isArray(localData.transactions) ? [...localData.transactions] : [],
-      budgets: Array.isArray(localData.budgets) ? [...localData.budgets] : [],
-      goals: Array.isArray(localData.goals) ? [...localData.goals] : [],
-      updatedAt: Date.now(),
-      updatedByDeviceId: getDeviceId(),
-    };
-
-    // Se os dados locais estiverem vazios, tenta resgatar da coleção legada finance_workspaces/FIN-MOISES
-    if (toMigrate.transactions.length === 0) {
-      try {
-        const legacySnap = await getDoc(doc(db, 'finance_workspaces', 'FIN-MOISES'));
-        if (legacySnap.exists()) {
-          const leg = legacySnap.data() as Partial<WorkspaceRemoteData>;
-          if (Array.isArray(leg.transactions) && leg.transactions.length > 0) {
-            toMigrate.transactions = leg.transactions;
-            if (Array.isArray(leg.budgets) && leg.budgets.length > 0) toMigrate.budgets = leg.budgets;
-            if (Array.isArray(leg.goals) && leg.goals.length > 0) toMigrate.goals = leg.goals;
-          }
-        }
-      } catch (err) {
-        console.warn('Verificação de legado finance_workspaces:', err);
+    // Se a nuvem só tem exemplos ou está vazia, tenta resgatar do FIN-MOISES
+    try {
+      const restored = await restoreLegacyWorkspaceData(userId);
+      if (restored.success && restored.data && !isSampleTransactions(restored.data.transactions)) {
+        return { success: true, data: restored.data };
       }
+    } catch (e) {
+      console.warn('Aviso ao tentar restaurar do FIN-MOISES:', e);
     }
 
-    // Se tivermos dados (locais ou resgatados da nuvem anterior), salvamos na conta do usuário
-    if (toMigrate.transactions.length > 0 || toMigrate.budgets.length > 0 || toMigrate.goals.length > 0) {
+    // Se temos dados locais que não são de exemplo, salvamos
+    if (localData.transactions.length > 0 && !isSampleTransactions(localData.transactions)) {
+      const toMigrate: WorkspaceRemoteData = {
+        transactions: [...localData.transactions],
+        budgets: [...localData.budgets],
+        goals: [...localData.goals],
+        updatedAt: Date.now(),
+        updatedByDeviceId: getDeviceId(),
+      };
       await pushUserWorkspaceData(userId, toMigrate);
       return { success: true, data: toMigrate };
     }
@@ -353,8 +407,11 @@ export async function migrateLegacyDataToUser(
 export const FIRESTORE_AUTH_RULES = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permissão para leitura e compatibilidade da base legada (migração suave)
-    match /finance_workspaces/{syncKey} {
+    // Permissão para migrar os dados anteriores do FIN-MOISES
+    match /finance_workspaces/{document=**} {
+      allow read, write: if true;
+    }
+    match /workspaces/{document=**} {
       allow read, write: if true;
     }
 
