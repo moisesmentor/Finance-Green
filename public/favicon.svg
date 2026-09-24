@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="brandGradient" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="40%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fundo Squircle com gradiente esmeralda moderno -->
+  <rect width="64" height="64" rx="16" fill="url(#brandGradient)"/>
+  
+  <!-- Borda interna suave de vidro para contraste -->
+  <rect x="2" y="2" width="60" height="60" rx="14" stroke="#ffffff" stroke-opacity="0.25" stroke-width="2"/>
+
+  <!-- Carteira Financeira Minimalista em Alto Contraste -->
+  <g>
+    <!-- Cédula/Cartão superior sutil -->
+    <path d="M22 19V16C22 14.8954 22.8954 14 24 14H38C39.1046 14 40 14.8954 40 16V19" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.9"/>
+
+    <!-- Corpo da Carteira -->
+    <path d="M15 22C15 19.7909 16.7909 18 19 18H45C47.2091 18 49 19.7909 49 22V42C49 44.2091 47.2091 46 45 46H19C16.7909 46 15 44.2091 15 42V22Z" fill="#ffffff"/>
+
+    <!-- Aba / Fecho da Carteira -->
+    <path d="M34 26H47C48.1046 26 49 26.8954 49 28V36C49 37.1046 48.1046 38 47 38H34C32.3431 38 31 36.6569 31 35V29C31 27.3431 32.3431 26 34 26Z" fill="#047857"/>
+
+    <!-- Detalhe do Fecho (Ponto Esmeralda Vibrante) -->
+    <circle cx="41.5" cy="32" r="3" fill="#34d399" stroke="#ffffff" stroke-width="1.2"/>
+  </g>
+</svg>
