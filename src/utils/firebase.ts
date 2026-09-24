@@ -5,7 +5,9 @@ import {
   doc, 
   onSnapshot, 
   setDoc, 
-  getDoc,
+  deleteDoc,
+  collection,
+  writeBatch,
   Firestore,
   Unsubscribe 
 } from 'firebase/firestore';
@@ -22,12 +24,12 @@ import {
 } from 'firebase/auth';
 import { 
   FirebaseConfig, 
-  WorkspaceRemoteData, 
   Transaction, 
   CategoryBudget, 
   FinancialGoal,
   UserProfile
 } from '../types';
+import { DEFAULT_BUDGETS } from './constants';
 
 const STORAGE_KEYS = {
   DEVICE_ID: 'financas_mensais_device_id_v1',
@@ -198,374 +200,201 @@ export function translateAuthError(errorCode: string): string {
 }
 
 /* =========================================================================
-   FIRESTORE ISOLADO POR USUÁRIO (users/{userId})
+   SUBCOLEÇÕES FIRESTORE ISOLADAS POR USUÁRIO: /users/{userId}/...
    ========================================================================= */
 
-// Ouvinte em tempo real para os dados do usuário autenticado
-export function subscribeToUserWorkspaceRealtime(
+// 1. Escutar transações da subcoleção /users/{userId}/transactions
+export function subscribeToUserTransactions(
   userId: string,
-  onData: (data: WorkspaceRemoteData, shouldApply: boolean) => void,
+  onData: (transactions: Transaction[]) => void,
   onError?: (err: Error) => void
 ): Unsubscribe {
   try {
     const { db } = getFirebaseInstances();
-    const userDocRef = doc(db, 'users', userId);
-    const myDeviceId = getDeviceId();
-    let isFirstSnapshot = true;
-
-    const unsubscribe = onSnapshot(
-      userDocRef,
-      (docSnap) => {
-        if (!docSnap.exists()) {
-          // Documento do usuário ainda não existe na nuvem.
-          // Não chamar onData com arrays vazios para evitar zerar os dados locais!
-          isFirstSnapshot = false;
-          return;
-        }
-
-        const raw = docSnap.data() as Partial<WorkspaceRemoteData>;
-        const updatedBy = raw.updatedByDeviceId || '';
-        const isRemoteChange = updatedBy !== myDeviceId;
-        const shouldApply = isFirstSnapshot || isRemoteChange;
-        isFirstSnapshot = false;
-
-        const data: WorkspaceRemoteData = {
-          transactions: Array.isArray(raw.transactions) ? raw.transactions : [],
-          budgets: Array.isArray(raw.budgets) ? raw.budgets : [],
-          goals: Array.isArray(raw.goals) ? raw.goals : [],
-          updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : Date.now(),
-          updatedByDeviceId: updatedBy,
-        };
-
-        onData(data, shouldApply);
-      },
-      (error) => {
-        console.error('Erro no listener em tempo real do Firestore para o usuário:', error);
-        if (onError) onError(error);
-      }
-    );
-
-    return unsubscribe;
-  } catch (err: any) {
-    console.error('Falha ao inicializar o listener do usuário:', err);
-    if (onError) onError(err);
-    return () => {};
-  }
-}
-
-// Salvar dados do usuário autenticado no Firestore com sanitização estrita de undefined
-export async function pushUserWorkspaceData(
-  userId: string,
-  data: {
-    transactions?: Transaction[];
-    budgets?: CategoryBudget[];
-    goals?: FinancialGoal[];
-  }
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const { db } = getFirebaseInstances();
-    const userDocRef = doc(db, 'users', userId);
-    const myDeviceId = getDeviceId();
-
-    const payload: Record<string, any> = {
-      updatedAt: Date.now(),
-      updatedByDeviceId: myDeviceId,
-    };
-
-    if (data.transactions !== undefined) payload.transactions = data.transactions;
-    if (data.budgets !== undefined) payload.budgets = data.budgets;
-    if (data.goals !== undefined) payload.goals = data.goals;
-
-    // Higienização completa para evitar erros de undefined no Firestore
-    const cleanPayload = JSON.parse(JSON.stringify(payload));
-
-    await setDoc(userDocRef, cleanPayload, { merge: true });
-
-    return { success: true };
-  } catch (err: any) {
-    console.error('Erro ao salvar dados do usuário no Firestore:', err);
-    return { success: false, error: err.message || 'Erro ao sincronizar dados na nuvem' };
-  }
-}
-
-// Detectar se a lista contém apenas as transações de exemplo padrão
-export function isSampleTransactions(txs: Transaction[]): boolean {
-  if (!txs || txs.length === 0) return true;
-  return txs.some(t => t.id === 'tx-1' && t.description === 'Salário Mensal');
-}
-
-// Forçar a restauração dos dados anteriores vinculados ao FIN-MOISES
-export async function restoreLegacyWorkspaceData(
-  userId: string
-): Promise<{ success: boolean; data?: WorkspaceRemoteData; error?: string }> {
-  try {
-    const { db } = getFirebaseInstances();
-    let foundData: WorkspaceRemoteData | null = null;
-
-    // 1. Tentar ler de finance_workspaces/FIN-MOISES
-    try {
-      const snap1 = await getDoc(doc(db, 'finance_workspaces', 'FIN-MOISES'));
-      if (snap1.exists()) {
-        const d1 = snap1.data() as Partial<WorkspaceRemoteData>;
-        if (Array.isArray(d1.transactions) && d1.transactions.length > 0) {
-          foundData = d1 as WorkspaceRemoteData;
-        }
-      }
-    } catch (e1: any) {
-      console.warn('Erro ao ler finance_workspaces/FIN-MOISES:', e1?.message);
-    }
-
-    // 2. Tentar ler de workspaces/FIN-MOISES
-    if (!foundData) {
-      try {
-        const snap2 = await getDoc(doc(db, 'workspaces', 'FIN-MOISES'));
-        if (snap2.exists()) {
-          const d2 = snap2.data() as Partial<WorkspaceRemoteData>;
-          if (Array.isArray(d2.transactions) && d2.transactions.length > 0) {
-            foundData = d2 as WorkspaceRemoteData;
-          }
-        }
-      } catch (e2: any) {
-        console.warn('Erro ao ler workspaces/FIN-MOISES:', e2?.message);
-      }
-    }
-
-    if (foundData && Array.isArray(foundData.transactions) && foundData.transactions.length > 0) {
-      const cleanedData: WorkspaceRemoteData = {
-        transactions: foundData.transactions,
-        budgets: Array.isArray(foundData.budgets) ? foundData.budgets : [],
-        goals: Array.isArray(foundData.goals) ? foundData.goals : [],
-        updatedAt: Date.now(),
-        updatedByDeviceId: getDeviceId(),
-      };
-      await pushUserWorkspaceData(userId, cleanedData);
-      return { success: true, data: cleanedData };
-    }
-
-    return { 
-      success: false, 
-      error: 'Não foi possível ler os dados do FIN-MOISES no Firestore. Verifique se a permissão para finance_workspaces está ativa nas regras.' 
-    };
-  } catch (err: any) {
-    return { success: false, error: err.message };
-  }
-}
-
-// Migrar dados locais anteriores ou da base FIN-MOISES para a conta do usuário recém-criada
-export async function migrateLegacyDataToUser(
-  userId: string,
-  localData: {
-    transactions: Transaction[];
-    budgets: CategoryBudget[];
-    goals: FinancialGoal[];
-  }
-): Promise<{ success: boolean; data?: WorkspaceRemoteData }> {
-  try {
-    const { db } = getFirebaseInstances();
-    const userDocRef = doc(db, 'users', userId);
-    const docSnap = await getDoc(userDocRef);
-
-    // Se o documento na nuvem já existe e tem transações personalizadas (não exemplo), preserva
-    if (docSnap.exists()) {
-      const existing = docSnap.data() as Partial<WorkspaceRemoteData>;
-      if (Array.isArray(existing.transactions) && existing.transactions.length > 0 && !isSampleTransactions(existing.transactions)) {
-        return { success: true, data: existing as WorkspaceRemoteData };
-      }
-    }
-
-    // Se a nuvem só tem exemplos ou está vazia, tenta resgatar do FIN-MOISES
-    try {
-      const restored = await restoreLegacyWorkspaceData(userId);
-      if (restored.success && restored.data && !isSampleTransactions(restored.data.transactions)) {
-        return { success: true, data: restored.data };
-      }
-    } catch (e) {
-      console.warn('Aviso ao tentar restaurar do FIN-MOISES:', e);
-    }
-
-    // Se temos dados locais que não são de exemplo, salvamos
-    if (localData.transactions.length > 0 && !isSampleTransactions(localData.transactions)) {
-      const toMigrate: WorkspaceRemoteData = {
-        transactions: [...localData.transactions],
-        budgets: [...localData.budgets],
-        goals: [...localData.goals],
-        updatedAt: Date.now(),
-        updatedByDeviceId: getDeviceId(),
-      };
-      await pushUserWorkspaceData(userId, toMigrate);
-      return { success: true, data: toMigrate };
-    }
-
-    return { success: false };
-  } catch (err) {
-    console.warn('Erro durante migração inicial de dados para o usuário:', err);
-    return { success: false };
-  }
-}
-
-// Regras de segurança oficiais do Firestore para o modo de autenticação real
-export const FIRESTORE_AUTH_RULES = `rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Permissão para migrar os dados anteriores do FIN-MOISES
-    match /finance_workspaces/{document=**} {
-      allow read, write: if true;
-    }
-    match /workspaces/{document=**} {
-      allow read, write: if true;
-    }
-
-    // Cada usuário autenticado só pode acessar estritamente seus próprios dados
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}`;
-
-export const FIRESTORE_RULES_GUIDE = FIRESTORE_AUTH_RULES;
-
-/* =========================================================================
-   CONFIGURAÇÕES LOCAIS & AUXILIARES
-   ========================================================================= */
-
-const FIREBASE_SETTINGS_KEY = 'financas_mensais_firebase_settings_v1';
-
-export function loadStoredFirebaseSettings(): FirebaseSyncSettings {
-  if (typeof window === 'undefined') {
-    return { enabled: true, syncKey: 'FIN-MOISES', config: DEFAULT_FIREBASE_CONFIG };
-  }
-  try {
-    const raw = localStorage.getItem(FIREBASE_SETTINGS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { enabled: true, syncKey: 'FIN-MOISES', config: DEFAULT_FIREBASE_CONFIG };
-}
-
-export function saveStoredFirebaseSettings(settings: FirebaseSyncSettings): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(FIREBASE_SETTINGS_KEY, JSON.stringify(settings));
-  } catch {}
-}
-
-export function checkUrlForSyncKey(): string | null {
-  if (typeof window === 'undefined') return null;
-  const params = new URLSearchParams(window.location.search);
-  return params.get('sync');
-}
-
-export function getMobilePairingUrl(syncKey: string): string {
-  if (typeof window === 'undefined') return '';
-  const url = new URL(window.location.href);
-  url.searchParams.set('sync', syncKey);
-  return url.toString();
-}
-
-export function parseFirebaseConfigInput(input: string): FirebaseConfig | null {
-  try {
-    const trimmed = input.trim();
-    if (!trimmed) return null;
-    let jsonStr = trimmed;
-    if (trimmed.includes('{') && trimmed.includes('}')) {
-      const start = trimmed.indexOf('{');
-      const end = trimmed.lastIndexOf('}') + 1;
-      jsonStr = trimmed.slice(start, end);
-    }
-    const parsed = JSON.parse(
-      jsonStr
-        .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":')
-        .replace(/'/g, '"')
-    );
-    if (parsed.apiKey && parsed.projectId && parsed.appId) {
-      return {
-        apiKey: parsed.apiKey,
-        authDomain: parsed.authDomain,
-        projectId: parsed.projectId,
-        storageBucket: parsed.storageBucket,
-        messagingSenderId: parsed.messagingSenderId,
-        appId: parsed.appId,
-      };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-export async function testFirebaseConnection(_config: FirebaseConfig): Promise<{ success: boolean; error?: string }> {
-  try {
-    const { db } = getFirebaseInstances();
-    await getDoc(doc(db, 'system', 'ping'));
-    return { success: true };
-  } catch (err: any) {
-    return { success: true };
-  }
-}
-
-export async function pushWorkspaceData(
-  _config: FirebaseConfig,
-  syncKey: string,
-  data: Partial<WorkspaceRemoteData>
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const { db } = getFirebaseInstances();
-    const docRef = doc(db, 'workspaces', syncKey);
-    const myDeviceId = getDeviceId();
-    const payload = JSON.parse(JSON.stringify({
-      ...data,
-      updatedAt: Date.now(),
-      updatedByDeviceId: myDeviceId,
-    }));
-    await setDoc(docRef, payload, { merge: true });
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message };
-  }
-}
-
-export async function fetchWorkspaceData(
-  _config: FirebaseConfig,
-  syncKey: string
-): Promise<WorkspaceRemoteData | null> {
-  try {
-    const { db } = getFirebaseInstances();
-    const docRef = doc(db, 'workspaces', syncKey);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      return snap.data() as WorkspaceRemoteData;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-export function subscribeToWorkspaceRealtime(
-  _config: FirebaseConfig,
-  syncKey: string,
-  onData: (data: WorkspaceRemoteData, shouldApply: boolean) => void,
-  onError?: (err: Error) => void
-): Unsubscribe {
-  try {
-    const { db } = getFirebaseInstances();
-    const docRef = doc(db, 'workspaces', syncKey);
-    const myDeviceId = getDeviceId();
-    let isFirst = true;
-    return onSnapshot(docRef, (docSnap) => {
-      if (!docSnap.exists()) return;
-      const raw = docSnap.data() as Partial<WorkspaceRemoteData>;
-      const shouldApply = isFirst || raw.updatedByDeviceId !== myDeviceId;
-      isFirst = false;
-      onData({
-        transactions: raw.transactions || [],
-        budgets: raw.budgets || [],
-        goals: raw.goals || [],
-        updatedAt: raw.updatedAt || Date.now(),
-        updatedByDeviceId: raw.updatedByDeviceId,
-      }, shouldApply);
+    const txColRef = collection(db, 'users', userId, 'transactions');
+    return onSnapshot(txColRef, (snapshot) => {
+      const txs: Transaction[] = [];
+      snapshot.forEach(docSnap => {
+        const item = docSnap.data() as Transaction;
+        txs.push({ ...item, id: docSnap.id });
+      });
+      // Ordenação decrescente de data e criação
+      txs.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
+      onData(txs);
     }, onError);
   } catch (err: any) {
     if (onError) onError(err);
     return () => {};
   }
 }
+
+// 2. Salvar ou atualizar transação individual em /users/{userId}/transactions/{txId}
+export async function saveUserTransaction(
+  userId: string,
+  transaction: Transaction
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const txRef = doc(db, 'users', userId, 'transactions', transaction.id);
+    const cleanTx = JSON.parse(JSON.stringify(transaction));
+    await setDoc(txRef, cleanTx, { merge: true });
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao salvar transação no Firestore:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 3. Salvar lote de transações (parceladas ou recorrentes)
+export async function batchSaveUserTransactions(
+  userId: string,
+  transactions: Transaction[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const batch = writeBatch(db);
+    for (const tx of transactions) {
+      const txRef = doc(db, 'users', userId, 'transactions', tx.id);
+      batch.set(txRef, JSON.parse(JSON.stringify(tx)), { merge: true });
+    }
+    await batch.commit();
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao salvar lote de transações:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 4. Excluir transação em /users/{userId}/transactions/{txId}
+export async function deleteUserTransaction(
+  userId: string,
+  transactionId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const txRef = doc(db, 'users', userId, 'transactions', transactionId);
+    await deleteDoc(txRef);
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao excluir transação no Firestore:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 5. Excluir grupo de parcelamento em /users/{userId}/transactions
+export async function deleteUserInstallmentGroup(
+  userId: string,
+  groupId: string,
+  allTransactions: Transaction[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const batch = writeBatch(db);
+    const toDelete = allTransactions.filter(t => t.installmentGroupId === groupId);
+    for (const tx of toDelete) {
+      batch.delete(doc(db, 'users', userId, 'transactions', tx.id));
+    }
+    await batch.commit();
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao excluir grupo de parcelas:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 6. Escutar orçamentos da subcoleção /users/{userId}/budgets
+export function subscribeToUserBudgets(
+  userId: string,
+  onData: (budgets: CategoryBudget[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  try {
+    const { db } = getFirebaseInstances();
+    const colRef = collection(db, 'users', userId, 'budgets');
+    return onSnapshot(colRef, (snapshot) => {
+      if (snapshot.empty) {
+        onData(DEFAULT_BUDGETS);
+        return;
+      }
+      const list: CategoryBudget[] = [];
+      snapshot.forEach(d => list.push(d.data() as CategoryBudget));
+      onData(list);
+    }, onError);
+  } catch (err: any) {
+    if (onError) onError(err);
+    return () => {};
+  }
+}
+
+// 7. Salvar orçamentos em /users/{userId}/budgets/{categoryId}
+export async function saveUserBudgets(
+  userId: string,
+  budgets: CategoryBudget[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const batch = writeBatch(db);
+    for (const b of budgets) {
+      if (b.categoryId) {
+        const bRef = doc(db, 'users', userId, 'budgets', b.categoryId);
+        batch.set(bRef, JSON.parse(JSON.stringify(b)), { merge: true });
+      }
+    }
+    await batch.commit();
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao salvar orçamentos:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 8. Escutar metas da subcoleção /users/{userId}/goals
+export function subscribeToUserGoals(
+  userId: string,
+  onData: (goals: FinancialGoal[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  try {
+    const { db } = getFirebaseInstances();
+    const colRef = collection(db, 'users', userId, 'goals');
+    return onSnapshot(colRef, (snapshot) => {
+      const list: FinancialGoal[] = [];
+      snapshot.forEach(d => list.push(d.data() as FinancialGoal));
+      onData(list);
+    }, onError);
+  } catch (err: any) {
+    if (onError) onError(err);
+    return () => {};
+  }
+}
+
+// 9. Salvar metas em /users/{userId}/goals/{goalId}
+export async function saveUserGoals(
+  userId: string,
+  goals: FinancialGoal[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const batch = writeBatch(db);
+    for (const g of goals) {
+      const gRef = doc(db, 'users', userId, 'goals', g.id);
+      batch.set(gRef, JSON.parse(JSON.stringify(g)), { merge: true });
+    }
+    await batch.commit();
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao salvar metas:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// Regras de segurança oficiais do Firestore para o modo de isolamento estrito
+export const FIRESTORE_AUTH_RULES = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Isolamento estrito por usuário: cada conta só acessa suas próprias subcoleções
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}`;

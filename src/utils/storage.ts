@@ -69,37 +69,40 @@ export const DEFAULT_GOALS: FinancialGoal[] = [
 ];
 
 
-export function loadStoredTransactions(): Transaction[] {
+export function getStorageKey(base: string, userId?: string | null): string {
+  return userId ? `${base}_${userId}` : `${base}_guest`;
+}
+
+export function loadStoredTransactions(userId?: string | null): Transaction[] {
+  if (!userId) return [];
   try {
-    const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-    if (!data) {
-      const samples = getSampleTransactions();
-      saveStoredTransactions(samples);
-      return samples;
-    }
+    const key = getStorageKey(STORAGE_KEYS.TRANSACTIONS, userId);
+    const data = localStorage.getItem(key);
+    if (!data) return [];
     const parsed = JSON.parse(data);
     return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
     console.error('Erro ao carregar transações do localStorage:', err);
-    return getSampleTransactions();
+    return [];
   }
 }
 
-export function saveStoredTransactions(transactions: Transaction[]): void {
+export function saveStoredTransactions(transactions: Transaction[], userId?: string | null): void {
+  if (!userId) return;
   try {
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
+    const key = getStorageKey(STORAGE_KEYS.TRANSACTIONS, userId);
+    localStorage.setItem(key, JSON.stringify(transactions));
   } catch (err) {
     console.error('Erro ao salvar transações no localStorage:', err);
   }
 }
 
-export function loadStoredBudgets(): CategoryBudget[] {
+export function loadStoredBudgets(userId?: string | null): CategoryBudget[] {
+  if (!userId) return DEFAULT_BUDGETS;
   try {
-    const data = localStorage.getItem(STORAGE_KEYS.BUDGETS);
-    if (!data) {
-      saveStoredBudgets(DEFAULT_BUDGETS);
-      return DEFAULT_BUDGETS;
-    }
+    const key = getStorageKey(STORAGE_KEYS.BUDGETS, userId);
+    const data = localStorage.getItem(key);
+    if (!data) return DEFAULT_BUDGETS;
     const parsed = JSON.parse(data);
     return Array.isArray(parsed) ? parsed : DEFAULT_BUDGETS;
   } catch (err) {
@@ -108,32 +111,35 @@ export function loadStoredBudgets(): CategoryBudget[] {
   }
 }
 
-export function saveStoredBudgets(budgets: CategoryBudget[]): void {
+export function saveStoredBudgets(budgets: CategoryBudget[], userId?: string | null): void {
+  if (!userId) return;
   try {
-    localStorage.setItem(STORAGE_KEYS.BUDGETS, JSON.stringify(budgets));
+    const key = getStorageKey(STORAGE_KEYS.BUDGETS, userId);
+    localStorage.setItem(key, JSON.stringify(budgets));
   } catch (err) {
     console.error('Erro ao salvar orçamentos:', err);
   }
 }
 
-export function loadStoredGoals(): FinancialGoal[] {
+export function loadStoredGoals(userId?: string | null): FinancialGoal[] {
+  if (!userId) return [];
   try {
-    const data = localStorage.getItem(STORAGE_KEYS.GOALS);
-    if (!data) {
-      saveStoredGoals(DEFAULT_GOALS);
-      return DEFAULT_GOALS;
-    }
+    const key = getStorageKey(STORAGE_KEYS.GOALS, userId);
+    const data = localStorage.getItem(key);
+    if (!data) return [];
     const parsed = JSON.parse(data);
-    return Array.isArray(parsed) ? parsed : DEFAULT_GOALS;
+    return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
     console.error('Erro ao carregar metas:', err);
-    return DEFAULT_GOALS;
+    return [];
   }
 }
 
-export function saveStoredGoals(goals: FinancialGoal[]): void {
+export function saveStoredGoals(goals: FinancialGoal[], userId?: string | null): void {
+  if (!userId) return;
   try {
-    localStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(goals));
+    const key = getStorageKey(STORAGE_KEYS.GOALS, userId);
+    localStorage.setItem(key, JSON.stringify(goals));
   } catch (err) {
     console.error('Erro ao salvar metas:', err);
   }

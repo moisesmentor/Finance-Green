@@ -10,7 +10,6 @@ import {
   MonthPeriod, 
   FinancialGoal, 
   CloudConfig,
-  FirebaseSyncSettings,
   FirebaseSyncStatus,
   UserProfile
 } from './types';
@@ -19,28 +18,30 @@ import {
   saveStoredTransactions, 
   loadStoredBudgets, 
   saveStoredBudgets, 
-  loadStoredGoals,
-  saveStoredGoals,
-  loadStoredCloudConfig,
-  saveStoredCloudConfig,
-  calculateSummary,
-  generateInstallmentTransactions,
-  generateRecurringTransactions
+  loadStoredGoals, 
+  saveStoredGoals, 
+  loadStoredCloudConfig, 
+  saveStoredCloudConfig, 
+  calculateSummary, 
+  generateInstallmentTransactions, 
+  generateRecurringTransactions 
 } from './utils/storage';
 import { 
-  loadStoredFirebaseSettings, 
-  saveStoredFirebaseSettings, 
-  onAuthChange,
-  logoutUser,
-  subscribeToUserWorkspaceRealtime, 
-  pushUserWorkspaceData, 
-  migrateLegacyDataToUser,
-  restoreLegacyWorkspaceData,
-  isSampleTransactions
+  onAuthChange, 
+  logoutUser, 
+  subscribeToUserTransactions, 
+  saveUserTransaction, 
+  batchSaveUserTransactions, 
+  deleteUserTransaction, 
+  deleteUserInstallmentGroup, 
+  subscribeToUserBudgets, 
+  saveUserBudgets, 
+  subscribeToUserGoals, 
+  saveUserGoals 
 } from './utils/firebase';
-import { getSampleTransactions, DEFAULT_BUDGETS } from './utils/constants';
+import { DEFAULT_BUDGETS } from './utils/constants';
 import { useTheme } from './utils/useTheme';
-import { Wallet, Sparkles, RefreshCw } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 import { Header } from './components/Header';
 import { SummaryCards } from './components/SummaryCards';
 import { MonthlyCharts } from './components/MonthlyCharts';
@@ -51,27 +52,23 @@ import { ExportImportModal } from './components/ExportImportModal';
 import { GoalsModal } from './components/GoalsModal';
 import { AnnualReportModal } from './components/AnnualReportModal';
 import { CloudConfigModal } from './components/CloudConfigModal';
-import { FirebaseSyncModal } from './components/FirebaseSyncModal';
 import { AuthScreen } from './components/AuthScreen';
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
 
-  // Authentication State (Firebase Auth)
+  // Authentication State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  const [transactions, setTransactions] = useState<Transaction[]>(() => loadStoredTransactions());
-  const [budgets, setBudgets] = useState<CategoryBudget[]>(() => loadStoredBudgets());
-  const [goals, setGoals] = useState<FinancialGoal[]>(() => loadStoredGoals());
+  // Financial Data State (sempre isolados pelo UID do usuário logado)
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<CategoryBudget[]>(DEFAULT_BUDGETS);
+  const [goals, setGoals] = useState<FinancialGoal[]>([]);
   const [cloudConfig, setCloudConfig] = useState<CloudConfig>(() => loadStoredCloudConfig());
-  
-  // Firebase Realtime State
-  const [firebaseSettings, setFirebaseSettings] = useState<FirebaseSyncSettings>(() => loadStoredFirebaseSettings());
   const [firebaseStatus, setFirebaseStatus] = useState<FirebaseSyncStatus>('unconfigured');
-  const [isFirebaseModalOpen, setIsFirebaseModalOpen] = useState(false);
 
-  // Current active month period
+  // Período ativo do calendário
   const [period, setPeriod] = useState<MonthPeriod>(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
@@ -86,33 +83,38 @@ export default function App() {
   const [isAnnualReportModalOpen, setIsAnnualReportModalOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
 
-  // Synchronize state changes to localStorage
-  useEffect(() => {
-    saveStoredTransactions(transactions);
-  }, [transactions]);
-
-  useEffect(() => {
-    saveStoredBudgets(budgets);
-  }, [budgets]);
-
-  useEffect(() => {
-    saveStoredGoals(goals);
-  }, [goals]);
-
-  useEffect(() => {
-    saveStoredCloudConfig(cloudConfig);
-  }, [cloudConfig]);
-
-  // Monitorar estado de autenticação (Sessão persistente do Firebase Auth)
+  // 1. Escuta de estado de autenticação (Firebase Auth)
   useEffect(() => {
     const unsubscribe = onAuthChange((user) => {
       setCurrentUser(user);
       setIsAuthLoading(false);
+
+      if (!user) {
+        // Reset completo do estado ao sair: NUNCA vazar dados para o próximo login
+        setTransactions([]);
+        setBudgets(DEFAULT_BUDGETS);
+        setGoals([]);
+        setFirebaseStatus('unconfigured');
+      } else {
+        // Carrega cache exclusivo deste UID
+        const cachedTxs = loadStoredTransactions(user.uid);
+        const cachedBudgets = loadStoredBudgets(user.uid);
+        const cachedGoals = loadStoredGoals(user.uid);
+        setTransactions(cachedTxs);
+        setBudgets(cachedBudgets);
+        setGoals(cachedGoals);
+
+        // Se o usuário possuir transações em Outubro/2026, posiciona o calendário no mês correto
+        if (cachedTxs.some(t => t.date && t.date.startsWith('2026-10'))) {
+          setPeriod({ year: 2026, month: 9 });
+        }
+      }
     });
+
     return () => unsubscribe();
   }, []);
 
-  // Limpeza de segurança: remover qualquer parâmetro ?sync= da URL
+  // 2. Limpeza de URL: remover qualquer parâmetro ?sync= legado
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.search) {
       const url = new URL(window.location.href);
@@ -123,128 +125,64 @@ export default function App() {
     }
   }, []);
 
-  // Sincronização em tempo real isolada por usuário autenticado (users/{uid})
+  // 3. Conexão Realtime com as subcoleções Firestore do usuário autenticado: /users/{uid}/...
   useEffect(() => {
-    if (!currentUser?.uid) {
-      setFirebaseStatus('unconfigured');
-      return;
-    }
+    if (!currentUser?.uid) return;
 
     setFirebaseStatus('syncing');
 
-    // 1. Migração automática: se for o primeiro login e a nuvem estiver vazia, migra dados locais ou do FIN-MOISES
-    migrateLegacyDataToUser(currentUser.uid, {
-      transactions,
-      budgets,
-      goals,
-    }).then((res) => {
-      if (res.success && res.data) {
-        if (Array.isArray(res.data.transactions) && res.data.transactions.length > 0) {
-          setTransactions(res.data.transactions);
-        }
-        if (Array.isArray(res.data.budgets) && res.data.budgets.length > 0) {
-          setBudgets(res.data.budgets);
-        }
-        if (Array.isArray(res.data.goals) && res.data.goals.length > 0) {
-          setGoals(res.data.goals);
-        }
-      }
-    }).catch((err) => console.warn('Aviso durante migração inicial:', err));
-
-    // 2. Escuta contínua de alterações do usuário autenticado no Firestore
-    const unsubscribe = subscribeToUserWorkspaceRealtime(
+    // Escuta da subcoleção /users/{uid}/transactions
+    const unsubTx = subscribeToUserTransactions(
       currentUser.uid,
-      (remoteData, shouldApply) => {
+      (remoteTxs) => {
+        setTransactions(remoteTxs);
+        saveStoredTransactions(remoteTxs, currentUser.uid);
         setFirebaseStatus('connected');
-        if (shouldApply) {
-          if (Array.isArray(remoteData.transactions) && remoteData.transactions.length > 0) {
-            setTransactions(remoteData.transactions);
-          }
-          if (Array.isArray(remoteData.budgets) && remoteData.budgets.length > 0) {
-            setBudgets(remoteData.budgets);
-          }
-          if (Array.isArray(remoteData.goals) && remoteData.goals.length > 0) {
-            setGoals(remoteData.goals);
-          }
+
+        // Se houver lançamentos em Outubro/2026, sincroniza o calendário
+        if (remoteTxs.some(t => t.date && t.date.startsWith('2026-10'))) {
+          setPeriod(prev => prev.month === 9 && prev.year === 2026 ? prev : { year: 2026, month: 9 });
         }
       },
       (error) => {
-        console.warn('Erro na conexão com Firebase:', error);
+        console.warn('Erro ao escutar transações do usuário:', error);
         setFirebaseStatus('error');
       }
     );
 
+    // Escuta da subcoleção /users/{uid}/budgets
+    const unsubBudgets = subscribeToUserBudgets(
+      currentUser.uid,
+      (remoteBudgets) => {
+        if (Array.isArray(remoteBudgets) && remoteBudgets.length > 0) {
+          setBudgets(remoteBudgets);
+          saveStoredBudgets(remoteBudgets, currentUser.uid);
+        }
+      }
+    );
+
+    // Escuta da subcoleção /users/{uid}/goals
+    const unsubGoals = subscribeToUserGoals(
+      currentUser.uid,
+      (remoteGoals) => {
+        setGoals(remoteGoals);
+        saveStoredGoals(remoteGoals, currentUser.uid);
+      }
+    );
+
     return () => {
-      unsubscribe();
+      unsubTx();
+      unsubBudgets();
+      unsubGoals();
     };
   }, [currentUser?.uid]);
 
-  // Enviar alterações em segundo plano para a nuvem sob a conta do usuário
-  const syncToCloudInBackground = (partialData: {
-    transactions?: Transaction[];
-    budgets?: CategoryBudget[];
-    goals?: FinancialGoal[];
-  }) => {
-    if (!currentUser?.uid) return;
+  // Salvar configurações do Supabase (opcional)
+  useEffect(() => {
+    saveStoredCloudConfig(cloudConfig);
+  }, [cloudConfig]);
 
-    setFirebaseStatus('syncing');
-    pushUserWorkspaceData(currentUser.uid, partialData)
-      .then((res) => {
-        if (res.success) {
-          setFirebaseStatus('connected');
-        } else {
-          console.warn('Erro no salvamento remoto:', res.error);
-          setFirebaseStatus('error');
-        }
-      })
-      .catch((err) => {
-        console.warn('Exceção ao sincronizar:', err);
-        setFirebaseStatus('error');
-      });
-  };
-
-  // Logout do usuário autenticado
-  const handleLogout = async () => {
-    try {
-      await logoutUser();
-    } catch (err) {
-      console.error('Erro ao sair da conta:', err);
-    }
-  };
-
-  // Restauração manual das finanças anteriores do FIN-MOISES
-  const [isRestoringLegacy, setIsRestoringLegacy] = useState(false);
-  const [restoreFeedback, setRestoreFeedback] = useState<string | null>(null);
-
-  const handleRestoreLegacy = async () => {
-    if (!currentUser?.uid) return;
-    setIsRestoringLegacy(true);
-    setRestoreFeedback(null);
-    try {
-      const res = await restoreLegacyWorkspaceData(currentUser.uid);
-      if (res.success && res.data) {
-        setTransactions(res.data.transactions);
-        if (res.data.budgets) setBudgets(res.data.budgets);
-        if (res.data.goals) setGoals(res.data.goals);
-
-        // Se tiver transações de Outubro de 2026, muda a visualização para Outubro automaticamente
-        const hasOctober = res.data.transactions.some(t => t.date && t.date.startsWith('2026-10'));
-        if (hasOctober) {
-          setPeriod({ year: 2026, month: 9 });
-        }
-
-        setRestoreFeedback(`Sucesso! ${res.data.transactions.length} lançamentos recuperados do FIN-MOISES.`);
-      } else {
-        setRestoreFeedback(res.error || 'Nenhum dado encontrado no FIN-MOISES.');
-      }
-    } catch (err: any) {
-      setRestoreFeedback('Erro ao restaurar: ' + err.message);
-    } finally {
-      setIsRestoringLegacy(false);
-    }
-  };
-
-  // Transactions filtered for the active month
+  // Transações filtradas pelo mês selecionado
   const monthTransactions = useMemo(() => {
     const targetMonthStr = String(period.month + 1).padStart(2, '0');
     const targetPrefix = `${period.year}-${targetMonthStr}`;
@@ -255,67 +193,86 @@ export default function App() {
     });
   }, [transactions, period]);
 
-  // Financial summary for the current month
+  // Resumo financeiro do mês
   const summary = useMemo(() => {
     return calculateSummary(monthTransactions, budgets);
   }, [monthTransactions, budgets]);
 
-  // Handlers for transactions
-  const handleSaveTransaction = (
+  // Logout seguro do usuário
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      // Limpeza imediata da memória
+      setTransactions([]);
+      setBudgets(DEFAULT_BUDGETS);
+      setGoals([]);
+      setCurrentUser(null);
+    } catch (err) {
+      console.error('Erro ao sair:', err);
+    }
+  };
+
+  // Handlers para Transações (Operações diretas na subcoleção /users/{uid}/transactions)
+  const handleSaveTransaction = async (
     data: Omit<Transaction, 'id' | 'createdAt'>,
     id?: string,
     installmentsCount?: number,
     recurringMonths?: number
   ) => {
-    let nextTransactions: Transaction[] = [];
+    if (!currentUser?.uid) return;
 
     if (id) {
-      // Edit existing
-      nextTransactions = transactions.map(t => (t.id === id ? { ...t, ...data } : t));
+      // Edição de transação existente
+      const existing = transactions.find(t => t.id === id);
+      const updatedTx: Transaction = {
+        ...data,
+        id,
+        createdAt: existing?.createdAt || Date.now(),
+      };
+      setTransactions(prev => prev.map(t => (t.id === id ? updatedTx : t)));
+      await saveUserTransaction(currentUser.uid, updatedTx);
     } else if (installmentsCount && installmentsCount > 1) {
-      // Create batch of installments
+      // Criação de parcelamento
       const installmentTxs = generateInstallmentTransactions(data, installmentsCount);
-      nextTransactions = [...installmentTxs, ...transactions];
+      setTransactions(prev => [...installmentTxs, ...prev]);
+      await batchSaveUserTransactions(currentUser.uid, installmentTxs);
     } else if (recurringMonths && recurringMonths > 1) {
-      // Create recurring projections
+      // Criação de lançamentos recorrentes
       const recurringTxs = generateRecurringTransactions(data, recurringMonths);
-      nextTransactions = [...recurringTxs, ...transactions];
+      setTransactions(prev => [...recurringTxs, ...prev]);
+      await batchSaveUserTransactions(currentUser.uid, recurringTxs);
     } else {
-      // Single new
+      // Nova transação individual
       const newTx: Transaction = {
         ...data,
         id: `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         createdAt: Date.now(),
       };
-      nextTransactions = [newTx, ...transactions];
+      setTransactions(prev => [newTx, ...prev]);
+      await saveUserTransaction(currentUser.uid, newTx);
     }
-
-    setTransactions(nextTransactions);
-    syncToCloudInBackground({ transactions: nextTransactions });
   };
 
-  const handleDeleteTransaction = (id: string) => {
-    const nextTransactions = transactions.filter(t => t.id !== id);
-    setTransactions(nextTransactions);
-    syncToCloudInBackground({ transactions: nextTransactions });
+  const handleDeleteTransaction = async (id: string) => {
+    if (!currentUser?.uid) return;
+    setTransactions(prev => prev.filter(t => t.id !== id));
+    await deleteUserTransaction(currentUser.uid, id);
   };
 
-  const handleDeleteInstallmentGroup = (groupId: string) => {
-    const nextTransactions = transactions.filter(t => t.installmentGroupId !== groupId);
-    setTransactions(nextTransactions);
-    syncToCloudInBackground({ transactions: nextTransactions });
+  const handleDeleteInstallmentGroup = async (groupId: string) => {
+    if (!currentUser?.uid) return;
+    await deleteUserInstallmentGroup(currentUser.uid, groupId, transactions);
+    setTransactions(prev => prev.filter(t => t.installmentGroupId !== groupId));
   };
 
-  const handleToggleStatus = (id: string) => {
-    const nextTransactions = transactions.map(t => {
-      if (t.id === id) {
-        const nextStatus = t.status === 'paid' ? 'pending' : 'paid';
-        return { ...t, status: nextStatus };
-      }
-      return t;
-    });
-    setTransactions(nextTransactions);
-    syncToCloudInBackground({ transactions: nextTransactions });
+  const handleToggleStatus = async (id: string) => {
+    if (!currentUser?.uid) return;
+    const target = transactions.find(t => t.id === id);
+    if (!target) return;
+    const nextStatus = target.status === 'paid' ? 'pending' : 'paid';
+    const updated = { ...target, status: nextStatus as 'paid' | 'pending' };
+    setTransactions(prev => prev.map(t => (t.id === id ? updated : t)));
+    await saveUserTransaction(currentUser.uid, updated);
   };
 
   const handleOpenNewTransaction = () => {
@@ -328,53 +285,56 @@ export default function App() {
     setIsTxModalOpen(true);
   };
 
-  // Handlers for Budgets
-  const handleSaveBudgets = (newBudgets: CategoryBudget[]) => {
+  // Handlers para Orçamentos (Subcoleção /users/{uid}/budgets)
+  const handleSaveBudgets = async (newBudgets: CategoryBudget[]) => {
+    if (!currentUser?.uid) return;
     setBudgets(newBudgets);
-    syncToCloudInBackground({ budgets: newBudgets });
+    await saveUserBudgets(currentUser.uid, newBudgets);
   };
 
-  // Handlers for Goals
-  const handleSaveGoals = (newGoals: FinancialGoal[]) => {
+  // Handlers para Metas (Subcoleção /users/{uid}/goals)
+  const handleSaveGoals = async (newGoals: FinancialGoal[]) => {
+    if (!currentUser?.uid) return;
     setGoals(newGoals);
-    syncToCloudInBackground({ goals: newGoals });
+    await saveUserGoals(currentUser.uid, newGoals);
   };
 
-  // Handlers for Backup & Reset
-  const handleImportData = (
+  // Handlers para Backup / Importação
+  const handleImportData = async (
     newTransactions: Transaction[], 
     newBudgets: CategoryBudget[],
     newGoals?: FinancialGoal[]
   ) => {
+    if (!currentUser?.uid) return;
     setTransactions(newTransactions);
+    if (newBudgets && newBudgets.length > 0) setBudgets(newBudgets);
+    if (newGoals && newGoals.length > 0) setGoals(newGoals);
+
+    if (newTransactions.length > 0) {
+      await batchSaveUserTransactions(currentUser.uid, newTransactions);
+    }
     if (newBudgets && newBudgets.length > 0) {
-      setBudgets(newBudgets);
+      await saveUserBudgets(currentUser.uid, newBudgets);
     }
     if (newGoals && newGoals.length > 0) {
-      setGoals(newGoals);
+      await saveUserGoals(currentUser.uid, newGoals);
     }
-    syncToCloudInBackground({
-      transactions: newTransactions,
-      budgets: newBudgets && newBudgets.length > 0 ? newBudgets : undefined,
-      goals: newGoals && newGoals.length > 0 ? newGoals : undefined,
-    });
   };
 
   const handleResetToSample = () => {
-    const samples = getSampleTransactions();
-    setTransactions(samples);
-    setBudgets(DEFAULT_BUDGETS);
-    const now = new Date();
-    setPeriod({ year: now.getFullYear(), month: now.getMonth() });
-    syncToCloudInBackground({ transactions: samples, budgets: DEFAULT_BUDGETS });
-  };
-
-  const handleClearAll = () => {
+    // Apenas reinicializa localmente se o usuário expressamente clicar em resetar no modal de backup
     setTransactions([]);
-    syncToCloudInBackground({ transactions: [] });
+    setBudgets(DEFAULT_BUDGETS);
   };
 
-  // Cloud sync apply
+  const handleClearAll = async () => {
+    if (!currentUser?.uid) return;
+    for (const tx of transactions) {
+      await deleteUserTransaction(currentUser.uid, tx.id);
+    }
+    setTransactions([]);
+  };
+
   const handleApplyCloudData = (
     cloudTxs: Transaction[],
     cloudBudgets: CategoryBudget[],
@@ -385,7 +345,7 @@ export default function App() {
     setGoals(cloudGoals);
   };
 
-  // Carregamento de Inicialização da Sessão
+  // 1. Tela de Carregamento da Sessão
   if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
@@ -402,7 +362,7 @@ export default function App() {
     );
   }
 
-  // Proteção Total de Rotas: se não autenticado, exibe unicamente a tela de autenticação
+  // 2. Proteção Total de Rotas: se não autenticado, renderiza exclusivamente a tela de Login/Cadastro
   if (!currentUser) {
     return <AuthScreen onAuthSuccess={() => {}} />;
   }
@@ -420,7 +380,6 @@ export default function App() {
         onOpenGoals={() => setIsGoalsModalOpen(true)}
         onOpenAnnualReport={() => setIsAnnualReportModalOpen(true)}
         onOpenCloud={() => setIsCloudModalOpen(true)}
-        onOpenFirebaseSync={() => setIsFirebaseModalOpen(true)}
         firebaseStatus={firebaseStatus}
         syncKey={currentUser.uid}
         theme={theme}
@@ -432,42 +391,6 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         
-        {/* Banner de Restauração de Dados Anteriores do FIN-MOISES */}
-        {(isSampleTransactions(transactions) || restoreFeedback) && (
-          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-teal-500/10 border border-amber-500/30 dark:border-amber-500/20 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start sm:items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                  Recuperar Finanças Anteriores (Outubro / FIN-MOISES)
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300">
-                  {restoreFeedback || 'Seu painel está com os dados iniciais. Clique ao lado para resgatar automaticamente seus lançamentos anteriores de Outubro.'}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleRestoreLegacy}
-              disabled={isRestoringLegacy}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0"
-            >
-              {isRestoringLegacy ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Resgatando...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>Resgatar Meus Dados</span>
-                </>
-              )}
-            </button>
-          </div>
-        )}
-
         {/* Key Metrics Cards */}
         <SummaryCards
           summary={summary}
@@ -497,7 +420,7 @@ export default function App() {
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 transition-colors no-print">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Finanças Mensais • Seus dados estão salvos com segurança no seu navegador</span>
+          <span>Finanças Pro • Seus dados estão salvos com isolamento criptográfico no seu usuário</span>
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsGoalsModalOpen(true)}
@@ -573,22 +496,6 @@ export default function App() {
         budgets={budgets}
         goals={goals}
         onApplyCloudData={handleApplyCloudData}
-      />
-
-      <FirebaseSyncModal
-        isOpen={isFirebaseModalOpen}
-        onClose={() => setIsFirebaseModalOpen(false)}
-        settings={firebaseSettings}
-        onSaveSettings={(newSettings) => setFirebaseSettings(newSettings)}
-        syncStatus={firebaseStatus}
-        localTransactions={transactions}
-        localBudgets={budgets}
-        localGoals={goals}
-        onApplyCloudData={(cloudTxs, cloudBudgets, cloudGoals) => {
-          setTransactions(cloudTxs);
-          setBudgets(cloudBudgets);
-          setGoals(cloudGoals);
-        }}
       />
 
       <ExportImportModal
