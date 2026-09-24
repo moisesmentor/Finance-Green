@@ -11,7 +11,8 @@ import {
   FinancialGoal, 
   CloudConfig,
   FirebaseSyncSettings,
-  FirebaseSyncStatus 
+  FirebaseSyncStatus,
+  UserProfile
 } from './types';
 import { 
   loadStoredTransactions, 
@@ -29,12 +30,15 @@ import {
 import { 
   loadStoredFirebaseSettings, 
   saveStoredFirebaseSettings, 
-  subscribeToWorkspaceRealtime, 
-  pushWorkspaceData, 
-  checkUrlForSyncKey 
+  onAuthChange,
+  logoutUser,
+  subscribeToUserWorkspaceRealtime, 
+  pushUserWorkspaceData, 
+  migrateLegacyDataToUser 
 } from './utils/firebase';
 import { getSampleTransactions, DEFAULT_BUDGETS } from './utils/constants';
 import { useTheme } from './utils/useTheme';
+import { Wallet } from 'lucide-react';
 import { Header } from './components/Header';
 import { SummaryCards } from './components/SummaryCards';
 import { MonthlyCharts } from './components/MonthlyCharts';
@@ -46,9 +50,14 @@ import { GoalsModal } from './components/GoalsModal';
 import { AnnualReportModal } from './components/AnnualReportModal';
 import { CloudConfigModal } from './components/CloudConfigModal';
 import { FirebaseSyncModal } from './components/FirebaseSyncModal';
+import { AuthScreen } from './components/AuthScreen';
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
+
+  // Authentication State (Firebase Auth)
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => loadStoredTransactions());
   const [budgets, setBudgets] = useState<CategoryBudget[]>(() => loadStoredBudgets());
@@ -92,49 +101,56 @@ export default function App() {
     saveStoredCloudConfig(cloudConfig);
   }, [cloudConfig]);
 
-  // Salvar configurações do Firebase localmente
+  // Monitorar estado de autenticação (Sessão persistente do Firebase Auth)
   useEffect(() => {
-    saveStoredFirebaseSettings(firebaseSettings);
-  }, [firebaseSettings]);
+    const unsubscribe = onAuthChange((user) => {
+      setCurrentUser(user);
+      setIsAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  // Detectar emparelhamento automático via link/QR Code (?sync=CHAVE)
+  // Limpeza de segurança: remover qualquer parâmetro ?sync= da URL
   useEffect(() => {
-    const urlSyncKey = checkUrlForSyncKey();
-    if (urlSyncKey) {
-      setFirebaseSettings(prev => {
-        const next = {
-          ...prev,
-          syncKey: urlSyncKey,
-          enabled: true,
-        };
-        saveStoredFirebaseSettings(next);
-        return next;
-      });
+    if (typeof window !== 'undefined' && window.location.search) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('sync')) {
+        url.searchParams.delete('sync');
+        window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ''));
+      }
     }
   }, []);
 
-  // Iniciar ou reconectar escuta em tempo real do Firebase Firestore
+  // Sincronização em tempo real isolada por usuário autenticado (users/{uid})
   useEffect(() => {
-    const config = firebaseSettings.config || DEFAULT_FIREBASE_CONFIG;
-    const syncKey = firebaseSettings.syncKey || 'FIN-MOISES';
+    if (!currentUser?.uid) {
+      setFirebaseStatus('unconfigured');
+      return;
+    }
 
     setFirebaseStatus('syncing');
 
-    const unsubscribe = subscribeToWorkspaceRealtime(
-      config,
-      syncKey,
+    // 1. Migração automática: se for o primeiro login e a nuvem estiver vazia, migra dados locais
+    migrateLegacyDataToUser(currentUser.uid, {
+      transactions,
+      budgets,
+      goals,
+    }).catch((err) => console.warn('Aviso durante migração inicial:', err));
+
+    // 2. Escuta contínua de alterações do usuário autenticado no Firestore
+    const unsubscribe = subscribeToUserWorkspaceRealtime(
+      currentUser.uid,
       (remoteData, shouldApply) => {
         setFirebaseStatus('connected');
         if (shouldApply) {
-          // Atualização da nuvem recebida
-          if (Array.isArray(remoteData.transactions) && remoteData.transactions.length > 0) {
+          if (Array.isArray(remoteData.transactions)) {
             setTransactions(remoteData.transactions);
-            if (Array.isArray(remoteData.budgets) && remoteData.budgets.length > 0) {
-              setBudgets(remoteData.budgets);
-            }
-            if (Array.isArray(remoteData.goals) && remoteData.goals.length > 0) {
-              setGoals(remoteData.goals);
-            }
+          }
+          if (Array.isArray(remoteData.budgets) && remoteData.budgets.length > 0) {
+            setBudgets(remoteData.budgets);
+          }
+          if (Array.isArray(remoteData.goals) && remoteData.goals.length > 0) {
+            setGoals(remoteData.goals);
           }
         }
       },
@@ -147,19 +163,18 @@ export default function App() {
     return () => {
       unsubscribe();
     };
-  }, [firebaseSettings.syncKey]);
+  }, [currentUser?.uid]);
 
-  // Enviar alterações em segundo plano para a nuvem
+  // Enviar alterações em segundo plano para a nuvem sob a conta do usuário
   const syncToCloudInBackground = (partialData: {
     transactions?: Transaction[];
     budgets?: CategoryBudget[];
     goals?: FinancialGoal[];
   }) => {
-    const config = firebaseSettings.config || DEFAULT_FIREBASE_CONFIG;
-    const syncKey = firebaseSettings.syncKey || 'FIN-MOISES';
+    if (!currentUser?.uid) return;
 
     setFirebaseStatus('syncing');
-    pushWorkspaceData(config, syncKey, partialData)
+    pushUserWorkspaceData(currentUser.uid, partialData)
       .then((res) => {
         if (res.success) {
           setFirebaseStatus('connected');
@@ -172,6 +187,15 @@ export default function App() {
         console.warn('Exceção ao sincronizar:', err);
         setFirebaseStatus('error');
       });
+  };
+
+  // Logout do usuário autenticado
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (err) {
+      console.error('Erro ao sair da conta:', err);
+    }
   };
 
   // Transactions filtered for the active month
@@ -315,6 +339,28 @@ export default function App() {
     setGoals(cloudGoals);
   };
 
+  // Carregamento de Inicialização da Sessão
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-4 ring-emerald-500/20 animate-pulse">
+            <Wallet className="w-7 h-7 text-white" />
+          </div>
+          <div className="flex items-center gap-2.5 text-slate-400 text-sm font-medium">
+            <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <span>Carregando ambiente seguro...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Proteção Total de Rotas: se não autenticado, exibe unicamente a tela de autenticação
+  if (!currentUser) {
+    return <AuthScreen onAuthSuccess={() => {}} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-emerald-50/20 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/20 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-emerald-100 selection:text-emerald-900 transition-colors">
       
@@ -330,9 +376,11 @@ export default function App() {
         onOpenCloud={() => setIsCloudModalOpen(true)}
         onOpenFirebaseSync={() => setIsFirebaseModalOpen(true)}
         firebaseStatus={firebaseStatus}
-        syncKey={firebaseSettings.syncKey}
+        syncKey={currentUser.uid}
         theme={theme}
         onToggleTheme={toggleTheme}
+        user={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}

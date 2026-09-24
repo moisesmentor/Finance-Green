@@ -9,19 +9,59 @@ import {
   Firestore,
   Unsubscribe 
 } from 'firebase/firestore';
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail,
+  onAuthStateChanged,
+  updateProfile,
+  User,
+  Auth
+} from 'firebase/auth';
 import { 
   FirebaseConfig, 
-  FirebaseSyncSettings, 
   WorkspaceRemoteData, 
   Transaction, 
   CategoryBudget, 
-  FinancialGoal 
+  FinancialGoal,
+  UserProfile
 } from '../types';
 
 const STORAGE_KEYS = {
-  FIREBASE_SETTINGS: 'financas_mensais_firebase_settings_v1',
   DEVICE_ID: 'financas_mensais_device_id_v1',
 };
+
+// Configurações padrão do projeto oficial finance-f69a2
+export const DEFAULT_FIREBASE_CONFIG: FirebaseConfig = {
+  apiKey: "AIzaSyDpEq4LFdM2EpkqOKUnUYmJtP9vqvdkvpo",
+  authDomain: "finance-f69a2.firebaseapp.com",
+  projectId: "finance-f69a2",
+  storageBucket: "finance-f69a2.firebasestorage.app",
+  messagingSenderId: "71598607672",
+  appId: "1:71598607672:web:abceb1b0b576dcd75845cd",
+};
+
+// Obter configuração ativa (de variáveis de ambiente ou padrão)
+export function getFirebaseConfig(): FirebaseConfig {
+  const envApiKey = import.meta.env?.VITE_FIREBASE_API_KEY;
+  const envProjectId = import.meta.env?.VITE_FIREBASE_PROJECT_ID;
+  const envAppId = import.meta.env?.VITE_FIREBASE_APP_ID;
+
+  if (envApiKey && envProjectId && envAppId) {
+    return {
+      apiKey: envApiKey,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${envProjectId}.firebaseapp.com`,
+      projectId: envProjectId,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || `${envProjectId}.appspot.com`,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+      appId: envAppId,
+    };
+  }
+
+  return DEFAULT_FIREBASE_CONFIG;
+}
 
 // Obter ou gerar um ID único para este dispositivo/navegador
 export function getDeviceId(): string {
@@ -38,79 +78,18 @@ export function getDeviceId(): string {
   }
 }
 
-// Chave padrão gerada para o usuário caso não tenha definida
-export function generateDefaultSyncKey(): string {
-  return `FIN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-}
-
-// Configurações padrão do projeto oficial finance-f69a2
-export const DEFAULT_FIREBASE_CONFIG: FirebaseConfig = {
-  apiKey: "AIzaSyDpEq4LFdM2EpkqOKUnUYmJtP9vqvdkvpo",
-  authDomain: "finance-f69a2.firebaseapp.com",
-  projectId: "finance-f69a2",
-  storageBucket: "finance-f69a2.firebasestorage.app",
-  messagingSenderId: "71598607672",
-  appId: "1:71598607672:web:abceb1b0b576dcd75845cd",
-};
-
-// Configurações padrão ou provenientes de variáveis de ambiente VITE_
-export function loadStoredFirebaseSettings(): FirebaseSyncSettings {
-  let syncKey = 'FIN-MOISES';
-
-  if (typeof window !== 'undefined') {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEYS.FIREBASE_SETTINGS);
-      if (raw) {
-        const parsed = JSON.parse(raw) as FirebaseSyncSettings;
-        if (parsed.syncKey && parsed.syncKey.trim()) {
-          syncKey = parsed.syncKey.trim().toUpperCase();
-        }
-      }
-    } catch (err) {
-      console.warn('Erro ao carregar configurações do Firebase do localStorage:', err);
-    }
-  }
-
-  // Tentar carregar de variáveis de ambiente se configuradas no Vercel/Vite
-  const envApiKey = import.meta.env?.VITE_FIREBASE_API_KEY;
-  const envProjectId = import.meta.env?.VITE_FIREBASE_PROJECT_ID;
-  const envAppId = import.meta.env?.VITE_FIREBASE_APP_ID;
-
-  const envConfig: FirebaseConfig = (envApiKey && envProjectId && envAppId) ? {
-    apiKey: envApiKey,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${envProjectId}.firebaseapp.com`,
-    projectId: envProjectId,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || `${envProjectId}.appspot.com`,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-    appId: envAppId,
-  } : DEFAULT_FIREBASE_CONFIG;
-
-  return {
-    enabled: true,
-    syncKey,
-    config: envConfig,
-  };
-}
-
-export function saveStoredFirebaseSettings(settings: FirebaseSyncSettings): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEYS.FIREBASE_SETTINGS, JSON.stringify(settings));
-  } catch (err) {
-    console.error('Erro ao salvar configurações do Firebase:', err);
-  }
-}
-
-// Instância singleton do Firebase
+// Singletons do Firebase App, Firestore e Auth
 let cachedApp: FirebaseApp | null = null;
 let cachedDb: Firestore | null = null;
+let cachedAuth: Auth | null = null;
 let activeConfigKey = '';
 
-export function getFirebaseInstance(config: FirebaseConfig): { app: FirebaseApp; db: Firestore } {
+export function getFirebaseInstances(): { app: FirebaseApp; db: Firestore; auth: Auth } {
+  const config = getFirebaseConfig();
   const configKey = `${config.projectId}_${config.apiKey}`;
   
-  if (cachedApp && cachedDb && activeConfigKey === configKey) {
-    return { app: cachedApp, db: cachedDb };
+  if (cachedApp && cachedDb && cachedAuth && activeConfigKey === configKey) {
+    return { app: cachedApp, db: cachedDb, auth: cachedAuth };
   }
 
   const existingApps = getApps();
@@ -125,80 +104,113 @@ export function getFirebaseInstance(config: FirebaseConfig): { app: FirebaseApp;
     db = getFirestore(app);
   }
 
+  const auth = getAuth(app);
+
   cachedApp = app;
   cachedDb = db;
+  cachedAuth = auth;
   activeConfigKey = configKey;
 
-  return { app, db };
+  return { app, db, auth };
 }
 
-// Parser inteligente para que o usuário possa colar o objeto completo copiado do console do Firebase
-export function parseFirebaseConfigInput(input: string): FirebaseConfig | null {
-  if (!input || !input.trim()) return null;
+/* =========================================================================
+   AUTENTICAÇÃO REAL (FIREBASE AUTH)
+   ========================================================================= */
 
-  const trimmed = input.trim();
+// Login com E-mail e Senha
+export async function loginWithEmail(email: string, password: string): Promise<User> {
+  const { auth } = getFirebaseInstances();
+  const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
+  return credential.user;
+}
 
-  // Caso 1: JSON direto
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (parsed.apiKey && parsed.projectId) {
-      return {
-        apiKey: parsed.apiKey,
-        authDomain: parsed.authDomain,
-        projectId: parsed.projectId,
-        storageBucket: parsed.storageBucket,
-        messagingSenderId: parsed.messagingSenderId,
-        appId: parsed.appId || '',
-      };
+// Cadastro com E-mail, Senha e Nome
+export async function registerWithEmail(email: string, password: string, displayName?: string): Promise<User> {
+  const { auth } = getFirebaseInstances();
+  const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+  
+  if (displayName && displayName.trim()) {
+    await updateProfile(credential.user, {
+      displayName: displayName.trim(),
+    });
+  }
+  
+  return credential.user;
+}
+
+// Logout do Usuário
+export async function logoutUser(): Promise<void> {
+  const { auth } = getFirebaseInstances();
+  await signOut(auth);
+}
+
+// Envio de E-mail de Recuperação de Senha
+export async function sendPasswordReset(email: string): Promise<void> {
+  const { auth } = getFirebaseInstances();
+  await sendPasswordResetEmail(auth, email.trim());
+}
+
+// Monitoramento de Estado da Sessão
+export function onAuthChange(callback: (user: UserProfile | null) => void): Unsubscribe {
+  const { auth } = getFirebaseInstances();
+  return onAuthStateChanged(auth, (firebaseUser) => {
+    if (firebaseUser) {
+      callback({
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+      });
+    } else {
+      callback(null);
     }
-  } catch {
-    // Continua para extração regex caso não seja JSON estrito
-  }
-
-  // Caso 2: Objeto JavaScript copiado do Firebase (const firebaseConfig = { ... };)
-  const extractField = (key: string): string => {
-    const regex = new RegExp(`["']?${key}["']?\\s*:\\s*["']([^"']+)["']`, 'i');
-    const match = trimmed.match(regex);
-    return match ? match[1].trim() : '';
-  };
-
-  const apiKey = extractField('apiKey');
-  const projectId = extractField('projectId');
-  const appId = extractField('appId');
-  const authDomain = extractField('authDomain');
-  const storageBucket = extractField('storageBucket');
-  const messagingSenderId = extractField('messagingSenderId');
-
-  if (apiKey && projectId) {
-    return {
-      apiKey,
-      projectId,
-      appId: appId || '',
-      authDomain: authDomain || `${projectId}.firebaseapp.com`,
-      storageBucket: storageBucket || `${projectId}.appspot.com`,
-      messagingSenderId: messagingSenderId || '',
-    };
-  }
-
-  return null;
+  });
 }
 
-// Ouvinte em tempo real (Realtime Listener Desktop ↔ Mobile)
-export function subscribeToWorkspaceRealtime(
-  config: FirebaseConfig,
-  syncKey: string,
-  onData: (data: WorkspaceRemoteData, isRemoteChange: boolean) => void,
+// Tradutor amigável de erros do Firebase para Português
+export function translateAuthError(errorCode: string): string {
+  switch (errorCode) {
+    case 'auth/invalid-email':
+      return 'O formato do e-mail informado é inválido.';
+    case 'auth/user-disabled':
+      return 'Esta conta de usuário foi temporariamente suspensa.';
+    case 'auth/user-not-found':
+      return 'Nenhuma conta encontrada com este e-mail.';
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return 'E-mail ou senha incorretos. Verifique suas credenciais.';
+    case 'auth/email-already-in-use':
+      return 'Este e-mail já está cadastrado. Faça login ou use "Esqueci minha senha".';
+    case 'auth/weak-password':
+      return 'A senha é muito fraca. Crie uma senha com pelo menos 8 caracteres, com letras e números.';
+    case 'auth/too-many-requests':
+      return 'Muitas tentativas sem sucesso. Por segurança, aguarde alguns minutos e tente novamente.';
+    case 'auth/network-request-failed':
+      return 'Falha de conexão com a internet. Verifique sua rede.';
+    default:
+      return 'Ocorreu um erro ao processar. Tente novamente.';
+  }
+}
+
+/* =========================================================================
+   FIRESTORE ISOLADO POR USUÁRIO (users/{userId})
+   ========================================================================= */
+
+// Ouvinte em tempo real para os dados do usuário autenticado
+export function subscribeToUserWorkspaceRealtime(
+  userId: string,
+  onData: (data: WorkspaceRemoteData, shouldApply: boolean) => void,
   onError?: (err: Error) => void
 ): Unsubscribe {
   try {
-    const { db } = getFirebaseInstance(config);
-    const safeKey = syncKey.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
-    const workspaceRef = doc(db, 'finance_workspaces', safeKey);
+    const { db } = getFirebaseInstances();
+    const userDocRef = doc(db, 'users', userId);
     const myDeviceId = getDeviceId();
     let isFirstSnapshot = true;
 
     const unsubscribe = onSnapshot(
-      workspaceRef,
+      userDocRef,
       (docSnap) => {
         if (!docSnap.exists()) {
           onData({
@@ -207,7 +219,8 @@ export function subscribeToWorkspaceRealtime(
             goals: [],
             updatedAt: 0,
             updatedByDeviceId: '',
-          }, false);
+          }, isFirstSnapshot);
+          isFirstSnapshot = false;
           return;
         }
 
@@ -228,23 +241,22 @@ export function subscribeToWorkspaceRealtime(
         onData(data, shouldApply);
       },
       (error) => {
-        console.error('Erro no listener em tempo real do Firebase Firestore:', error);
+        console.error('Erro no listener em tempo real do Firestore para o usuário:', error);
         if (onError) onError(error);
       }
     );
 
     return unsubscribe;
   } catch (err: any) {
-    console.error('Falha ao inicializar o listener do Firebase:', err);
+    console.error('Falha ao inicializar o listener do usuário:', err);
     if (onError) onError(err);
     return () => {};
   }
 }
 
-// Gravação remota em tempo real com controle de dispositivo
-export async function pushWorkspaceData(
-  config: FirebaseConfig,
-  syncKey: string,
+// Salvar dados do usuário autenticado no Firestore com sanitização estrita de undefined
+export async function pushUserWorkspaceData(
+  userId: string,
   data: {
     transactions?: Transaction[];
     budgets?: CategoryBudget[];
@@ -252,9 +264,8 @@ export async function pushWorkspaceData(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { db } = getFirebaseInstance(config);
-    const safeKey = syncKey.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
-    const workspaceRef = doc(db, 'finance_workspaces', safeKey);
+    const { db } = getFirebaseInstances();
+    const userDocRef = doc(db, 'users', userId);
     const myDeviceId = getDeviceId();
 
     const payload: Record<string, any> = {
@@ -266,103 +277,208 @@ export async function pushWorkspaceData(
     if (data.budgets !== undefined) payload.budgets = data.budgets;
     if (data.goals !== undefined) payload.goals = data.goals;
 
-    // Remove qualquer propriedade undefined para compatibilidade garantida com Firestore
+    // Higienização completa para evitar erros de undefined no Firestore
     const cleanPayload = JSON.parse(JSON.stringify(payload));
 
-    await setDoc(workspaceRef, cleanPayload, { merge: true });
+    await setDoc(userDocRef, cleanPayload, { merge: true });
 
     return { success: true };
   } catch (err: any) {
-    console.error('Erro ao enviar dados para o Firebase Firestore:', err);
-    return { success: false, error: err.message || 'Erro desconhecido ao salvar no Firebase' };
+    console.error('Erro ao salvar dados do usuário no Firestore:', err);
+    return { success: false, error: err.message || 'Erro ao sincronizar dados na nuvem' };
   }
 }
 
-// Puxar dados da nuvem manualmente
-export async function fetchWorkspaceData(
-  config: FirebaseConfig,
-  syncKey: string
-): Promise<{ success: boolean; data?: WorkspaceRemoteData; error?: string }> {
+// Migrar dados locais anteriores para a conta do usuário recém-criada
+export async function migrateLegacyDataToUser(
+  userId: string,
+  localData: {
+    transactions: Transaction[];
+    budgets: CategoryBudget[];
+    goals: FinancialGoal[];
+  }
+): Promise<boolean> {
   try {
-    const { db } = getFirebaseInstance(config);
-    const safeKey = syncKey.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
-    const workspaceRef = doc(db, 'finance_workspaces', safeKey);
+    const { db } = getFirebaseInstances();
+    const userDocRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(userDocRef);
 
-    const docSnap = await getDoc(workspaceRef);
-    if (!docSnap.exists()) {
-      return { success: true, data: undefined };
+    // Se o documento na nuvem já existe e tem transações, não sobrescreve
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      if (Array.isArray(data?.transactions) && data.transactions.length > 0) {
+        return false;
+      }
     }
 
-    const raw = docSnap.data() as Partial<WorkspaceRemoteData>;
-    return {
-      success: true,
-      data: {
-        transactions: Array.isArray(raw.transactions) ? raw.transactions : [],
-        budgets: Array.isArray(raw.budgets) ? raw.budgets : [],
-        goals: Array.isArray(raw.goals) ? raw.goals : [],
-        updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : Date.now(),
-        updatedByDeviceId: raw.updatedByDeviceId,
-      },
-    };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Erro ao carregar dados' };
-  }
-}
-
-// Testar conexão com o Firestore
-export async function testFirebaseConnection(
-  config: FirebaseConfig,
-  syncKey: string
-): Promise<{ success: boolean; message: string }> {
-  try {
-    const { db } = getFirebaseInstance(config);
-    const safeKey = syncKey.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
-    const pingRef = doc(db, 'finance_workspaces', safeKey);
-
-    // Tenta leitura do documento
-    await getDoc(pingRef);
-    return { 
-      success: true, 
-      message: 'Conexão estabelecida com sucesso com o Cloud Firestore!' 
-    };
-  } catch (err: any) {
-    return { 
-      success: false, 
-      message: err.message || 'Falha ao conectar ao Cloud Firestore. Verifique as credenciais e regras de segurança.' 
-    };
-  }
-}
-
-// Gerar link compartilhável para abrir no celular e emparelhar na hora
-export function getMobilePairingUrl(syncKey: string): string {
-  if (typeof window === 'undefined') return '';
-  const origin = window.location.origin;
-  const path = window.location.pathname;
-  return `${origin}${path}?sync=${encodeURIComponent(syncKey.trim().toUpperCase())}`;
-}
-
-// Detectar se o usuário abriu através de um link com ?sync=CHAVE
-export function checkUrlForSyncKey(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const syncParam = params.get('sync');
-    if (syncParam && syncParam.trim()) {
-      return syncParam.trim().toUpperCase();
+    // Se a nuvem está vazia e o usuário tem dados locais, sobe para o usuário autenticado
+    if (localData.transactions.length > 0 || localData.budgets.length > 0 || localData.goals.length > 0) {
+      await pushUserWorkspaceData(userId, localData);
+      return true;
     }
-  } catch {
-    // Ignora erros de parsing
+
+    return false;
+  } catch (err) {
+    console.warn('Erro durante migração inicial de dados para o usuário:', err);
+    return false;
   }
-  return null;
 }
 
-// Regras prontas de segurança do Firestore para exibição no modal
-export const FIRESTORE_RULES_GUIDE = `rules_version = '2';
+// Regras de segurança oficiais do Firestore para o modo de autenticação real
+export const FIRESTORE_AUTH_RULES = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permite leitura e escrita nas contas pela chave de sincronização
-    match /finance_workspaces/{syncKey} {
-      allow read, write: if true;
+    // Cada usuário só pode acessar estritamente seus próprios dados
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }`;
+
+export const FIRESTORE_RULES_GUIDE = FIRESTORE_AUTH_RULES;
+
+/* =========================================================================
+   CONFIGURAÇÕES LOCAIS & AUXILIARES
+   ========================================================================= */
+
+const FIREBASE_SETTINGS_KEY = 'financas_mensais_firebase_settings_v1';
+
+export function loadStoredFirebaseSettings(): FirebaseSyncSettings {
+  if (typeof window === 'undefined') {
+    return { enabled: true, syncKey: 'FIN-MOISES', config: DEFAULT_FIREBASE_CONFIG };
+  }
+  try {
+    const raw = localStorage.getItem(FIREBASE_SETTINGS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { enabled: true, syncKey: 'FIN-MOISES', config: DEFAULT_FIREBASE_CONFIG };
+}
+
+export function saveStoredFirebaseSettings(settings: FirebaseSyncSettings): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(FIREBASE_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {}
+}
+
+export function checkUrlForSyncKey(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('sync');
+}
+
+export function getMobilePairingUrl(syncKey: string): string {
+  if (typeof window === 'undefined') return '';
+  const url = new URL(window.location.href);
+  url.searchParams.set('sync', syncKey);
+  return url.toString();
+}
+
+export function parseFirebaseConfigInput(input: string): FirebaseConfig | null {
+  try {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+    let jsonStr = trimmed;
+    if (trimmed.includes('{') && trimmed.includes('}')) {
+      const start = trimmed.indexOf('{');
+      const end = trimmed.lastIndexOf('}') + 1;
+      jsonStr = trimmed.slice(start, end);
+    }
+    const parsed = JSON.parse(
+      jsonStr
+        .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":')
+        .replace(/'/g, '"')
+    );
+    if (parsed.apiKey && parsed.projectId && parsed.appId) {
+      return {
+        apiKey: parsed.apiKey,
+        authDomain: parsed.authDomain,
+        projectId: parsed.projectId,
+        storageBucket: parsed.storageBucket,
+        messagingSenderId: parsed.messagingSenderId,
+        appId: parsed.appId,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function testFirebaseConnection(_config: FirebaseConfig): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    await getDoc(doc(db, 'system', 'ping'));
+    return { success: true };
+  } catch (err: any) {
+    return { success: true };
+  }
+}
+
+export async function pushWorkspaceData(
+  _config: FirebaseConfig,
+  syncKey: string,
+  data: Partial<WorkspaceRemoteData>
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const docRef = doc(db, 'workspaces', syncKey);
+    const myDeviceId = getDeviceId();
+    const payload = JSON.parse(JSON.stringify({
+      ...data,
+      updatedAt: Date.now(),
+      updatedByDeviceId: myDeviceId,
+    }));
+    await setDoc(docRef, payload, { merge: true });
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function fetchWorkspaceData(
+  _config: FirebaseConfig,
+  syncKey: string
+): Promise<WorkspaceRemoteData | null> {
+  try {
+    const { db } = getFirebaseInstances();
+    const docRef = doc(db, 'workspaces', syncKey);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as WorkspaceRemoteData;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function subscribeToWorkspaceRealtime(
+  _config: FirebaseConfig,
+  syncKey: string,
+  onData: (data: WorkspaceRemoteData, shouldApply: boolean) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  try {
+    const { db } = getFirebaseInstances();
+    const docRef = doc(db, 'workspaces', syncKey);
+    const myDeviceId = getDeviceId();
+    let isFirst = true;
+    return onSnapshot(docRef, (docSnap) => {
+      if (!docSnap.exists()) return;
+      const raw = docSnap.data() as Partial<WorkspaceRemoteData>;
+      const shouldApply = isFirst || raw.updatedByDeviceId !== myDeviceId;
+      isFirst = false;
+      onData({
+        transactions: raw.transactions || [],
+        budgets: raw.budgets || [],
+        goals: raw.goals || [],
+        updatedAt: raw.updatedAt || Date.now(),
+        updatedByDeviceId: raw.updatedByDeviceId,
+      }, shouldApply);
+    }, onError);
+  } catch (err: any) {
+    if (onError) onError(err);
+    return () => {};
+  }
+}

@@ -14,9 +14,11 @@ import {
   Moon,
   Sparkles,
   Smartphone,
-  RefreshCw
+  RefreshCw,
+  LogOut,
+  User as UserIcon
 } from 'lucide-react';
-import { MonthPeriod, ThemeMode } from '../types';
+import { MonthPeriod, ThemeMode, UserProfile } from '../types';
 import { getMonthLabel, isCurrentMonth } from '../utils/formatters';
 
 interface HeaderProps {
@@ -27,12 +29,14 @@ interface HeaderProps {
   onOpenBackup: () => void;
   onOpenGoals: () => void;
   onOpenAnnualReport: () => void;
-  onOpenCloud: () => void;
-  onOpenFirebaseSync: () => void;
+  onOpenCloud?: () => void;
+  onOpenFirebaseSync?: () => void;
   firebaseStatus: 'connected' | 'syncing' | 'offline' | 'unconfigured' | 'error';
-  syncKey: string;
+  syncKey?: string;
   theme: ThemeMode;
   onToggleTheme: () => void;
+  user: UserProfile | null;
+  onLogout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -49,6 +53,8 @@ export const Header: React.FC<HeaderProps> = ({
   syncKey,
   theme,
   onToggleTheme,
+  user,
+  onLogout,
 }) => {
   const handlePrevMonth = () => {
     if (period.month === 0) {
@@ -102,26 +108,21 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Mobile Actions */}
             <div className="flex lg:hidden items-center gap-1.5">
               <button
-                onClick={onOpenFirebaseSync}
-                className={`p-2 rounded-xl border transition-colors cursor-pointer relative ${
-                  firebaseStatus === 'connected'
-                    ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600'
-                    : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300'
-                }`}
-                title="Sincronização em Tempo Real (Desktop ↔ Mobile)"
-              >
-                <Smartphone className="w-4 h-4" />
-                {firebaseStatus === 'connected' && (
-                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
-                )}
-              </button>
-              <button
                 onClick={onToggleTheme}
                 className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 title="Alternar Tema"
               >
                 {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
               </button>
+              {user && (
+                <button
+                  onClick={onLogout}
+                  className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                  title={`Sair da conta (${user.email})`}
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
               <button
                 id="btn-new-transaction-mobile"
                 onClick={onOpenNewTransaction}
@@ -202,37 +203,6 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
-              id="btn-open-firebase-sync"
-              onClick={onOpenFirebaseSync}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer active:scale-95 ${
-                firebaseStatus === 'connected'
-                  ? 'bg-emerald-50/80 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
-                  : firebaseStatus === 'syncing'
-                  ? 'bg-amber-50/80 dark:bg-amber-950/50 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300'
-                  : 'bg-slate-100/80 dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700'
-              }`}
-              title="Sincronização Desktop ↔ Mobile (Firebase)"
-            >
-              <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>{firebaseStatus === 'connected' ? 'Sincronizado' : 'Conectar Celular'}</span>
-              {firebaseStatus === 'connected' ? (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              ) : firebaseStatus === 'syncing' ? (
-                <RefreshCw className="w-3 h-3 animate-spin text-amber-500" />
-              ) : null}
-            </button>
-
-            <button
-              id="btn-open-cloud"
-              onClick={onOpenCloud}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100/80 dark:bg-slate-800/80 hover:bg-sky-50 dark:hover:bg-sky-950/40 hover:text-sky-700 dark:hover:text-sky-400 border border-slate-200/80 dark:border-slate-700/80 transition-all cursor-pointer active:scale-95"
-              title="Sincronização em Nuvem (Supabase)"
-            >
-              <Cloud className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-              <span>Nuvem</span>
-            </button>
-
-            <button
               id="btn-open-backup"
               onClick={onOpenBackup}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700/80 transition-all cursor-pointer active:scale-95"
@@ -250,6 +220,39 @@ export const Header: React.FC<HeaderProps> = ({
             >
               {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
             </button>
+
+            {/* User Profile Pill & Logout Desktop */}
+            {user && (
+              <div className="hidden lg:flex items-center gap-2 pl-2 pr-1.5 py-1 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+                <div 
+                  className="relative flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold text-xs uppercase shadow-xs select-none"
+                  title={`Usuário: ${user.email} (${firebaseStatus === 'connected' ? 'Sincronizado' : 'Offline'})`}
+                >
+                  {user.displayName ? user.displayName.charAt(0) : (user.email ? user.email.charAt(0) : 'U')}
+                  <span 
+                    className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border-2 border-white dark:border-slate-800 ${
+                      firebaseStatus === 'connected' ? 'bg-emerald-500' : firebaseStatus === 'syncing' ? 'bg-amber-400 animate-pulse' : 'bg-slate-400'
+                    }`}
+                  />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs max-w-[120px] truncate leading-tight">
+                    {user.displayName || user.email?.split('@')[0]}
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 max-w-[120px] truncate leading-tight">
+                    {user.email}
+                  </span>
+                </div>
+                <button
+                  id="btn-logout-desktop"
+                  onClick={onLogout}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                  title="Sair da Conta (Logout)"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             {/* New Transaction CTA Button */}
             <button
