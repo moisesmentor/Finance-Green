@@ -213,13 +213,8 @@ export function subscribeToUserWorkspaceRealtime(
       userDocRef,
       (docSnap) => {
         if (!docSnap.exists()) {
-          onData({
-            transactions: [],
-            budgets: [],
-            goals: [],
-            updatedAt: 0,
-            updatedByDeviceId: '',
-          }, isFirstSnapshot);
+          // Documento do usuário ainda não existe na nuvem.
+          // Não chamar onData com arrays vazios para evitar zerar os dados locais!
           isFirstSnapshot = false;
           return;
         }
@@ -289,7 +284,7 @@ export async function pushUserWorkspaceData(
   }
 }
 
-// Migrar dados locais anteriores para a conta do usuário recém-criada
+// Migrar dados locais anteriores ou da base FIN-MOISES para a conta do usuário recém-criada
 export async function migrateLegacyDataToUser(
   userId: string,
   localData: {
@@ -297,30 +292,56 @@ export async function migrateLegacyDataToUser(
     budgets: CategoryBudget[];
     goals: FinancialGoal[];
   }
-): Promise<boolean> {
+): Promise<{ success: boolean; data?: WorkspaceRemoteData }> {
   try {
     const { db } = getFirebaseInstances();
     const userDocRef = doc(db, 'users', userId);
     const docSnap = await getDoc(userDocRef);
 
-    // Se o documento na nuvem já existe e tem transações, não sobrescreve
+    // Se o documento na nuvem já existe e tem transações, preserva o que está na nuvem
     if (docSnap.exists()) {
-      const data = docSnap.data();
-      if (Array.isArray(data?.transactions) && data.transactions.length > 0) {
-        return false;
+      const existing = docSnap.data() as Partial<WorkspaceRemoteData>;
+      if (Array.isArray(existing.transactions) && existing.transactions.length > 0) {
+        return { success: true, data: existing as WorkspaceRemoteData };
       }
     }
 
-    // Se a nuvem está vazia e o usuário tem dados locais, sobe para o usuário autenticado
-    if (localData.transactions.length > 0 || localData.budgets.length > 0 || localData.goals.length > 0) {
-      await pushUserWorkspaceData(userId, localData);
-      return true;
+    // Preparar dados a serem migrados
+    let toMigrate: WorkspaceRemoteData = {
+      transactions: Array.isArray(localData.transactions) ? [...localData.transactions] : [],
+      budgets: Array.isArray(localData.budgets) ? [...localData.budgets] : [],
+      goals: Array.isArray(localData.goals) ? [...localData.goals] : [],
+      updatedAt: Date.now(),
+      updatedByDeviceId: getDeviceId(),
+    };
+
+    // Se os dados locais estiverem vazios, tenta resgatar da coleção legada finance_workspaces/FIN-MOISES
+    if (toMigrate.transactions.length === 0) {
+      try {
+        const legacySnap = await getDoc(doc(db, 'finance_workspaces', 'FIN-MOISES'));
+        if (legacySnap.exists()) {
+          const leg = legacySnap.data() as Partial<WorkspaceRemoteData>;
+          if (Array.isArray(leg.transactions) && leg.transactions.length > 0) {
+            toMigrate.transactions = leg.transactions;
+            if (Array.isArray(leg.budgets) && leg.budgets.length > 0) toMigrate.budgets = leg.budgets;
+            if (Array.isArray(leg.goals) && leg.goals.length > 0) toMigrate.goals = leg.goals;
+          }
+        }
+      } catch (err) {
+        console.warn('Verificação de legado finance_workspaces:', err);
+      }
     }
 
-    return false;
+    // Se tivermos dados (locais ou resgatados da nuvem anterior), salvamos na conta do usuário
+    if (toMigrate.transactions.length > 0 || toMigrate.budgets.length > 0 || toMigrate.goals.length > 0) {
+      await pushUserWorkspaceData(userId, toMigrate);
+      return { success: true, data: toMigrate };
+    }
+
+    return { success: false };
   } catch (err) {
     console.warn('Erro durante migração inicial de dados para o usuário:', err);
-    return false;
+    return { success: false };
   }
 }
 
@@ -328,7 +349,12 @@ export async function migrateLegacyDataToUser(
 export const FIRESTORE_AUTH_RULES = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Cada usuário só pode acessar estritamente seus próprios dados
+    // Permissão para leitura e compatibilidade da base legada (migração suave)
+    match /finance_workspaces/{syncKey} {
+      allow read, write: if true;
+    }
+
+    // Cada usuário autenticado só pode acessar estritamente seus próprios dados
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }

@@ -130,11 +130,23 @@ export default function App() {
 
     setFirebaseStatus('syncing');
 
-    // 1. Migração automática: se for o primeiro login e a nuvem estiver vazia, migra dados locais
+    // 1. Migração automática: se for o primeiro login e a nuvem estiver vazia, migra dados locais ou do FIN-MOISES
     migrateLegacyDataToUser(currentUser.uid, {
       transactions,
       budgets,
       goals,
+    }).then((res) => {
+      if (res.success && res.data) {
+        if (Array.isArray(res.data.transactions) && res.data.transactions.length > 0) {
+          setTransactions(res.data.transactions);
+        }
+        if (Array.isArray(res.data.budgets) && res.data.budgets.length > 0) {
+          setBudgets(res.data.budgets);
+        }
+        if (Array.isArray(res.data.goals) && res.data.goals.length > 0) {
+          setGoals(res.data.goals);
+        }
+      }
     }).catch((err) => console.warn('Aviso durante migração inicial:', err));
 
     // 2. Escuta contínua de alterações do usuário autenticado no Firestore
@@ -143,7 +155,7 @@ export default function App() {
       (remoteData, shouldApply) => {
         setFirebaseStatus('connected');
         if (shouldApply) {
-          if (Array.isArray(remoteData.transactions)) {
+          if (Array.isArray(remoteData.transactions) && remoteData.transactions.length > 0) {
             setTransactions(remoteData.transactions);
           }
           if (Array.isArray(remoteData.budgets) && remoteData.budgets.length > 0) {
