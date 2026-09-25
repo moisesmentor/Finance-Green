@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Target, Check, AlertTriangle } from 'lucide-react';
-import { CategoryBudget, Transaction } from '../types';
+import { CategoryBudget, Transaction, Category } from '../types';
 import { CATEGORIES } from '../utils/constants';
 import { CategoryIcon } from './CategoryIcon';
 import { formatCurrency } from '../utils/formatters';
@@ -11,6 +11,7 @@ interface BudgetModalProps {
   currentBudgets: CategoryBudget[];
   onSaveBudgets: (budgets: CategoryBudget[]) => void;
   transactionsThisMonth: Transaction[];
+  categories?: Category[];
 }
 
 export const BudgetModal: React.FC<BudgetModalProps> = ({
@@ -19,10 +20,11 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
   currentBudgets,
   onSaveBudgets,
   transactionsThisMonth,
+  categories,
 }) => {
   const [budgetValues, setBudgetValues] = useState<Record<string, string>>({});
 
-  const expenseCategories = CATEGORIES.filter(c => c.type === 'expense');
+  const expenseCategories = (categories || CATEGORIES).filter(c => c.type === 'expense');
 
   // Compute spent amount per category this month
   const categorySpentMap: Record<string, number> = {};

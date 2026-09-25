@@ -20,6 +20,25 @@ import {
   Zap,
   HelpCircle,
   PawPrint,
+  Tag,
+  Gift,
+  Plane,
+  Baby,
+  Dumbbell,
+  BookOpen,
+  Music,
+  Film,
+  Scissors,
+  Wrench,
+  Shield,
+  Smartphone,
+  Smile,
+  Store,
+  PiggyBank,
+  Heart,
+  Star,
+  Fuel,
+  Laptop,
   LucideProps
 } from 'lucide-react';
 
@@ -31,6 +50,44 @@ export const CategoryIcon: React.FC<CategoryIconProps> = ({ name, className = 'w
   switch (name) {
     case 'PawPrint':
       return <PawPrint className={className} {...props} />;
+    case 'Tag':
+      return <Tag className={className} {...props} />;
+    case 'Gift':
+      return <Gift className={className} {...props} />;
+    case 'Plane':
+      return <Plane className={className} {...props} />;
+    case 'Baby':
+      return <Baby className={className} {...props} />;
+    case 'Dumbbell':
+      return <Dumbbell className={className} {...props} />;
+    case 'BookOpen':
+      return <BookOpen className={className} {...props} />;
+    case 'Music':
+      return <Music className={className} {...props} />;
+    case 'Film':
+      return <Film className={className} {...props} />;
+    case 'Scissors':
+      return <Scissors className={className} {...props} />;
+    case 'Wrench':
+      return <Wrench className={className} {...props} />;
+    case 'Shield':
+      return <Shield className={className} {...props} />;
+    case 'Smartphone':
+      return <Smartphone className={className} {...props} />;
+    case 'Smile':
+      return <Smile className={className} {...props} />;
+    case 'Store':
+      return <Store className={className} {...props} />;
+    case 'PiggyBank':
+      return <PiggyBank className={className} {...props} />;
+    case 'Heart':
+      return <Heart className={className} {...props} />;
+    case 'Star':
+      return <Star className={className} {...props} />;
+    case 'Fuel':
+      return <Fuel className={className} {...props} />;
+    case 'Laptop':
+      return <Laptop className={className} {...props} />;
     case 'Home':
       return <Home className={className} {...props} />;
     case 'Utensils':

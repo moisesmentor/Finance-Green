@@ -11,7 +11,7 @@ import {
   Sparkles,
   Layers
 } from 'lucide-react';
-import { Transaction, CategoryBudget, CategorySpending, MonthPeriod } from '../types';
+import { Transaction, CategoryBudget, CategorySpending, MonthPeriod, Category } from '../types';
 import { calculateCategorySpending } from '../utils/storage';
 import { formatCurrency } from '../utils/formatters';
 import { CategoryIcon } from './CategoryIcon';
@@ -22,6 +22,7 @@ interface MonthlyChartsProps {
   budgets: CategoryBudget[];
   period: MonthPeriod;
   onOpenBudgets: () => void;
+  categories?: Category[];
 }
 
 export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
@@ -29,6 +30,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
   budgets,
   period,
   onOpenBudgets,
+  categories,
 }) => {
   const [activeTab, setActiveTab] = useState<'categories' | 'daily' | 'payments'>('categories');
   const [chartSubView, setChartSubView] = useState<'area' | 'bars'>('area');
@@ -37,8 +39,8 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
 
   // Category breakdown for expenses
   const categorySpending = useMemo(() => {
-    return calculateCategorySpending(transactions, budgets, 'expense');
-  }, [transactions, budgets]);
+    return calculateCategorySpending(transactions, budgets, 'expense', categories);
+  }, [transactions, budgets, categories]);
 
   const totalExpense = useMemo(() => {
     return transactions

@@ -13,9 +13,11 @@ export interface Category {
   name: string;
   icon: string;
   color: string; // Tailwind color class or hex
-  bgLight: string;
-  textColor: string;
+  bgLight?: string;
+  textColor?: string;
   type: TransactionType | 'both';
+  isCustom?: boolean;
+  createdAt?: number;
 }
 
 export interface Transaction {

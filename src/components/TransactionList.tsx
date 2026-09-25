@@ -30,6 +30,7 @@ interface TransactionListProps {
   onDeleteGroup?: (groupId: string) => void;
   onToggleStatus: (id: string) => void;
   onAddNew: () => void;
+  categories?: Category[];
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({
@@ -39,20 +40,23 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   onDeleteGroup,
   onToggleStatus,
   onAddNew,
+  categories,
 }) => {
   const [search, setSearch] = useState('');
   const [quickTab, setQuickTab] = useState<'all' | 'expense' | 'income' | 'pending' | 'installments'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
 
+  const activeCategories = useMemo(() => categories || CATEGORIES, [categories]);
+
   // Category map for fast lookup
   const categoryMap = useMemo(() => {
     const map = new Map<string, Category>();
-    for (const c of CATEGORIES) {
+    for (const c of activeCategories) {
       map.set(c.id, c);
     }
     return map;
-  }, []);
+  }, [activeCategories]);
 
   // Payment method map for fast lookup
   const paymentMethodMap = useMemo(() => {
@@ -242,9 +246,9 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               className="w-1/2 px-2.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors cursor-pointer"
             >
               <option value="all">Categorias: Todas</option>
-              {CATEGORIES.map(cat => (
+              {activeCategories.map(cat => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.name}
+                  {cat.isCustom ? `⭐ ${cat.name}` : cat.name}
                 </option>
               ))}
             </select>

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { X, Download, Upload, RotateCcw, Trash2, CheckCircle2, AlertTriangle, FileJson } from 'lucide-react';
-import { Transaction, CategoryBudget, FinancialGoal, InvestmentAsset } from '../types';
+import { Transaction, CategoryBudget, FinancialGoal, InvestmentAsset, Category } from '../types';
 
 interface ExportImportModalProps {
   isOpen: boolean;
@@ -9,7 +9,14 @@ interface ExportImportModalProps {
   budgets: CategoryBudget[];
   goals: FinancialGoal[];
   investments?: InvestmentAsset[];
-  onImportData: (transactions: Transaction[], budgets: CategoryBudget[], goals?: FinancialGoal[], investments?: InvestmentAsset[]) => void;
+  customCategories?: Category[];
+  onImportData: (
+    transactions: Transaction[], 
+    budgets: CategoryBudget[], 
+    goals?: FinancialGoal[], 
+    investments?: InvestmentAsset[],
+    customCategories?: Category[]
+  ) => void;
   onResetToSample: () => void;
   onClearAll: () => void;
 }
@@ -21,6 +28,7 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
   budgets,
   goals,
   investments,
+  customCategories,
   onImportData,
   onResetToSample,
   onClearAll,
@@ -41,6 +49,7 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
         budgets,
         goals,
         investments,
+        customCategories,
       };
 
       const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportObject, null, 2));
@@ -73,7 +82,8 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
             parsed.transactions, 
             Array.isArray(parsed.budgets) ? parsed.budgets : [],
             Array.isArray(parsed.goals) ? parsed.goals : undefined,
-            Array.isArray(parsed.investments) ? parsed.investments : undefined
+            Array.isArray(parsed.investments) ? parsed.investments : undefined,
+            Array.isArray(parsed.customCategories) ? parsed.customCategories : undefined
           );
           setSuccessMsg(`Sucesso! ${parsed.transactions.length} transações importadas.`);
           setTimeout(() => {

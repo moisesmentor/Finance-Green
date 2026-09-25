@@ -10,6 +10,7 @@ import {
   MonthPeriod, 
   FinancialGoal, 
   InvestmentAsset,
+  Category,
   CloudConfig,
   FirebaseSyncStatus,
   UserProfile
@@ -24,6 +25,8 @@ import {
   DEFAULT_INVESTMENTS,
   loadStoredInvestments,
   saveStoredInvestments,
+  loadStoredCustomCategories,
+  saveStoredCustomCategories,
   loadStoredCloudConfig, 
   saveStoredCloudConfig, 
   calculateSummary, 
@@ -43,9 +46,11 @@ import {
   subscribeToUserGoals, 
   saveUserGoals,
   subscribeToUserInvestments,
-  saveUserInvestments 
+  saveUserInvestments,
+  subscribeToUserCustomCategories,
+  saveUserCustomCategory 
 } from './utils/firebase';
-import { DEFAULT_BUDGETS } from './utils/constants';
+import { DEFAULT_BUDGETS, CATEGORIES } from './utils/constants';
 import { useTheme } from './utils/useTheme';
 import { Wallet } from 'lucide-react';
 import { Header } from './components/Header';
@@ -75,8 +80,14 @@ function FinanceApp() {
   const [budgets, setBudgets] = useState<CategoryBudget[]>(DEFAULT_BUDGETS);
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
   const [investments, setInvestments] = useState<InvestmentAsset[]>(DEFAULT_INVESTMENTS);
+  const [customCategories, setCustomCategories] = useState<Category[]>([]);
   const [cloudConfig, setCloudConfig] = useState<CloudConfig>(() => loadStoredCloudConfig());
   const [firebaseStatus, setFirebaseStatus] = useState<FirebaseSyncStatus>('unconfigured');
+
+  // Combined Categories List (Base System Categories + User's Custom Categories)
+  const allCategories = useMemo(() => {
+    return [...CATEGORIES, ...customCategories];
+  }, [customCategories]);
 
   // Período ativo do calendário
   const [period, setPeriod] = useState<MonthPeriod>(() => {
@@ -107,6 +118,7 @@ function FinanceApp() {
         setBudgets(DEFAULT_BUDGETS);
         setGoals([]);
         setInvestments(DEFAULT_INVESTMENTS);
+        setCustomCategories([]);
         setFirebaseStatus('unconfigured');
       } else {
         // Carrega cache exclusivo deste UID
@@ -114,10 +126,12 @@ function FinanceApp() {
         const cachedBudgets = loadStoredBudgets(user.uid);
         const cachedGoals = loadStoredGoals(user.uid);
         const cachedInvestments = loadStoredInvestments(user.uid);
+        const cachedCustomCats = loadStoredCustomCategories(user.uid);
         setTransactions(cachedTxs);
         setBudgets(cachedBudgets);
         setGoals(cachedGoals);
         setInvestments(cachedInvestments);
+        setCustomCategories(cachedCustomCats);
 
         // Se o usuário possuir transações em Outubro/2026, posiciona o calendário no mês correto
         if (cachedTxs.some(t => t.date && t.date.startsWith('2026-10'))) {
@@ -196,11 +210,23 @@ function FinanceApp() {
       }
     );
 
+    // Escuta da subcoleção /users/{uid}/custom_categories
+    const unsubCustomCats = subscribeToUserCustomCategories(
+      currentUser.uid,
+      (remoteCats) => {
+        if (Array.isArray(remoteCats)) {
+          setCustomCategories(remoteCats);
+          saveStoredCustomCategories(remoteCats, currentUser.uid);
+        }
+      }
+    );
+
     return () => {
       unsubTx();
       unsubBudgets();
       unsubGoals();
       unsubInvestments();
+      unsubCustomCats();
     };
   }, [currentUser?.uid]);
 
@@ -234,6 +260,7 @@ function FinanceApp() {
       setBudgets(DEFAULT_BUDGETS);
       setGoals([]);
       setInvestments(DEFAULT_INVESTMENTS);
+      setCustomCategories([]);
       setCurrentUser(null);
     } catch (err) {
       console.error('Erro ao sair:', err);
@@ -351,12 +378,26 @@ function FinanceApp() {
     showToast('Patrimônio e investimentos atualizados com sucesso!');
   };
 
+  // Handler para Categoria Personalizada (Subcoleção /users/{uid}/custom_categories)
+  const handleSaveCustomCategory = async (newCategory: Category) => {
+    if (!currentUser?.uid) return;
+    setCustomCategories(prev => {
+      const exists = prev.some(c => c.id === newCategory.id);
+      const updated = exists ? prev.map(c => c.id === newCategory.id ? newCategory : c) : [...prev, newCategory];
+      saveStoredCustomCategories(updated, currentUser.uid);
+      return updated;
+    });
+    await saveUserCustomCategory(currentUser.uid, newCategory);
+    showToast(`Categoria "${newCategory.name}" criada com sucesso!`);
+  };
+
   // Handlers para Backup / Importação
   const handleImportData = async (
     newTransactions: Transaction[], 
     newBudgets: CategoryBudget[],
     newGoals?: FinancialGoal[],
-    newInvestments?: InvestmentAsset[]
+    newInvestments?: InvestmentAsset[],
+    newCustomCategories?: Category[]
   ) => {
     if (!currentUser?.uid) return;
     setTransactions(newTransactions);
@@ -366,6 +407,13 @@ function FinanceApp() {
       setInvestments(newInvestments);
       saveStoredInvestments(newInvestments, currentUser.uid);
       await saveUserInvestments(currentUser.uid, newInvestments);
+    }
+    if (newCustomCategories && newCustomCategories.length > 0) {
+      setCustomCategories(newCustomCategories);
+      saveStoredCustomCategories(newCustomCategories, currentUser.uid);
+      for (const cat of newCustomCategories) {
+        await saveUserCustomCategory(currentUser.uid, cat);
+      }
     }
 
     if (newTransactions.length > 0) {
@@ -472,6 +520,7 @@ function FinanceApp() {
           budgets={budgets}
           period={period}
           onOpenBudgets={() => setIsBudgetModalOpen(true)}
+          categories={allCategories}
         />
 
         {/* Extrato & Transaction List */}
@@ -482,6 +531,7 @@ function FinanceApp() {
           onDeleteGroup={handleDeleteInstallmentGroup}
           onToggleStatus={handleToggleStatus}
           onAddNew={handleOpenNewTransaction}
+          categories={allCategories}
         />
 
       </main>
@@ -539,6 +589,8 @@ function FinanceApp() {
         onSave={handleSaveTransaction}
         initialData={editingTransaction}
         currentPeriod={period}
+        customCategories={customCategories}
+        onSaveCustomCategory={handleSaveCustomCategory}
       />
 
       <BudgetModal
@@ -547,6 +599,7 @@ function FinanceApp() {
         currentBudgets={budgets}
         onSaveBudgets={handleSaveBudgets}
         transactionsThisMonth={monthTransactions}
+        categories={allCategories}
       />
 
       <GoalsModal
@@ -592,6 +645,7 @@ function FinanceApp() {
         budgets={budgets}
         goals={goals}
         investments={investments}
+        customCategories={customCategories}
         onImportData={handleImportData}
         onResetToSample={handleResetToSample}
         onClearAll={handleClearAll}

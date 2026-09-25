@@ -28,7 +28,8 @@ import {
   CategoryBudget, 
   FinancialGoal,
   UserProfile,
-  InvestmentAsset
+  InvestmentAsset,
+  Category
 } from '../types';
 import { DEFAULT_BUDGETS } from './constants';
 
@@ -441,6 +442,58 @@ export async function deleteUserInvestment(
     return { success: true };
   } catch (err: any) {
     console.error('Erro ao excluir investimento:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 13. Escutar categorias personalizadas em /users/{userId}/custom_categories
+export function subscribeToUserCustomCategories(
+  userId: string,
+  onData: (categories: Category[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  try {
+    const { db } = getFirebaseInstances();
+    const colRef = collection(db, 'users', userId, 'custom_categories');
+    return onSnapshot(colRef, (snapshot) => {
+      const list: Category[] = [];
+      snapshot.forEach(d => list.push(d.data() as Category));
+      onData(list);
+    }, onError);
+  } catch (err: any) {
+    if (onError) onError(err);
+    return () => {};
+  }
+}
+
+// 14. Salvar categoria personalizada em /users/{userId}/custom_categories/{categoryId}
+export async function saveUserCustomCategory(
+  userId: string,
+  category: Category
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const catRef = doc(db, 'users', userId, 'custom_categories', category.id);
+    await setDoc(catRef, JSON.parse(JSON.stringify(category)), { merge: true });
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao salvar categoria personalizada:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 15. Excluir categoria personalizada em /users/{userId}/custom_categories/{categoryId}
+export async function deleteUserCustomCategory(
+  userId: string,
+  categoryId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const catRef = doc(db, 'users', userId, 'custom_categories', categoryId);
+    await deleteDoc(catRef);
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao excluir categoria personalizada:', err);
     return { success: false, error: err.message };
   }
 }

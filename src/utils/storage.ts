@@ -7,7 +7,8 @@ import {
   AnnualSummary, 
   AnnualMonthSummary,
   CloudConfig,
-  InvestmentAsset
+  InvestmentAsset,
+  Category
 } from '../types';
 import { CATEGORIES, DEFAULT_BUDGETS, getSampleTransactions, PAYMENT_METHODS } from './constants';
 
@@ -16,6 +17,7 @@ const STORAGE_KEYS = {
   BUDGETS: 'financas_mensais_budgets_v1',
   GOALS: 'financas_mensais_goals_v1',
   INVESTMENTS: 'financas_mensais_investments_v1',
+  CUSTOM_CATEGORIES: 'financas_mensais_custom_categories_v1',
   CLOUD_CONFIG: 'financas_mensais_cloud_v1',
 };
 
@@ -221,6 +223,30 @@ export function saveStoredInvestments(investments: InvestmentAsset[], userId?: s
   }
 }
 
+export function loadStoredCustomCategories(userId?: string | null): Category[] {
+  if (!userId) return [];
+  try {
+    const key = getStorageKey(STORAGE_KEYS.CUSTOM_CATEGORIES, userId);
+    const data = localStorage.getItem(key);
+    if (!data) return [];
+    const parsed = JSON.parse(data);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.error('Erro ao carregar categorias personalizadas:', err);
+    return [];
+  }
+}
+
+export function saveStoredCustomCategories(categories: Category[], userId?: string | null): void {
+  if (!userId) return;
+  try {
+    const key = getStorageKey(STORAGE_KEYS.CUSTOM_CATEGORIES, userId);
+    localStorage.setItem(key, JSON.stringify(categories));
+  } catch (err) {
+    console.error('Erro ao salvar categorias personalizadas:', err);
+  }
+}
+
 export function loadStoredCloudConfig(): CloudConfig {
   try {
     const data = localStorage.getItem(STORAGE_KEYS.CLOUD_CONFIG);
@@ -373,7 +399,8 @@ export function calculateSummary(transactions: Transaction[], budgets: CategoryB
 export function calculateCategorySpending(
   transactions: Transaction[], 
   budgets: CategoryBudget[], 
-  type: 'expense' | 'income' = 'expense'
+  type: 'expense' | 'income' = 'expense',
+  allCategories: Category[] = CATEGORIES
 ): CategorySpending[] {
   const filtered = transactions.filter(t => t.type === type);
   const totalAmount = filtered.reduce((sum, t) => sum + t.amount, 0);
@@ -393,9 +420,11 @@ export function calculateCategorySpending(
   }
 
   const result: CategorySpending[] = [];
+  const processedCatIds = new Set<string>();
 
-  for (const cat of CATEGORIES) {
+  for (const cat of allCategories) {
     if (cat.type !== type && cat.type !== 'both') continue;
+    processedCatIds.add(cat.id);
 
     const data = categoryMap.get(cat.id);
     const limit = budgetMap.get(cat.id);
@@ -411,6 +440,30 @@ export function calculateCategorySpending(
         total,
         percentage,
         transactionCount: count,
+        budgetLimit: limit,
+        budgetPercentage,
+      });
+    }
+  }
+
+  // Catch any remaining categories from transactions not in allCategories list
+  for (const [catId, data] of categoryMap.entries()) {
+    if (!processedCatIds.has(catId) && data.total > 0) {
+      const fallbackCat: Category = {
+        id: catId,
+        name: catId,
+        icon: 'MoreHorizontal',
+        color: '#64748b',
+        type,
+      };
+      const limit = budgetMap.get(catId);
+      const percentage = totalAmount > 0 ? (data.total / totalAmount) * 100 : 0;
+      const budgetPercentage = limit && limit > 0 ? (data.total / limit) * 100 : undefined;
+      result.push({
+        category: fallbackCat,
+        total: data.total,
+        percentage,
+        transactionCount: data.count,
         budgetLimit: limit,
         budgetPercentage,
       });
