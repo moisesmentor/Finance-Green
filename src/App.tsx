@@ -9,6 +9,7 @@ import {
   CategoryBudget, 
   MonthPeriod, 
   FinancialGoal, 
+  InvestmentAsset,
   CloudConfig,
   FirebaseSyncStatus,
   UserProfile
@@ -20,6 +21,9 @@ import {
   saveStoredBudgets, 
   loadStoredGoals, 
   saveStoredGoals, 
+  DEFAULT_INVESTMENTS,
+  loadStoredInvestments,
+  saveStoredInvestments,
   loadStoredCloudConfig, 
   saveStoredCloudConfig, 
   calculateSummary, 
@@ -37,7 +41,9 @@ import {
   subscribeToUserBudgets, 
   saveUserBudgets, 
   subscribeToUserGoals, 
-  saveUserGoals 
+  saveUserGoals,
+  subscribeToUserInvestments,
+  saveUserInvestments 
 } from './utils/firebase';
 import { DEFAULT_BUDGETS } from './utils/constants';
 import { useTheme } from './utils/useTheme';
@@ -50,6 +56,7 @@ import { TransactionModal } from './components/TransactionModal';
 import { BudgetModal } from './components/BudgetModal';
 import { ExportImportModal } from './components/ExportImportModal';
 import { GoalsModal } from './components/GoalsModal';
+import { InvestmentsModal } from './components/InvestmentsModal';
 import { AnnualReportModal } from './components/AnnualReportModal';
 import { CloudConfigModal } from './components/CloudConfigModal';
 import { AuthScreen } from './components/AuthScreen';
@@ -67,6 +74,7 @@ function FinanceApp() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<CategoryBudget[]>(DEFAULT_BUDGETS);
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
+  const [investments, setInvestments] = useState<InvestmentAsset[]>(DEFAULT_INVESTMENTS);
   const [cloudConfig, setCloudConfig] = useState<CloudConfig>(() => loadStoredCloudConfig());
   const [firebaseStatus, setFirebaseStatus] = useState<FirebaseSyncStatus>('unconfigured');
 
@@ -83,6 +91,7 @@ function FinanceApp() {
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
   const [goalsInitialTab, setGoalsInitialTab] = useState<'reserve' | 'goals'>('reserve');
+  const [isInvestmentsModalOpen, setIsInvestmentsModalOpen] = useState(false);
   const [isAnnualReportModalOpen, setIsAnnualReportModalOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
 
@@ -97,15 +106,18 @@ function FinanceApp() {
         setTransactions([]);
         setBudgets(DEFAULT_BUDGETS);
         setGoals([]);
+        setInvestments(DEFAULT_INVESTMENTS);
         setFirebaseStatus('unconfigured');
       } else {
         // Carrega cache exclusivo deste UID
         const cachedTxs = loadStoredTransactions(user.uid);
         const cachedBudgets = loadStoredBudgets(user.uid);
         const cachedGoals = loadStoredGoals(user.uid);
+        const cachedInvestments = loadStoredInvestments(user.uid);
         setTransactions(cachedTxs);
         setBudgets(cachedBudgets);
         setGoals(cachedGoals);
+        setInvestments(cachedInvestments);
 
         // Se o usuário possuir transações em Outubro/2026, posiciona o calendário no mês correto
         if (cachedTxs.some(t => t.date && t.date.startsWith('2026-10'))) {
@@ -173,10 +185,22 @@ function FinanceApp() {
       }
     );
 
+    // Escuta da subcoleção /users/{uid}/investments
+    const unsubInvestments = subscribeToUserInvestments(
+      currentUser.uid,
+      (remoteInvestments) => {
+        if (Array.isArray(remoteInvestments) && remoteInvestments.length > 0) {
+          setInvestments(remoteInvestments);
+          saveStoredInvestments(remoteInvestments, currentUser.uid);
+        }
+      }
+    );
+
     return () => {
       unsubTx();
       unsubBudgets();
       unsubGoals();
+      unsubInvestments();
     };
   }, [currentUser?.uid]);
 
@@ -209,6 +233,7 @@ function FinanceApp() {
       setTransactions([]);
       setBudgets(DEFAULT_BUDGETS);
       setGoals([]);
+      setInvestments(DEFAULT_INVESTMENTS);
       setCurrentUser(null);
     } catch (err) {
       console.error('Erro ao sair:', err);
@@ -311,16 +336,37 @@ function FinanceApp() {
     showToast('Metas financeiras salvas!');
   };
 
+  // Saldo da Reserva de Emergência para cálculo de Patrimônio Consolidado
+  const emergencyFundBalance = useMemo(() => {
+    const fund = goals.find(g => g.isEmergencyFund);
+    return fund ? (fund.currentAmount || 0) : 0;
+  }, [goals]);
+
+  // Handlers para Investimentos e Patrimônio (Subcoleção /users/{uid}/investments)
+  const handleSaveInvestments = async (newInvestments: InvestmentAsset[]) => {
+    if (!currentUser?.uid) return;
+    setInvestments(newInvestments);
+    saveStoredInvestments(newInvestments, currentUser.uid);
+    await saveUserInvestments(currentUser.uid, newInvestments);
+    showToast('Patrimônio e investimentos atualizados com sucesso!');
+  };
+
   // Handlers para Backup / Importação
   const handleImportData = async (
     newTransactions: Transaction[], 
     newBudgets: CategoryBudget[],
-    newGoals?: FinancialGoal[]
+    newGoals?: FinancialGoal[],
+    newInvestments?: InvestmentAsset[]
   ) => {
     if (!currentUser?.uid) return;
     setTransactions(newTransactions);
     if (newBudgets && newBudgets.length > 0) setBudgets(newBudgets);
     if (newGoals && newGoals.length > 0) setGoals(newGoals);
+    if (newInvestments && newInvestments.length > 0) {
+      setInvestments(newInvestments);
+      saveStoredInvestments(newInvestments, currentUser.uid);
+      await saveUserInvestments(currentUser.uid, newInvestments);
+    }
 
     if (newTransactions.length > 0) {
       await batchSaveUserTransactions(currentUser.uid, newTransactions);
@@ -400,6 +446,7 @@ function FinanceApp() {
           setGoalsInitialTab('reserve');
           setIsGoalsModalOpen(true);
         }}
+        onOpenInvestments={() => setIsInvestmentsModalOpen(true)}
         onOpenAnnualReport={() => setIsAnnualReportModalOpen(true)}
         onOpenCloud={() => setIsCloudModalOpen(true)}
         firebaseStatus={firebaseStatus}
@@ -444,6 +491,13 @@ function FinanceApp() {
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Finance Pro • Ambiente executivo isolado por credencial autenticada</span>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsInvestmentsModalOpen(true)}
+              className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
+            >
+              Patrimônio & Investimentos
+            </button>
+            <span>•</span>
             <button
               onClick={() => setIsGoalsModalOpen(true)}
               className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
@@ -505,6 +559,14 @@ function FinanceApp() {
         currentPeriod={period}
       />
 
+      <InvestmentsModal
+        isOpen={isInvestmentsModalOpen}
+        onClose={() => setIsInvestmentsModalOpen(false)}
+        investments={investments}
+        onSaveInvestments={handleSaveInvestments}
+        emergencyFundBalance={emergencyFundBalance}
+      />
+
       <AnnualReportModal
         isOpen={isAnnualReportModalOpen}
         onClose={() => setIsAnnualReportModalOpen(false)}
@@ -529,6 +591,7 @@ function FinanceApp() {
         transactions={transactions}
         budgets={budgets}
         goals={goals}
+        investments={investments}
         onImportData={handleImportData}
         onResetToSample={handleResetToSample}
         onClearAll={handleClearAll}

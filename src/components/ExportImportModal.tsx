@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { X, Download, Upload, RotateCcw, Trash2, CheckCircle2, AlertTriangle, FileJson } from 'lucide-react';
-import { Transaction, CategoryBudget, FinancialGoal } from '../types';
+import { Transaction, CategoryBudget, FinancialGoal, InvestmentAsset } from '../types';
 
 interface ExportImportModalProps {
   isOpen: boolean;
@@ -8,7 +8,8 @@ interface ExportImportModalProps {
   transactions: Transaction[];
   budgets: CategoryBudget[];
   goals: FinancialGoal[];
-  onImportData: (transactions: Transaction[], budgets: CategoryBudget[], goals?: FinancialGoal[]) => void;
+  investments?: InvestmentAsset[];
+  onImportData: (transactions: Transaction[], budgets: CategoryBudget[], goals?: FinancialGoal[], investments?: InvestmentAsset[]) => void;
   onResetToSample: () => void;
   onClearAll: () => void;
 }
@@ -19,6 +20,7 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
   transactions,
   budgets,
   goals,
+  investments,
   onImportData,
   onResetToSample,
   onClearAll,
@@ -33,11 +35,12 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
   const handleExportJSON = () => {
     try {
       const exportObject = {
-        version: 2,
+        version: 3,
         exportedAt: new Date().toISOString(),
         transactions,
         budgets,
         goals,
+        investments,
       };
 
       const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportObject, null, 2));
@@ -69,7 +72,8 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
           onImportData(
             parsed.transactions, 
             Array.isArray(parsed.budgets) ? parsed.budgets : [],
-            Array.isArray(parsed.goals) ? parsed.goals : undefined
+            Array.isArray(parsed.goals) ? parsed.goals : undefined,
+            Array.isArray(parsed.investments) ? parsed.investments : undefined
           );
           setSuccessMsg(`Sucesso! ${parsed.transactions.length} transações importadas.`);
           setTimeout(() => {

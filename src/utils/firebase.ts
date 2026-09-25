@@ -27,7 +27,8 @@ import {
   Transaction, 
   CategoryBudget, 
   FinancialGoal,
-  UserProfile
+  UserProfile,
+  InvestmentAsset
 } from '../types';
 import { DEFAULT_BUDGETS } from './constants';
 
@@ -384,6 +385,62 @@ export async function saveUserGoals(
     return { success: true };
   } catch (err: any) {
     console.error('Erro ao salvar metas:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 10. Escutar investimentos da subcoleção /users/{userId}/investments
+export function subscribeToUserInvestments(
+  userId: string,
+  onData: (investments: InvestmentAsset[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  try {
+    const { db } = getFirebaseInstances();
+    const colRef = collection(db, 'users', userId, 'investments');
+    return onSnapshot(colRef, (snapshot) => {
+      const list: InvestmentAsset[] = [];
+      snapshot.forEach(d => list.push(d.data() as InvestmentAsset));
+      onData(list);
+    }, onError);
+  } catch (err: any) {
+    if (onError) onError(err);
+    return () => {};
+  }
+}
+
+// 11. Salvar investimentos em /users/{userId}/investments/{assetId}
+export async function saveUserInvestments(
+  userId: string,
+  investments: InvestmentAsset[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const batch = writeBatch(db);
+    for (const inv of investments) {
+      const invRef = doc(db, 'users', userId, 'investments', inv.id);
+      batch.set(invRef, JSON.parse(JSON.stringify(inv)), { merge: true });
+    }
+    await batch.commit();
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao salvar investimentos:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 12. Excluir investimento de /users/{userId}/investments/{assetId}
+export async function deleteUserInvestment(
+  userId: string,
+  assetId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const invRef = doc(db, 'users', userId, 'investments', assetId);
+    await deleteDoc(invRef);
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao excluir investimento:', err);
     return { success: false, error: err.message };
   }
 }

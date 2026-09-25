@@ -17,7 +17,8 @@ import {
   RefreshCw, 
   LogOut, 
   User as UserIcon,
-  ShieldCheck
+  ShieldCheck,
+  TrendingUp
 } from 'lucide-react';
 import { MonthPeriod, ThemeMode, UserProfile } from '../types';
 import { getMonthLabel, isCurrentMonth } from '../utils/formatters';
@@ -30,6 +31,7 @@ interface HeaderProps {
   onOpenBackup: () => void;
   onOpenGoals: () => void;
   onOpenReserve?: () => void;
+  onOpenInvestments?: () => void;
   onOpenAnnualReport: () => void;
   onOpenCloud?: () => void;
   onOpenFirebaseSync?: () => void;
@@ -49,6 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenBackup,
   onOpenGoals,
   onOpenReserve,
+  onOpenInvestments,
   onOpenAnnualReport,
   onOpenCloud,
   onOpenFirebaseSync,
@@ -183,6 +186,16 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Reserva</span>
+            </button>
+
+            <button
+              id="btn-open-investments"
+              onClick={onOpenInvestments}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100/80 dark:bg-slate-900/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-200/80 dark:border-slate-800 transition-all cursor-pointer active:scale-95"
+              title="Investimentos e Patrimônio Consolidado"
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Patrimônio</span>
             </button>
 
             <button

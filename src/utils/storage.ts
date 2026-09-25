@@ -6,7 +6,8 @@ import {
   FinancialGoal, 
   AnnualSummary, 
   AnnualMonthSummary,
-  CloudConfig
+  CloudConfig,
+  InvestmentAsset
 } from '../types';
 import { CATEGORIES, DEFAULT_BUDGETS, getSampleTransactions, PAYMENT_METHODS } from './constants';
 
@@ -14,8 +15,56 @@ const STORAGE_KEYS = {
   TRANSACTIONS: 'financas_mensais_transactions_v1',
   BUDGETS: 'financas_mensais_budgets_v1',
   GOALS: 'financas_mensais_goals_v1',
+  INVESTMENTS: 'financas_mensais_investments_v1',
   CLOUD_CONFIG: 'financas_mensais_cloud_v1',
 };
+
+export const DEFAULT_INVESTMENTS: InvestmentAsset[] = [
+  {
+    id: 'asset-investments',
+    type: 'investments',
+    title: 'Investimentos Gerais',
+    balance: 0,
+    institution: 'Corretora / Banco',
+    notes: 'Renda Fixa, Ações, CDB e Fundos',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    history: [],
+  },
+  {
+    id: 'asset-consorcio',
+    type: 'consorcio',
+    title: 'Consórcio',
+    balance: 0,
+    institution: 'Administradora de Consórcio',
+    notes: 'Parcelas pagas acumuladas',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    history: [],
+  },
+  {
+    id: 'asset-previdencia',
+    type: 'previdencia',
+    title: 'Previdência Privada',
+    balance: 0,
+    institution: 'Plano PGBL / VGBL',
+    notes: 'Aposentadoria e longo prazo',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    history: [],
+  },
+  {
+    id: 'asset-capitalizacao',
+    type: 'capitalizacao',
+    title: 'Título de Capitalização',
+    balance: 0,
+    institution: 'Banco emissor',
+    notes: 'Reserva e sorteios',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    history: [],
+  },
+];
 
 export const DEFAULT_GOALS: FinancialGoal[] = [
   {
@@ -145,6 +194,30 @@ export function saveStoredGoals(goals: FinancialGoal[], userId?: string | null):
     localStorage.setItem(key, JSON.stringify(goals));
   } catch (err) {
     console.error('Erro ao salvar metas:', err);
+  }
+}
+
+export function loadStoredInvestments(userId?: string | null): InvestmentAsset[] {
+  if (!userId) return DEFAULT_INVESTMENTS;
+  try {
+    const key = getStorageKey(STORAGE_KEYS.INVESTMENTS, userId);
+    const data = localStorage.getItem(key);
+    if (!data) return DEFAULT_INVESTMENTS;
+    const parsed = JSON.parse(data);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_INVESTMENTS;
+  } catch (err) {
+    console.error('Erro ao carregar investimentos:', err);
+    return DEFAULT_INVESTMENTS;
+  }
+}
+
+export function saveStoredInvestments(investments: InvestmentAsset[], userId?: string | null): void {
+  if (!userId) return;
+  try {
+    const key = getStorageKey(STORAGE_KEYS.INVESTMENTS, userId);
+    localStorage.setItem(key, JSON.stringify(investments));
+  } catch (err) {
+    console.error('Erro ao salvar investimentos:', err);
   }
 }
 

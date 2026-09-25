@@ -100,6 +100,33 @@ export interface FinancialGoal {
   lastConfirmedMonth?: string; // e.g. "2026-10"
 }
 
+export type InvestmentCategoryType = 
+  | 'investments' // Investimentos (Renda Fixa / Variável / Geral)
+  | 'consorcio'   // Consórcio
+  | 'previdencia' // Previdência Privada
+  | 'capitalizacao'; // Título de Capitalização
+
+export interface InvestmentEntry {
+  id: string;
+  amount: number;
+  date: string; // YYYY-MM-DD
+  type: 'deposit' | 'withdraw';
+  note?: string;
+  createdAt: number;
+}
+
+export interface InvestmentAsset {
+  id: string;
+  type: InvestmentCategoryType;
+  title: string;
+  balance: number;
+  institution?: string;
+  notes?: string;
+  history?: InvestmentEntry[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface AnnualMonthSummary {
