@@ -263,13 +263,13 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
   const emergencyRemaining = Math.max(0, emergencyGoal.targetAmount - emergencyGoal.currentAmount);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
       <div 
         id="modal-goals"
-        className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100 flex flex-col max-h-[90vh]"
+        className="bg-white dark-brushed-metal-modal rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100 flex flex-col max-h-[90vh]"
       >
         {/* Header with Segmented Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 dark:border-white/10 shrink-0">
           <div>
             <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
               Planejamento & Reservas
@@ -281,12 +281,12 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
             {/* Segmented Control */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700">
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-black/50 rounded-xl border border-slate-200/80 dark:border-white/10">
               <button
                 onClick={() => { setActiveTab('reserve'); setActiveGoalId(null); }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'reserve'
-                    ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                    ? 'bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -297,7 +297,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                 onClick={() => { setActiveTab('goals'); setActiveGoalId(null); }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'goals'
-                    ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                    ? 'bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -308,7 +308,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
 
             <button
               onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -331,7 +331,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
             <div className="space-y-6">
               
               {/* 1.1 Hero Card da Reserva */}
-              <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-slate-50 to-teal-500/10 dark:from-emerald-950/40 dark:via-slate-900 dark:to-teal-950/40 border border-emerald-500/30 shadow-xs space-y-4">
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-slate-50 to-teal-500/10 dark:from-emerald-950/30 dark:via-black/50 dark:to-teal-950/30 border border-emerald-500/30 dark:border-emerald-500/40 shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -352,7 +352,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         setActiveGoalId(emergencyGoal.id);
                         setContributionType('deposit');
                       }}
-                      className="px-3.5 py-2 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+                      className="px-3.5 py-2 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 shadow-xs dark:shadow-[0_0_20px_-3px_rgba(16,185,129,0.45)] transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
                     >
                       <ArrowDownLeft className="w-4 h-4" />
                       + Aporte
@@ -362,7 +362,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         setActiveGoalId(emergencyGoal.id);
                         setContributionType('withdraw');
                       }}
-                      className="px-3.5 py-2 text-xs font-bold rounded-xl text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+                      className="px-3.5 py-2 text-xs font-bold rounded-xl text-slate-700 dark:text-slate-200 bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/15 transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
                     >
                       <ArrowUpRight className="w-4 h-4 text-rose-500" />
                       Resgatar
@@ -403,13 +403,13 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
 
                 {/* Modal / Inline edit of target */}
                 {isEditingTarget && (
-                  <form onSubmit={handleSaveEmergencyTarget} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-2 text-xs animate-in fade-in">
+                  <form onSubmit={handleSaveEmergencyTarget} className="p-3 bg-white dark:bg-black/50 rounded-xl border border-slate-200 dark:border-white/10 flex items-center gap-2 text-xs animate-in fade-in">
                     <span className="font-semibold text-slate-700 dark:text-slate-300">Nova Meta (R$):</span>
                     <input
                       type="text"
                       value={newTargetStr}
                       onChange={e => setNewTargetStr(e.target.value.replace(/[^0-9,.]/g, ''))}
-                      className="px-2.5 py-1 text-xs font-mono-num font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex-1"
+                      className="px-2.5 py-1 text-xs font-mono-num font-bold rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900 flex-1"
                       autoFocus
                     />
                     <button
@@ -430,8 +430,8 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
               </div>
 
               {/* 1.2 Módulo Inteligente de Aporte Mensal Automático */}
-              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="p-5 rounded-2xl bg-white dark-brushed-metal border border-slate-200/80 dark:border-white/10 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-white/10">
                   <div>
                     <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
                       <Percent className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />

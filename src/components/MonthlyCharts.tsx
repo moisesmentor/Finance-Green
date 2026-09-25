@@ -157,7 +157,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] shadow-xs dark:shadow-2xl p-5 mb-6 transition-all duration-300">
+    <div className="bg-white dark-brushed-metal rounded-2xl border border-slate-200/80 dark:border-white/[0.08] shadow-xs dark:shadow-2xl p-5 mb-6 transition-all duration-300">
       
       {/* Header with Segmented Pills */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-white/10">
@@ -171,12 +171,12 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
         </div>
 
         {/* Tab Buttons Segmented Control */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl border border-slate-200/70 dark:border-slate-700/70 self-start sm:self-auto text-xs font-bold">
+        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-black/50 rounded-xl border border-slate-200/70 dark:border-white/10 self-start sm:self-auto text-xs font-bold">
           <button
             onClick={() => setActiveTab('categories')}
             className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'categories'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -187,7 +187,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
             onClick={() => setActiveTab('daily')}
             className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'daily'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -198,7 +198,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
             onClick={() => setActiveTab('payments')}
             className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'payments'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -214,7 +214,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
             {/* Modern Donut Chart Component (5 cols) */}
-            <div className="lg:col-span-4 p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center">
+            <div className="lg:col-span-4 p-5 rounded-2xl bg-slate-50/70 dark:bg-black/40 border border-slate-100 dark:border-white/10 flex flex-col items-center justify-center">
               <div className="relative w-44 h-44 flex items-center justify-center">
                 <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                   {/* Background Track */}
@@ -281,8 +281,8 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                     onMouseLeave={() => setHoveredCategory(null)}
                     className={`p-3.5 rounded-2xl border transition-all ${
                       isHovered
-                        ? 'border-emerald-500/50 bg-white dark:bg-slate-800 shadow-sm'
-                        : 'border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70'
+                        ? 'border-emerald-500/50 bg-white dark:bg-black/60 shadow-sm'
+                        : 'border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-black/40 hover:bg-slate-50 dark:hover:bg-white/[0.04]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 mb-2">
@@ -367,12 +367,12 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
             <div className="flex items-center gap-2">
               <span>Ritmo e picos de despesas ao longo do mês</span>
-              <div className="inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
+              <div className="inline-flex rounded-lg bg-slate-100 dark:bg-black/50 p-0.5 border border-slate-200 dark:border-white/10">
                 <button
                   onClick={() => setChartSubView('area')}
                   className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                     chartSubView === 'area'
-                      ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                      ? 'bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-xs'
                       : 'text-slate-500'
                   }`}
                 >
@@ -382,7 +382,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                   onClick={() => setChartSubView('bars')}
                   className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                     chartSubView === 'bars'
-                      ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                      ? 'bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-xs'
                       : 'text-slate-500'
                   }`}
                 >
@@ -402,7 +402,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
 
           {/* SubView 1: Smooth Bézier Area Chart */}
           {chartSubView === 'area' ? (
-            <div className="p-4 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 relative">
+            <div className="p-4 rounded-2xl bg-slate-50/60 dark:bg-black/40 border border-slate-100 dark:border-white/10 relative">
               <div className="h-44 w-full relative">
                 <svg 
                   className="w-full h-full overflow-visible" 
@@ -470,7 +470,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                 )}
               </div>
 
-              <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 font-mono-num pt-2 border-t border-slate-200/80 dark:border-slate-800">
+              <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 font-mono-num pt-2 border-t border-slate-200/80 dark:border-white/10">
                 <span>Dia 1</span>
                 <span>Dia 8</span>
                 <span>Dia 15</span>
@@ -480,7 +480,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
             </div>
           ) : (
             /* SubView 2: Classic Capsule Bars */
-            <div className="p-4 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+            <div className="p-4 rounded-2xl bg-slate-50/60 dark:bg-black/40 border border-slate-100 dark:border-white/10">
               <div className="h-44 w-full flex items-end gap-1 sm:gap-1.5 pt-4 pb-2 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
                 {dailySpending.days.map(d => {
                   const heightPercent = d.amount > 0 ? Math.max(8, (d.amount / dailySpending.maxAmount) * 100) : 0;
@@ -542,10 +542,10 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
           {paymentBreakdown.map(pm => (
             <div 
               key={pm.id}
-              className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70 hover:shadow-xs transition-all flex items-center justify-between"
+              className="p-4 rounded-2xl border border-slate-100 dark:border-white/10 bg-slate-50/60 dark:bg-black/40 hover:bg-slate-50 dark:hover:bg-white/[0.04] hover:shadow-xs transition-all flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-xs">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/10 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-xs">
                   <CategoryIcon name={pm.icon} className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>

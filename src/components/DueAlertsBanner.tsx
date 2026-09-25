@@ -198,7 +198,7 @@ export const DueAlertsBanner: React.FC<DueAlertsBannerProps> = ({
           {notificationStatus === 'default' && (
             <button
               onClick={handleRequestNotification}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer shadow-xs"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-white dark:bg-white/5 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors cursor-pointer shadow-xs"
               title="Ativar lembretes no navegador"
             >
               <Bell className="w-3.5 h-3.5 text-amber-500" />
@@ -208,7 +208,7 @@ export const DueAlertsBanner: React.FC<DueAlertsBannerProps> = ({
 
           <button
             onClick={() => setIsExpanded(prev => !prev)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors cursor-pointer"
             aria-expanded={isExpanded}
           >
             <span>{isExpanded ? 'Recolher' : 'Ver Contas'}</span>
@@ -219,7 +219,7 @@ export const DueAlertsBanner: React.FC<DueAlertsBannerProps> = ({
 
       {/* Collapsible List of Urgent Items */}
       {isExpanded && (
-        <div className="border-t border-slate-200/60 dark:border-slate-800/80 divide-y divide-slate-100 dark:divide-slate-800/60 bg-white/70 dark:bg-slate-900/60">
+        <div className="border-t border-slate-200/60 dark:border-white/10 divide-y divide-slate-100 dark:divide-white/[0.06] bg-white/70 dark:bg-black/40">
           {urgentItems.map(item => {
             const cat = categoryMap.get(item.categoryId) || {
               id: 'outros',
@@ -235,7 +235,7 @@ export const DueAlertsBanner: React.FC<DueAlertsBannerProps> = ({
             return (
               <div
                 key={item.id}
-                className="p-3 sm:px-4.5 sm:py-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                className="p-3 sm:px-4.5 sm:py-3 hover:bg-slate-50/80 dark:hover:bg-white/[0.04] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
               >
                 {/* Item Details */}
                 <div className="flex items-center gap-3 min-w-0">

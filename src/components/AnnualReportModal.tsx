@@ -70,15 +70,15 @@ export const AnnualReportModal: React.FC<AnnualReportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
       <div 
         id="modal-annual-report"
-        className="bg-white dark:bg-slate-900 rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100 flex flex-col max-h-[92vh]"
+        className="bg-white dark-brushed-metal-modal rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100 flex flex-col max-h-[92vh]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0 no-print">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/10 shrink-0 no-print">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-white/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <BarChart3 className="w-4 h-4" />
             </div>
             <div>
@@ -93,10 +93,10 @@ export const AnnualReportModal: React.FC<AnnualReportModalProps> = ({
 
           <div className="flex items-center gap-2">
             {/* Year Selector */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center bg-slate-100 dark:bg-black/50 rounded-lg p-0.5 border border-slate-200 dark:border-white/10">
               <button
                 onClick={() => setSelectedYear(prev => prev - 1)}
-                className="p-1 rounded text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                className="p-1 rounded text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-white/10 transition-colors cursor-pointer"
                 title="Ano anterior"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -106,7 +106,7 @@ export const AnnualReportModal: React.FC<AnnualReportModalProps> = ({
               </span>
               <button
                 onClick={() => setSelectedYear(prev => prev + 1)}
-                className="p-1 rounded text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                className="p-1 rounded text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-white/10 transition-colors cursor-pointer"
                 title="Próximo ano"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -115,7 +115,7 @@ export const AnnualReportModal: React.FC<AnnualReportModalProps> = ({
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -137,7 +137,7 @@ export const AnnualReportModal: React.FC<AnnualReportModalProps> = ({
               </button>
               <button
                 onClick={handlePrint}
-                className="px-3.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-200 dark:border-white/10 transition-colors cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 Imprimir / Salvar PDF
@@ -153,38 +153,38 @@ export const AnnualReportModal: React.FC<AnnualReportModalProps> = ({
 
           {/* KPI Summary Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="p-4 bg-slate-50 dark-subcard rounded-xl border border-slate-200 dark:border-white/10">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
                 Receitas do Ano
               </span>
-              <span className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono-num">
+              <span className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono-num dark-text-glow-emerald">
                 {formatCurrency(annualSummary.totalIncome)}
               </span>
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="p-4 bg-slate-50 dark-subcard rounded-xl border border-slate-200 dark:border-white/10">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
                 Despesas do Ano
               </span>
-              <span className="text-base sm:text-lg font-bold text-rose-600 dark:text-rose-400 font-mono-num">
+              <span className="text-base sm:text-lg font-bold text-rose-600 dark:text-rose-400 font-mono-num dark-text-glow-rose">
                 {formatCurrency(annualSummary.totalExpense)}
               </span>
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="p-4 bg-slate-50 dark-subcard rounded-xl border border-slate-200 dark:border-white/10">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
                 Saldo Acumulado
               </span>
               <span className={`text-base sm:text-lg font-bold font-mono-num ${
                 annualSummary.netBalance >= 0 
-                  ? 'text-emerald-700 dark:text-emerald-400' 
-                  : 'text-rose-700 dark:text-rose-400'
+                  ? 'text-emerald-700 dark:text-emerald-400 dark-text-glow-emerald' 
+                  : 'text-rose-700 dark:text-rose-400 dark-text-glow-rose'
               }`}>
                 {formatCurrency(annualSummary.netBalance)}
               </span>
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="p-4 bg-slate-50 dark-subcard rounded-xl border border-slate-200 dark:border-white/10">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
                 Taxa Poupança Média
               </span>
@@ -195,7 +195,7 @@ export const AnnualReportModal: React.FC<AnnualReportModalProps> = ({
           </div>
 
           {/* Month-by-month Comparative Bar Chart */}
-          <div className="p-5 bg-white dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/80">
+          <div className="p-5 bg-white dark-subcard rounded-xl border border-slate-200 dark:border-white/10">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                 Comparativo Mensal: Receitas vs Despesas
@@ -211,7 +211,7 @@ export const AnnualReportModal: React.FC<AnnualReportModalProps> = ({
             </div>
 
             {/* Vertical Bars representation */}
-            <div className="grid grid-cols-12 gap-1.5 sm:gap-2 h-48 items-end pt-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+            <div className="grid grid-cols-12 gap-1.5 sm:gap-2 h-48 items-end pt-4 pb-2 border-b border-slate-200 dark:border-white/10">
               {annualSummary.months.map((m, idx) => {
                 const incomePercent = maxMonthValue > 0 ? (m.income / maxMonthValue) * 100 : 0;
                 const expensePercent = maxMonthValue > 0 ? (m.expense / maxMonthValue) * 100 : 0;
@@ -219,7 +219,7 @@ export const AnnualReportModal: React.FC<AnnualReportModalProps> = ({
                 return (
                   <div key={idx} className="flex flex-col items-center h-full justify-end group relative">
                     {/* Tooltip on hover */}
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none bg-slate-900 text-white text-[10px] py-1 px-2 rounded shadow-md whitespace-nowrap">
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none bg-slate-900 dark:bg-black/90 text-white text-[10px] py-1 px-2 rounded shadow-md whitespace-nowrap border border-white/10">
                       <span>Rec: {formatCurrency(m.income)}</span>
                       <span>Desp: {formatCurrency(m.expense)}</span>
                     </div>
@@ -254,9 +254,9 @@ export const AnnualReportModal: React.FC<AnnualReportModalProps> = ({
           </div>
 
           {/* Detailed Monthly Table */}
-          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
             <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
+              <thead className="bg-slate-50 dark:bg-black/40 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-white/10">
                 <tr>
                   <th className="px-4 py-2.5">Mês</th>
                   <th className="px-4 py-2.5 text-right">Receitas</th>
@@ -265,9 +265,9 @@ export const AnnualReportModal: React.FC<AnnualReportModalProps> = ({
                   <th className="px-4 py-2.5 text-right">Taxa Poupança</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono-num">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06] font-mono-num">
                 {annualSummary.months.map((m, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                  <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.04] transition-colors">
                     <td className="px-4 py-2 font-sans font-medium text-slate-800 dark:text-slate-200">
                       {MONTH_NAMES[idx]}
                     </td>

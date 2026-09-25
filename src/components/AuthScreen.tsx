@@ -162,11 +162,11 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         </div>
 
         {/* Main Card */}
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/50 space-y-6">
+        <div className="dark-brushed-metal-modal border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/80 space-y-6">
 
           {/* Mode Switcher Tabs (Only in Login / Register mode) */}
           {mode !== 'forgot' && (
-            <div className="grid grid-cols-2 p-1 bg-slate-950/70 rounded-2xl border border-slate-800">
+            <div className="grid grid-cols-2 p-1 bg-black/50 rounded-2xl border border-white/10">
               <button
                 type="button"
                 onClick={() => {

@@ -127,12 +127,12 @@ export const CloudConfigModal: React.FC<CloudConfigModalProps> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
       <div 
         id="modal-cloud-config"
-        className="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100 flex flex-col max-h-[90vh]"
+        className="bg-white dark-brushed-metal-modal rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100 flex flex-col max-h-[90vh]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/10 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20 dark-glow-emerald">
               <Cloud className="w-4 h-4" />
             </div>
             <div>
@@ -146,7 +146,7 @@ export const CloudConfigModal: React.FC<CloudConfigModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -155,7 +155,7 @@ export const CloudConfigModal: React.FC<CloudConfigModalProps> = ({
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1">
           {/* Offline First notice */}
-          <div className="p-3.5 bg-emerald-50/80 dark:bg-emerald-950/40 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 flex items-start gap-3 text-xs text-emerald-800 dark:text-emerald-300">
+          <div className="p-3.5 bg-emerald-50/80 dark:bg-emerald-950/30 rounded-xl border border-emerald-200/80 dark:border-emerald-800/50 flex items-start gap-3 text-xs text-emerald-800 dark:text-emerald-300">
             <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <div>
               <strong className="block font-semibold mb-0.5">Arquitetura Offline-First</strong>
@@ -195,7 +195,7 @@ export const CloudConfigModal: React.FC<CloudConfigModalProps> = ({
                 value={supabaseUrl}
                 onChange={e => setSupabaseUrl(e.target.value)}
                 placeholder="https://xyzproject.supabase.co"
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100"
               />
             </div>
 
@@ -208,7 +208,7 @@ export const CloudConfigModal: React.FC<CloudConfigModalProps> = ({
                 value={supabaseAnonKey}
                 onChange={e => setSupabaseAnonKey(e.target.value)}
                 placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100"
               />
             </div>
 
@@ -217,7 +217,7 @@ export const CloudConfigModal: React.FC<CloudConfigModalProps> = ({
                 type="button"
                 onClick={handleTestConnection}
                 disabled={isTesting}
-                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs dark-glow-emerald transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isTesting ? 'animate-spin' : ''}`} />
                 {isTesting ? 'Testando...' : 'Testar & Conectar'}
@@ -227,10 +227,10 @@ export const CloudConfigModal: React.FC<CloudConfigModalProps> = ({
                 type="button"
                 onClick={handlePush}
                 disabled={isSyncing}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
                 title="Enviar dados deste dispositivo para a nuvem"
               >
-                <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+                <ArrowUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 Fazer Upload
               </button>
 
@@ -238,20 +238,20 @@ export const CloudConfigModal: React.FC<CloudConfigModalProps> = ({
                 type="button"
                 onClick={handlePull}
                 disabled={isSyncing}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
                 title="Puxar dados mais recentes da nuvem"
               >
-                <ArrowDown className="w-3.5 h-3.5 text-indigo-600" />
+                <ArrowDown className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 Baixar da Nuvem
               </button>
             </div>
           </div>
 
           {/* SQL Setup Helper */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+          <div className="p-4 bg-slate-50 dark-subcard rounded-xl border border-slate-200 dark:border-white/10 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <Code2 className="w-4 h-4 text-slate-500" />
+                <Code2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                 Script SQL para criar as tabelas
               </span>
               <button

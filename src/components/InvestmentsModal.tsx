@@ -189,12 +189,12 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
       <div 
         id="modal-investments"
-        className="bg-white dark:bg-slate-900 rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100 flex flex-col max-h-[92vh]"
+        className="bg-white dark-brushed-metal-modal rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100 flex flex-col max-h-[92vh]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/10 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20 dark-glow-emerald">
               <TrendingUp className="w-4 h-4" />
             </div>
             <div>
@@ -209,7 +209,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -225,7 +225,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
           )}
 
           {/* 1. TOP HERO: PATRIMÔNIO TOTAL CONSOLIDADO */}
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 text-white border border-emerald-500/30 shadow-lg relative overflow-hidden">
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-[#0e1013] to-emerald-950/50 text-white border border-emerald-500/30 shadow-lg relative overflow-hidden dark-glow-emerald">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -236,14 +236,14 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                   <span className="text-xs text-slate-400 font-semibold">• Total Líquido Acumulado</span>
                 </div>
 
-                <div className="text-3xl sm:text-4xl font-black font-mono-num text-white tracking-tight">
+                <div className="text-3xl sm:text-4xl font-black font-mono-num text-white tracking-tight dark-text-glow-emerald">
                   <AnimatedCounter value={grandTotalPatrimonio} />
                 </div>
               </div>
 
               <div className="text-right">
                 <span className="text-xs text-slate-400 block font-medium">Reserva de Emergência Ativa:</span>
-                <span className="text-sm sm:text-base font-extrabold font-mono-num text-emerald-400">
+                <span className="text-sm sm:text-base font-extrabold font-mono-num text-emerald-400 dark-text-glow-emerald">
                   {formatCurrency(emergencyFundBalance)}
                 </span>
               </div>
@@ -251,7 +251,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
 
             {/* Distribution Pills */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-4 border-t border-slate-800/80 mt-4 text-[11px] relative z-10">
-              <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700/60">
+              <div className="p-2 rounded-lg bg-black/40 border border-white/10">
                 <span className="text-slate-400 block">🛡️ Reserva:</span>
                 <strong className="font-mono-num text-emerald-400 font-bold">{formatCurrency(emergencyFundBalance)}</strong>
               </div>
@@ -259,7 +259,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                 const asset = getAssetByType(type);
                 const meta = CATEGORY_METADATA[type];
                 return (
-                  <div key={type} className="p-2 rounded-lg bg-slate-800/60 border border-slate-700/60">
+                  <div key={type} className="p-2 rounded-lg bg-black/40 border border-white/10">
                     <span className="text-slate-400 block truncate">{meta.label}:</span>
                     <strong className="font-mono-num text-white font-bold">{formatCurrency(asset.balance)}</strong>
                   </div>
@@ -270,8 +270,8 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
 
           {/* 2. FORM DE REGISTRO DE APORTE OU SAQUE */}
           {selectedCategory && (
-            <form onSubmit={handleSaveMovement} className="p-4 bg-slate-50 dark:bg-slate-800/70 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4 animate-in fade-in">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200/70 dark:border-slate-700">
+            <form onSubmit={handleSaveMovement} className="p-4 bg-slate-50 dark-subcard rounded-2xl border border-slate-200 dark:border-white/10 space-y-4 animate-in fade-in">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200/70 dark:border-white/10">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">
                     {movementType === 'deposit' ? '+ Registrar Aporte em' : '- Registrar Resgate de'} {CATEGORY_METADATA[selectedCategory].label}
@@ -296,7 +296,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                     value={amountStr}
                     onChange={e => setAmountStr(e.target.value.replace(/[^0-9,.]/g, ''))}
                     placeholder="0,00"
-                    className="w-full px-3 py-2 text-xs font-mono-num font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    className="w-full px-3 py-2 text-xs font-mono-num font-bold rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100"
                     autoFocus
                   />
                 </div>
@@ -309,7 +309,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                     type="date"
                     value={date}
                     onChange={e => setDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-800 dark:text-slate-200"
                   />
                 </div>
 
@@ -322,7 +322,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                     value={institution}
                     onChange={e => setInstitution(e.target.value)}
                     placeholder="Ex: XP, Nubank, Itaú..."
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100"
                   />
                 </div>
               </div>
@@ -336,7 +336,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                   value={note}
                   onChange={e => setNote(e.target.value)}
                   placeholder="Ex: Aporte mensal recorrente, cota 25/60..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100"
                 />
               </div>
 
@@ -351,7 +351,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                 <button
                   type="submit"
                   className={`px-4 py-1.5 text-xs font-bold rounded-lg text-white shadow-xs cursor-pointer ${
-                    movementType === 'deposit' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'
+                    movementType === 'deposit' ? 'bg-emerald-600 hover:bg-emerald-500 dark-glow-emerald' : 'bg-rose-600 hover:bg-rose-500 dark-glow-rose'
                   }`}
                 >
                   Confirmar {movementType === 'deposit' ? 'Aporte' : 'Resgate'}
@@ -376,12 +376,12 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                 return (
                   <div
                     key={type}
-                    className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between"
+                    className="p-4 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark-brushed-metal shadow-xs hover:border-slate-300 dark:hover:border-white/20 transition-all flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2.5">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${meta.badgeClass}`}>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${meta.badgeClass} dark:bg-white/5 dark:border-white/10`}>
                             <IconComponent className="w-4 h-4" />
                           </div>
                           <div>
@@ -397,7 +397,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleOpenMovementForm(type, 'deposit')}
-                            className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors text-xs font-semibold cursor-pointer"
+                            className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors text-xs font-semibold cursor-pointer dark-glow-emerald"
                             title="Novo Aporte"
                           >
                             + Aporte
@@ -413,7 +413,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                       </div>
 
                       {/* Balance Display */}
-                      <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-baseline justify-between">
+                      <div className="mt-3 pt-2 border-t border-slate-100 dark:border-white/10 flex items-baseline justify-between">
                         <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Saldo Acumulado:</span>
                         <span className="text-xl font-extrabold font-mono-num text-slate-900 dark:text-white">
                           {formatCurrency(asset.balance)}
@@ -422,7 +422,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                     </div>
 
                     {/* History Accordion Button */}
-                    <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                    <div className="mt-3 pt-2 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-[11px] text-slate-400">
                       <span>{asset.history?.length || 0} lançamentos registrados</span>
                       <button
                         onClick={() => setExpandedCat(isExpanded ? null : type)}
@@ -435,13 +435,13 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
 
                     {/* Expanded History List */}
                     {isExpanded && (
-                      <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2 animate-in fade-in">
+                      <div className="mt-3 pt-2 border-t border-slate-100 dark:border-white/10 space-y-2 animate-in fade-in">
                         {!asset.history || asset.history.length === 0 ? (
                           <div className="text-center py-3 text-xs text-slate-400">
                             Nenhum aporte registrado nesta subcategoria.
                           </div>
                         ) : (
-                          <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-40 overflow-y-auto pr-1">
+                          <div className="divide-y divide-slate-100 dark:divide-white/[0.06] max-h-40 overflow-y-auto pr-1">
                             {asset.history.map(entry => (
                               <div key={entry.id} className="py-2 flex items-center justify-between text-xs">
                                 <div>

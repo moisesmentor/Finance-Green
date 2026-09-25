@@ -160,7 +160,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   const hasActiveFilters = search || quickTab !== 'all' || categoryFilter !== 'all' || sortBy !== 'date_desc';
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] shadow-xs dark:shadow-2xl overflow-hidden transition-all duration-300">
+    <div className="bg-white dark-brushed-metal rounded-2xl border border-slate-200/80 dark:border-white/[0.08] shadow-xs dark:shadow-2xl overflow-hidden transition-all duration-300">
       
       {/* Header & Filter Controls */}
       <div className="p-5 border-b border-slate-100 dark:border-white/10 space-y-4">
@@ -168,7 +168,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           <div>
             <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
               Extrato & Movimentações
-              <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono-num border border-slate-200/60 dark:border-slate-700/60">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-black/50 text-slate-600 dark:text-slate-300 font-mono-num border border-slate-200/60 dark:border-white/10">
                 {filteredTransactions.length}
               </span>
             </h3>
@@ -180,7 +180,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onAddNew}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all shadow-xs dark:shadow-[0_0_20px_-3px_rgba(16,185,129,0.45)] cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Novo Lançamento
@@ -202,8 +202,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               onClick={() => setQuickTab(tab.id as any)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
                 quickTab === tab.id
-                  ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs'
-                  : 'bg-slate-100/70 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-200/70 dark:hover:bg-slate-700/70'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-950 shadow-xs'
+                  : 'bg-slate-100/70 dark:bg-black/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200/70 dark:hover:bg-white/[0.08] border border-transparent dark:border-white/10'
               }`}
             >
               {tab.label}
@@ -326,7 +326,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               <div
                 key={tx.id}
                 id={`tx-row-${tx.id}`}
-                className="p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                className="p-4 hover:bg-slate-50/80 dark:hover:bg-white/[0.04] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group border-b border-slate-100/80 dark:border-white/[0.06] last:border-b-0"
               >
                 {/* Left Side: Icon & Details */}
                 <div className="flex items-start sm:items-center gap-3.5 min-w-0">
@@ -361,7 +361,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       {/* Recurrent Badge */}
                       {tx.isRecurring && (
                         <span 
-                          className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-black/50 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10"
                           title="Gasto mensal fixo / recorrente"
                         >
                           <Repeat className="w-2.5 h-2.5 text-slate-500" />
@@ -390,7 +390,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 </div>
 
                 {/* Right Side: Status Toggle, Amount & Actions */}
-                <div className="flex items-center justify-between sm:justify-end gap-3.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between sm:justify-end gap-3.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-white/[0.06]">
                   
                   {/* Status Clickable Toggle Pill with Smart Due Alert Badges */}
                   <button
