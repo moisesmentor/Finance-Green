@@ -16,11 +16,13 @@ import {
   ArrowDownLeft,
   Calendar,
   X,
-  CreditCard
+  CreditCard,
+  AlertTriangle,
+  AlertCircle
 } from 'lucide-react';
 import { Transaction, FilterOptions, Category } from '../types';
 import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
-import { formatCurrency, formatDateReadable } from '../utils/formatters';
+import { formatCurrency, formatDateReadable, getDueDateStatus } from '../utils/formatters';
 import { CategoryIcon } from './CategoryIcon';
 
 interface TransactionListProps {
@@ -318,6 +320,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
             const isIncome = tx.type === 'income';
             const isPaid = tx.status === 'paid';
+            const dueStatus = (!isPaid && !isIncome) ? getDueDateStatus(tx.date) : null;
 
             return (
               <div
@@ -389,20 +392,45 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 {/* Right Side: Status Toggle, Amount & Actions */}
                 <div className="flex items-center justify-between sm:justify-end gap-3.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
                   
-                  {/* Status Clickable Toggle Pill */}
+                  {/* Status Clickable Toggle Pill with Smart Due Alert Badges */}
                   <button
                     onClick={() => onToggleStatus(tx.id)}
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer active:scale-95 ${
                       isPaid
                         ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                        : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
+                        : dueStatus?.urgency === 'overdue'
+                          ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30 hover:bg-rose-500/25'
+                          : dueStatus?.urgency === 'today'
+                            ? 'bg-amber-500/20 text-amber-800 dark:text-amber-200 border-amber-500/40 hover:bg-amber-500/30 animate-pulse'
+                            : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
                     }`}
-                    title="Clique para alternar entre Pago e Pendente"
+                    title={
+                      isPaid 
+                        ? 'Marcado como pago (Clique para marcar pendente)' 
+                        : dueStatus?.label 
+                          ? `${dueStatus.label} (Clique para marcar como pago)` 
+                          : 'Clique para alternar entre Pago e Pendente'
+                    }
                   >
                     {isPaid ? (
                       <>
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         <span>{isIncome ? 'Recebido' : 'Pago'}</span>
+                      </>
+                    ) : dueStatus?.urgency === 'overdue' ? (
+                      <>
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                        <span>{dueStatus.label}</span>
+                      </>
+                    ) : dueStatus?.urgency === 'today' ? (
+                      <>
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300" />
+                        <span>Vence Hoje</span>
+                      </>
+                    ) : dueStatus?.urgency === 'upcoming' ? (
+                      <>
+                        <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                        <span>{dueStatus.label}</span>
                       </>
                     ) : (
                       <>

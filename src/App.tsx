@@ -52,8 +52,10 @@ import {
 } from './utils/firebase';
 import { DEFAULT_BUDGETS, CATEGORIES } from './utils/constants';
 import { useTheme } from './utils/useTheme';
+import { getDueDateStatus } from './utils/formatters';
 import { Wallet } from 'lucide-react';
 import { Header } from './components/Header';
+import { DueAlertsBanner } from './components/DueAlertsBanner';
 import { SummaryCards } from './components/SummaryCards';
 import { MonthlyCharts } from './components/MonthlyCharts';
 import { TransactionList } from './components/TransactionList';
@@ -250,6 +252,15 @@ function FinanceApp() {
   const summary = useMemo(() => {
     return calculateSummary(monthTransactions, budgets);
   }, [monthTransactions, budgets]);
+
+  // Contas a vencer urgentes ou atrasadas (geral de todas as transações pendentes)
+  const urgentAlertsCount = useMemo(() => {
+    return transactions.filter(t => {
+      if (t.type !== 'expense' || t.status !== 'pending' || !t.date) return false;
+      const st = getDueDateStatus(t.date);
+      return st.urgency === 'overdue' || st.urgency === 'today' || st.urgency === 'upcoming';
+    }).length;
+  }, [transactions]);
 
   // Logout seguro do usuário
   const handleLogout = async () => {
@@ -503,11 +514,19 @@ function FinanceApp() {
         onToggleTheme={toggleTheme}
         user={currentUser}
         onLogout={handleLogout}
+        urgentAlertsCount={urgentAlertsCount}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         
+        {/* Due Date Payment Alerts (Boletos e Contas a Vencer) */}
+        <DueAlertsBanner
+          transactions={transactions}
+          onMarkAsPaid={handleToggleStatus}
+          categories={allCategories}
+        />
+
         {/* Key Metrics Cards */}
         <SummaryCards
           summary={summary}

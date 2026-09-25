@@ -18,7 +18,8 @@ import {
   LogOut, 
   User as UserIcon,
   ShieldCheck,
-  TrendingUp
+  TrendingUp,
+  BellRing
 } from 'lucide-react';
 import { MonthPeriod, ThemeMode, UserProfile } from '../types';
 import { getMonthLabel, isCurrentMonth } from '../utils/formatters';
@@ -41,6 +42,7 @@ interface HeaderProps {
   onToggleTheme: () => void;
   user: UserProfile | null;
   onLogout: () => void;
+  urgentAlertsCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -61,7 +63,15 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleTheme,
   user,
   onLogout,
+  urgentAlertsCount = 0,
 }) => {
+  const scrollToAlerts = () => {
+    const el = document.getElementById('due-alerts-banner');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const handlePrevMonth = () => {
     if (period.month === 0) {
       onPeriodChange({ year: period.year - 1, month: 11 });
@@ -113,6 +123,18 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Mobile Actions */}
             <div className="flex lg:hidden items-center gap-1.5">
+              {urgentAlertsCount > 0 && (
+                <button
+                  onClick={scrollToAlerts}
+                  className="relative p-2 rounded-xl text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 active:scale-95 transition-transform cursor-pointer"
+                  title={`${urgentAlertsCount} conta(s) a vencer ou atrasada(s)`}
+                >
+                  <BellRing className="w-4 h-4 animate-bounce" />
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[9px] font-bold text-white shadow-xs">
+                    {urgentAlertsCount > 9 ? '9+' : urgentAlertsCount}
+                  </span>
+                </button>
+              )}
               <button
                 onClick={onToggleTheme}
                 className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
@@ -178,6 +200,21 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Action Navigation Pill Buttons */}
           <div className="flex flex-wrap items-center gap-1.5 justify-end">
+            {urgentAlertsCount > 0 && (
+              <button
+                id="btn-due-alerts-bell"
+                onClick={scrollToAlerts}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900/60 transition-all cursor-pointer active:scale-95 animate-pulse"
+                title={`${urgentAlertsCount} conta(s) com vencimento próximo ou atrasada(s)`}
+              >
+                <BellRing className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                <span>Vencimentos</span>
+                <span className="flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-600 text-[10px] font-bold text-white shadow-xs">
+                  {urgentAlertsCount}
+                </span>
+              </button>
+            )}
+
             <button
               id="btn-open-reserve"
               onClick={onOpenReserve || onOpenGoals}
