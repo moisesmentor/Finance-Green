@@ -331,7 +331,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
             <div className="space-y-6">
               
               {/* 1.1 Hero Card da Reserva */}
-              <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-slate-50 to-teal-500/10 dark:from-emerald-950/30 dark:via-black/50 dark:to-teal-950/30 border border-emerald-500/30 dark:border-emerald-500/40 shadow-xs space-y-4">
+              <div className="p-5 rounded-2xl bg-emerald-500/5 dark:bg-[#151518] border border-emerald-500/30 dark:border-emerald-500/40 shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 mb-1">

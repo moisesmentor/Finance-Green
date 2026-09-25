@@ -225,7 +225,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
           )}
 
           {/* 1. TOP HERO: PATRIMÔNIO TOTAL CONSOLIDADO */}
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-[#0e1013] to-emerald-950/50 text-white border border-emerald-500/30 shadow-lg relative overflow-hidden dark-glow-emerald">
+          <div className="p-5 rounded-2xl bg-slate-900 dark:bg-[#151518] text-white border border-emerald-500/30 shadow-lg relative overflow-hidden dark-glow-emerald">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
               <div>
                 <div className="flex items-center gap-2 mb-1">

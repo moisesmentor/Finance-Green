@@ -52,49 +52,23 @@
 }
 
 /* ========================================================================== */
-/* DARK MODE REFINEMENT: TRUE BLACK & BRUSHED TITANIUM (PRECISION MILLED)     */
+/* DARK MODE REFINEMENT: TRUE BLACK & CLEAN MINIMALIST SURFACES               */
 /* ========================================================================== */
 
-/* 1. Header Brushed Metal Texture */
+/* 1. Header Clean Solid Dark Surface */
 .dark .dark-brushed-metal-header {
-  background-color: #16171a !important;
-  background-image: 
-    linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.01) 40%, rgba(0, 0, 0, 0.4) 100%),
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.02) 0px,
-      rgba(255, 255, 255, 0.02) 1px,
-      transparent 1px,
-      transparent 2px,
-      rgba(0, 0, 0, 0.14) 2px,
-      rgba(0, 0, 0, 0.14) 3px,
-      transparent 3px,
-      transparent 4px
-    ),
-    linear-gradient(90deg, #131416 0%, #1e2025 35%, #141518 65%, #212328 100%) !important;
-  box-shadow: inset 0 -1px 0 0 rgba(255, 255, 255, 0.08), 0 4px 24px -4px rgba(0, 0, 0, 0.8) !important;
+  background-color: #121214 !important;
+  background-image: none !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-/* 2. Executive Cards Brushed Metal Texture (Receitas, Gastos, Saldo, Teto) */
+/* 2. Executive Cards Clean Solid Dark Surface (Receitas, Gastos, Saldo, Teto, Listas, Gráficos) */
 .dark .dark-brushed-metal {
-  background-color: #17181c !important;
-  background-image: 
-    linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.01) 35%, rgba(0, 0, 0, 0.35) 100%),
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.02) 0px,
-      rgba(255, 255, 255, 0.02) 1px,
-      transparent 1px,
-      transparent 2px,
-      rgba(0, 0, 0, 0.12) 2px,
-      rgba(0, 0, 0, 0.12) 3px,
-      transparent 3px,
-      transparent 4px
-    ),
-    linear-gradient(90deg, #141518 0%, #1e2025 35%, #151619 65%, #22252a 100%) !important;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 0 rgba(0, 0, 0, 0.6), 0 4px 20px -2px rgba(0, 0, 0, 0.7);
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: #151518 !important;
+  background-image: none !important;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 /* 3. Subtle Brand Emerald & Alert Rose Glows */
@@ -111,30 +85,18 @@
   text-shadow: 0 0 16px rgba(244, 63, 94, 0.4) !important;
 }
 
-/* 4. Modal Container Brushed Metal / Deep Titanium */
+/* 4. Modal Container Clean Solid Dark Surface */
 .dark .dark-brushed-metal-modal {
-  background-color: #131417 !important;
-  background-image: 
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 30%, rgba(0, 0, 0, 0.45) 100%),
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.018) 0px,
-      rgba(255, 255, 255, 0.018) 1px,
-      transparent 1px,
-      transparent 2px,
-      rgba(0, 0, 0, 0.12) 2px,
-      rgba(0, 0, 0, 0.12) 3px,
-      transparent 3px,
-      transparent 4px
-    ),
-    linear-gradient(90deg, #111215 0%, #191b1f 40%, #121316 70%, #1c1e22 100%) !important;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 0 rgba(0, 0, 0, 0.7), 0 25px 50px -12px rgba(0, 0, 0, 0.95) !important;
+  background-color: #161619 !important;
+  background-image: none !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 /* 5. Subcards & List Items inside Dark Mode */
 .dark .dark-subcard {
-  background-color: #17181c !important;
+  background-color: #1a1a1e !important;
+  background-image: none !important;
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
