@@ -93,6 +93,11 @@ export interface FinancialGoal {
   color: string;
   createdAt: number;
   history?: GoalContribution[];
+  isEmergencyFund?: boolean;
+  autoReservePercentage?: number; // 5, 10, 20, etc.
+  autoReserveMode?: 'percentage' | 'fixed';
+  autoReserveFixedAmount?: number;
+  lastConfirmedMonth?: string; // e.g. "2026-10"
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';

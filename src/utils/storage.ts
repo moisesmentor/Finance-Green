@@ -26,6 +26,9 @@ export const DEFAULT_GOALS: FinancialGoal[] = [
     deadline: '2027-12-31',
     categoryIcon: 'Wallet',
     color: '#059669',
+    isEmergencyFund: true,
+    autoReservePercentage: 10,
+    autoReserveMode: 'percentage',
     createdAt: Date.now() - 30 * 24 * 3600 * 1000,
     history: [
       {

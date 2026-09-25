@@ -29,6 +29,7 @@ interface HeaderProps {
   onOpenBudgets: () => void;
   onOpenBackup: () => void;
   onOpenGoals: () => void;
+  onOpenReserve?: () => void;
   onOpenAnnualReport: () => void;
   onOpenCloud?: () => void;
   onOpenFirebaseSync?: () => void;
@@ -47,6 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenBudgets,
   onOpenBackup,
   onOpenGoals,
+  onOpenReserve,
   onOpenAnnualReport,
   onOpenCloud,
   onOpenFirebaseSync,
@@ -174,12 +176,22 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Action Navigation Pill Buttons */}
           <div className="flex flex-wrap items-center gap-1.5 justify-end">
             <button
+              id="btn-open-reserve"
+              onClick={onOpenReserve || onOpenGoals}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100/80 dark:bg-slate-900/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-200/80 dark:border-slate-800 transition-all cursor-pointer active:scale-95"
+              title="Caixa de Reserva de Emergência"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Reserva</span>
+            </button>
+
+            <button
               id="btn-open-goals"
               onClick={onOpenGoals}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100/80 dark:bg-slate-900/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-200/80 dark:border-slate-800 transition-all cursor-pointer active:scale-95"
-              title="Metas e Reservas"
+              title="Metas e Cofrinhos"
             >
-              <PiggyBank className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <Target className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Metas</span>
             </button>
 

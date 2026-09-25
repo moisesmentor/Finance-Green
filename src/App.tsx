@@ -82,6 +82,7 @@ function FinanceApp() {
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
+  const [goalsInitialTab, setGoalsInitialTab] = useState<'reserve' | 'goals'>('reserve');
   const [isAnnualReportModalOpen, setIsAnnualReportModalOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
 
@@ -391,7 +392,14 @@ function FinanceApp() {
         onOpenNewTransaction={handleOpenNewTransaction}
         onOpenBudgets={() => setIsBudgetModalOpen(true)}
         onOpenBackup={() => setIsBackupModalOpen(true)}
-        onOpenGoals={() => setIsGoalsModalOpen(true)}
+        onOpenGoals={() => {
+          setGoalsInitialTab('goals');
+          setIsGoalsModalOpen(true);
+        }}
+        onOpenReserve={() => {
+          setGoalsInitialTab('reserve');
+          setIsGoalsModalOpen(true);
+        }}
         onOpenAnnualReport={() => setIsAnnualReportModalOpen(true)}
         onOpenCloud={() => setIsCloudModalOpen(true)}
         firebaseStatus={firebaseStatus}
@@ -492,6 +500,9 @@ function FinanceApp() {
         onClose={() => setIsGoalsModalOpen(false)}
         goals={goals}
         onSaveGoals={handleSaveGoals}
+        initialTab={goalsInitialTab}
+        monthlyIncome={summary.totalIncome}
+        currentPeriod={period}
       />
 
       <AnnualReportModal
