@@ -242,11 +242,14 @@ export function generateRecurringTransactions(
     transactions.push({
       ...baseData,
       id: `tx-rec-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 6)}`,
+      description: monthsCount > 1 ? `${baseData.description} (${i + 1}/${monthsCount})` : baseData.description,
       date,
       status: isFirst ? baseData.status : 'pending',
       isRecurring: true,
       recurringFrequency: 'monthly',
       installmentGroupId: groupId,
+      installmentCurrent: i + 1,
+      installmentTotal: monthsCount,
       createdAt: Date.now() + i,
     });
   }

@@ -344,7 +344,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       {tx.installmentTotal && tx.installmentTotal > 1 && (
                         <span 
                           className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800"
-                          title={`Compra parcelada em ${tx.installmentTotal} vezes`}
+                          title={`${tx.type === 'income' ? 'Receita parcelada' : 'Lançamento parcelado'} (${tx.installmentCurrent}/${tx.installmentTotal})`}
                         >
                           <Layers className="w-2.5 h-2.5 text-indigo-500" />
                           {tx.installmentCurrent}/{tx.installmentTotal}

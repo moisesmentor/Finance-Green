@@ -239,7 +239,7 @@ function FinanceApp() {
       const installmentTxs = generateInstallmentTransactions(data, installmentsCount);
       setTransactions(prev => [...installmentTxs, ...prev]);
       await batchSaveUserTransactions(currentUser.uid, installmentTxs);
-      showToast(`Compra parcelada em ${installmentsCount}x cadastrada!`);
+      showToast(`${data.type === 'income' ? 'Receita parcelada' : 'Compra parcelada'} em ${installmentsCount}x cadastrada!`);
     } else if (recurringMonths && recurringMonths > 1) {
       // Criação de lançamentos recorrentes
       const recurringTxs = generateRecurringTransactions(data, recurringMonths);

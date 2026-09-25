@@ -88,9 +88,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   // When type changes, adjust category selection
   const handleTypeChange = (newType: TransactionType) => {
     setType(newType);
-    if (newType === 'income') {
-      setIsInstallment(false);
-    }
     const validCats = CATEGORIES.filter(c => c.type === newType || c.type === 'both');
     if (!validCats.some(c => c.id === categoryId)) {
       if (validCats.length > 0) {
@@ -342,9 +339,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
           </div>
 
-          {/* PARCELAMENTO (Apenas para despesas novas) */}
-          {!initialData && type === 'expense' && (
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 space-y-2.5">
+          {/* PARCELAMENTO (Disponível para Despesas e Receitas) */}
+          {!initialData && (
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 space-y-2.5">
               <label className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-200 font-semibold cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -357,44 +354,51 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 />
                 <span className="flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5 text-indigo-500" />
-                  Compra Parcelada (ex: Cartão de Crédito)
+                  {type === 'expense' 
+                    ? 'Compra / Despesa Parcelada (dividir valor total em parcelas)' 
+                    : 'Receita Parcelada (dividir valor recebido em parcelas)'}
                 </span>
               </label>
 
               {isInstallment && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1.5 animate-in fade-in">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                      Quantidade de Parcelas
-                    </label>
-                    <select
-                      value={installmentsCount}
-                      onChange={e => setInstallmentsCount(parseInt(e.target.value, 10))}
-                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
-                    >
-                      {[2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 18, 24, 36, 48].map(n => (
-                        <option key={n} value={n}>
-                          {n}x parcelas
-                        </option>
-                      ))}
-                    </select>
+                <div className="space-y-2.5 pt-1 animate-in fade-in">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                        Quantidade de Parcelas
+                      </label>
+                      <select
+                        value={installmentsCount}
+                        onChange={e => setInstallmentsCount(parseInt(e.target.value, 10))}
+                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold cursor-pointer"
+                      >
+                        {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 30, 36, 48, 60].map(n => (
+                          <option key={n} value={n}>
+                            {n}x parcelas {n === 2 ? (type === 'income' ? '(ex: 13º em 2x)' : '') : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-col justify-center px-3 py-1.5 bg-indigo-50/70 dark:bg-indigo-950/30 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
+                      <span className="text-[10px] uppercase font-bold text-indigo-700 dark:text-indigo-400">
+                        {type === 'expense' ? 'Gasto por Parcela' : 'Entrada por Parcela'}
+                      </span>
+                      <span className="text-sm font-bold font-mono-num text-indigo-900 dark:text-indigo-200">
+                        {formatCurrency(installmentValue)} /mês
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-col justify-center px-3 py-1.5 bg-indigo-50/70 dark:bg-indigo-950/30 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
-                    <span className="text-[10px] uppercase font-bold text-indigo-700 dark:text-indigo-400">
-                      Valor por Parcela
-                    </span>
-                    <span className="text-sm font-bold font-mono-num text-indigo-900 dark:text-indigo-200">
-                      {formatCurrency(installmentValue)} /mês
-                    </span>
-                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                    💡 Serão criadas {installmentsCount} movimentações individuais no extrato com numeração (ex: 1/{installmentsCount}, 2/{installmentsCount}...).
+                  </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* RECORRÊNCIA (Despesa Fixa / Entrada Recorrente) */}
+          {/* RECORRÊNCIA (Lançamento Fixo para Despesas e Receitas) */}
           {!initialData && !isInstallment && (
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 space-y-2.5">
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 space-y-2.5">
               <label className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-200 font-semibold cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -404,23 +408,44 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 />
                 <span className="flex items-center gap-1.5">
                   <Repeat className="w-3.5 h-3.5 text-emerald-500" />
-                  Lançamento Fixo / Recorrente (aluguel, salário, assinatura)
+                  {type === 'expense' 
+                    ? 'Despesa Fixa / Recorrente (repetir valor todo mês)' 
+                    : 'Receita Fixa / Recorrente (salário, pro-labore, contrato)'}
                 </span>
               </label>
 
               {isRecurring && (
-                <div className="pt-1.5 text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2 animate-in fade-in">
-                  <span>Projetar automaticamente para os próximos:</span>
-                  <select
-                    value={recurringMonths}
-                    onChange={e => setRecurringMonths(parseInt(e.target.value, 10))}
-                    className="px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
-                  >
-                    <option value={1}>Apenas este mês</option>
-                    <option value={3}>3 meses</option>
-                    <option value={6}>6 meses</option>
-                    <option value={12}>12 meses (1 ano)</option>
-                  </select>
+                <div className="space-y-2 pt-1 animate-in fade-in">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <label className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                      Repetir por quantos meses:
+                    </label>
+                    <select
+                      value={recurringMonths}
+                      onChange={e => setRecurringMonths(parseInt(e.target.value, 10))}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
+                    >
+                      <option value={2}>2 meses</option>
+                      <option value={3}>3 meses</option>
+                      <option value={4}>4 meses</option>
+                      <option value={5}>5 meses</option>
+                      <option value={6}>6 meses (semestre)</option>
+                      <option value={7}>7 meses</option>
+                      <option value={8}>8 meses</option>
+                      <option value={9}>9 meses</option>
+                      <option value={10}>10 meses</option>
+                      <option value={11}>11 meses</option>
+                      <option value={12}>12 meses (1 ano)</option>
+                      <option value={18}>18 meses (1 ano e meio)</option>
+                      <option value={24}>24 meses (2 anos)</option>
+                      <option value={36}>36 meses (3 anos)</option>
+                      <option value={48}>48 meses (4 anos)</option>
+                      <option value={60}>60 meses (5 anos)</option>
+                    </select>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                    💡 Cada mês receberá um lançamento individual no extrato numerado (ex: 1/{recurringMonths}, 2/{recurringMonths}...) no valor de {formatCurrency(parsedAmount)}.
+                  </p>
                 </div>
               )}
             </div>
