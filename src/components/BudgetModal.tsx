@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Target, Check, AlertTriangle } from 'lucide-react';
+import { X, Target, Check, AlertTriangle, Plus, Sparkles } from 'lucide-react';
 import { CategoryBudget, Transaction, Category } from '../types';
 import { CATEGORIES } from '../utils/constants';
 import { CategoryIcon } from './CategoryIcon';
 import { formatCurrency } from '../utils/formatters';
+import { CreateCategoryForm } from './CreateCategoryForm';
 
 interface BudgetModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface BudgetModalProps {
   onSaveBudgets: (budgets: CategoryBudget[]) => void;
   transactionsThisMonth: Transaction[];
   categories?: Category[];
+  onSaveCustomCategory?: (category: Category) => Promise<void> | void;
 }
 
 export const BudgetModal: React.FC<BudgetModalProps> = ({
@@ -21,10 +23,13 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
   onSaveBudgets,
   transactionsThisMonth,
   categories,
+  onSaveCustomCategory,
 }) => {
   const [budgetValues, setBudgetValues] = useState<Record<string, string>>({});
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 
-  const expenseCategories = (categories || CATEGORIES).filter(c => c.type === 'expense');
+  const allCats = categories || CATEGORIES;
+  const expenseCategories = allCats.filter(c => c.type === 'expense' || c.type === 'both');
 
   // Compute spent amount per category this month
   const categorySpentMap: Record<string, number> = {};
@@ -41,7 +46,7 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
       initialMap[cat.id] = found && found.limit > 0 ? found.limit.toString() : '';
     }
     setBudgetValues(initialMap);
-  }, [currentBudgets, isOpen]);
+  }, [currentBudgets, isOpen, categories]);
 
   if (!isOpen) return null;
 
@@ -65,6 +70,19 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
     onClose();
   };
 
+  const handleCreateCategory = async (newCategory: Category, initialLimit?: number) => {
+    if (onSaveCustomCategory) {
+      await onSaveCustomCategory(newCategory);
+    }
+    if (initialLimit && initialLimit > 0) {
+      setBudgetValues(prev => ({
+        ...prev,
+        [newCategory.id]: initialLimit.toString(),
+      }));
+    }
+    setIsCreatingCategory(false);
+  };
+
   // Total budgeted sum
   const totalBudgeted = Object.values(budgetValues).reduce((acc, val) => {
     const num = parseFloat(val);
@@ -77,7 +95,7 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
       <div 
         id="modal-budgets"
-        className="bg-white dark-brushed-metal-modal rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh] text-slate-900 dark:text-slate-100"
+        className="bg-white dark:bg-[#161619] rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh] text-slate-900 dark:text-slate-100"
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/10">
@@ -104,19 +122,52 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
         </div>
 
         {/* Overview Bar */}
-        <div className="bg-slate-50 dark:bg-black/40 px-6 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between text-xs">
-          <div>
-            <span className="text-slate-500 dark:text-slate-400">Gasto total no mês:</span>{' '}
-            <strong className="text-rose-600 dark:text-rose-400 font-mono-num font-bold">{formatCurrency(totalSpent)}</strong>
+        <div className="bg-slate-50 dark:bg-black/40 px-6 py-3 border-b border-slate-100 dark:border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-4">
+            <div>
+              <span className="text-slate-500 dark:text-slate-400">Gasto no mês:</span>{' '}
+              <strong className="text-rose-600 dark:text-rose-400 font-mono-num font-bold">{formatCurrency(totalSpent)}</strong>
+            </div>
+            <div>
+              <span className="text-slate-500 dark:text-slate-400">Teto total:</span>{' '}
+              <strong className="text-emerald-700 dark:text-emerald-400 font-mono-num font-bold">{formatCurrency(totalBudgeted)}</strong>
+            </div>
           </div>
-          <div>
-            <span className="text-slate-500 dark:text-slate-400">Teto total estipulado:</span>{' '}
-            <strong className="text-emerald-700 dark:text-emerald-400 font-mono-num font-bold">{formatCurrency(totalBudgeted)}</strong>
-          </div>
+
+          {/* Quick Add Category Button in Header Bar */}
+          {!isCreatingCategory && (
+            <button
+              type="button"
+              onClick={() => setIsCreatingCategory(true)}
+              id="btn-open-create-category-budget"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200/80 dark:border-emerald-800/80 transition-all cursor-pointer active:scale-95"
+              title="Criar nova categoria de despesa"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Nova Categoria</span>
+            </button>
+          )}
         </div>
 
         {/* Form list */}
         <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-4">
+          
+          {/* Formulário de Criação de Nova Categoria (quando aberto) */}
+          {isCreatingCategory && (
+            <div className="mb-4">
+              <CreateCategoryForm
+                onClose={() => setIsCreatingCategory(false)}
+                onSave={handleCreateCategory}
+                existingCategories={allCats}
+                defaultType="expense"
+                showTypeSelector={false}
+                showInitialBudget={true}
+                title="Nova Categoria de Orçamento"
+                subtitle="Defina o nome, ícone, cor e teto mensal em um único passo"
+              />
+            </div>
+          )}
+
           <div className="space-y-3">
             {expenseCategories.map(cat => {
               const spent = categorySpentMap[cat.id] || 0;
@@ -130,19 +181,33 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
               return (
                 <div 
                   key={cat.id} 
-                  className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark-subcard hover:border-slate-300 dark:hover:border-white/20 transition-colors"
+                  className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a1e] hover:border-slate-300 dark:hover:border-white/20 transition-colors"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     
                     {/* Category Label */}
                     <div className="flex items-center gap-2.5">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${cat.bgLight} dark:bg-white/5 dark:border-white/10`}>
+                      <div 
+                        className="w-8 h-8 rounded-lg flex items-center justify-center border shrink-0"
+                        style={{
+                          backgroundColor: cat.color ? `${cat.color}15` : undefined,
+                          borderColor: cat.color ? `${cat.color}35` : undefined,
+                          color: cat.color || '#10b981',
+                        }}
+                      >
                         <CategoryIcon name={cat.icon} className="w-4 h-4" />
                       </div>
                       <div>
-                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                          {cat.name}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                            {cat.name}
+                          </span>
+                          {cat.isCustom && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              <Sparkles className="w-2 h-2" /> Minha
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">
                           Gasto atual: <span className="font-mono-num font-medium text-slate-700 dark:text-slate-300">{formatCurrency(spent)}</span>
                         </div>
@@ -196,10 +261,26 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
                 </div>
               );
             })}
+
+            {/* Dashed button at the bottom of the list */}
+            {!isCreatingCategory && (
+              <button
+                type="button"
+                onClick={() => setIsCreatingCategory(true)}
+                id="btn-add-category-dashed"
+                className="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 hover:border-emerald-500 dark:hover:border-emerald-500/60 bg-slate-50/50 dark:bg-white/[0.02] hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all flex items-center justify-center gap-2 font-semibold text-xs cursor-pointer group"
+              >
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Plus className="w-3.5 h-3.5" />
+                </div>
+                <span>+ Criar Nova Categoria de Despesa</span>
+              </button>
+            )}
+
           </div>
 
           {/* Footer Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-white/10 sticky bottom-0 bg-white dark:bg-[#131417]">
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-white/10 sticky bottom-0 bg-white dark:bg-[#161619]">
             <button
               type="button"
               onClick={onClose}

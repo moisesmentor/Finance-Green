@@ -619,6 +619,7 @@ function FinanceApp() {
         onSaveBudgets={handleSaveBudgets}
         transactionsThisMonth={monthTransactions}
         categories={allCategories}
+        onSaveCustomCategory={handleSaveCustomCategory}
       />
 
       <GoalsModal
