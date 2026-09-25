@@ -49,6 +49,15 @@
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(148, 163, 184, 0.5);
   }
+
+  /* Utility to hide scrollbars for smooth touch scroll */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 /* ========================================================================== */
