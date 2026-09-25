@@ -98,7 +98,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     }
     setError('');
     setIsCreatingCategory(false);
-    setCatError('');
   }, [initialData, isOpen, currentPeriod, allCategories]);
 
   // When type changes, adjust category selection
