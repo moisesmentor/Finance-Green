@@ -160,10 +160,10 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   const hasActiveFilters = search || quickTab !== 'all' || categoryFilter !== 'all' || sortBy !== 'date_desc';
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs overflow-hidden transition-all">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] shadow-xs dark:shadow-2xl overflow-hidden transition-all duration-300">
       
       {/* Header & Filter Controls */}
-      <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 space-y-4">
+      <div className="p-5 border-b border-slate-100 dark:border-white/10 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">

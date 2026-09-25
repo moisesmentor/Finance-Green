@@ -468,7 +468,7 @@ function FinanceApp() {
   // 1. Tela de Carregamento da Sessão
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-950 dark:bg-[#060606] flex flex-col items-center justify-center p-4">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-500/20 animate-pulse">
             <Wallet className="w-6 h-6 text-white" />
@@ -488,7 +488,7 @@ function FinanceApp() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-emerald-100 selection:text-emerald-900 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#060606] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-emerald-100 selection:text-emerald-900 transition-colors duration-300">
       
       {/* Top Header */}
       <Header
@@ -556,7 +556,7 @@ function FinanceApp() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200/80 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-950 transition-colors no-print">
+      <footer className="border-t border-slate-200/80 dark:border-white/[0.08] py-6 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-[#060606] transition-colors duration-300 no-print">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Finance Pro • Ambiente executivo isolado por credencial autenticada</span>
           <div className="flex items-center gap-4">

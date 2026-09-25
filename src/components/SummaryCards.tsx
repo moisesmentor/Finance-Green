@@ -38,14 +38,14 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, onOpenBudge
       {/* 1. RECEITAS TOTAIS */}
       <div 
         id="card-summary-income"
-        className="relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between group"
+        className="relative overflow-hidden bg-white dark-brushed-metal rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:border-slate-300 dark:hover:border-white/20 transition-all duration-300 flex flex-col justify-between group"
       >
         <div>
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80 mb-3">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10 mb-3">
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Receitas Totais
             </span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20 dark:border-emerald-500/30 dark:shadow-[0_0_16px_rgba(16,185,129,0.35)]">
               <TrendingUp className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -55,7 +55,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, onOpenBudge
           </div>
         </div>
 
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
           <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
             Entradas ativas
@@ -69,24 +69,24 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, onOpenBudge
       {/* 2. TOTAL DE GASTOS */}
       <div 
         id="card-summary-expenses"
-        className="relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between group"
+        className="relative overflow-hidden bg-white dark-brushed-metal rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:border-slate-300 dark:hover:border-white/20 transition-all duration-300 flex flex-col justify-between group"
       >
         <div>
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80 mb-3">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10 mb-3">
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Total de Gastos
             </span>
-            <div className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-500/20">
+            <div className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-500/20 dark:border-rose-500/30 dark:shadow-[0_0_16px_rgba(244,63,94,0.35)]">
               <TrendingDown className="w-3.5 h-3.5" />
             </div>
           </div>
           
-          <div className="text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 font-mono-num tracking-tight">
+          <div className="text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 font-mono-num tracking-tight dark:dark-text-glow-rose">
             <AnimatedCounter value={summary.totalExpense} />
           </div>
         </div>
 
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] font-semibold">
+        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-[11px] font-semibold">
           <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400" title="Despesas já pagas">
             <CheckCircle2 className="w-3 h-3" />
             Pagas: {formatCurrency(summary.paidExpense)}
@@ -101,14 +101,14 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, onOpenBudge
       {/* 3. SALDO LÍQUIDO (HERO CARD COM SPARKLINE EXECUTIVO) */}
       <div 
         id="card-summary-balance"
-        className={`relative overflow-hidden rounded-2xl p-5 border shadow-xs hover:border-slate-400 dark:hover:border-slate-600 transition-all flex flex-col justify-between group ${
+        className={`relative overflow-hidden rounded-2xl p-5 border shadow-xs hover:border-slate-400 dark:hover:border-white/30 transition-all duration-300 flex flex-col justify-between group dark-brushed-metal ${
           isPositiveBalance
-            ? 'bg-gradient-to-br from-white via-white to-emerald-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 border-emerald-500/30'
-            : 'bg-gradient-to-br from-white via-white to-rose-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-rose-950/20 border-rose-500/30'
+            ? 'bg-gradient-to-br from-white via-white to-emerald-50/30 border-emerald-500/30 dark:border-emerald-500/40 dark:shadow-[0_0_24px_-4px_rgba(16,185,129,0.35)]'
+            : 'bg-gradient-to-br from-white via-white to-rose-50/30 border-rose-500/30 dark:border-rose-500/40 dark:shadow-[0_0_24px_-4px_rgba(244,63,94,0.35)]'
         }`}
       >
         <div>
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80 mb-3">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10 mb-3">
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Saldo Líquido
             </span>
@@ -139,15 +139,15 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, onOpenBudge
           </div>
           
           <div className={`text-2xl sm:text-3xl font-extrabold font-mono-num tracking-tight ${
-            isPositiveBalance ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+            isPositiveBalance ? 'text-emerald-600 dark:text-emerald-400 dark:dark-text-glow-emerald' : 'text-rose-600 dark:text-rose-400 dark:dark-text-glow-rose'
           }`}>
             <AnimatedCounter value={summary.netBalance} />
           </div>
         </div>
 
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
           <span>Taxa de Poupança:</span>
-          <span className="font-bold text-slate-800 dark:text-slate-200 font-mono-num bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-[11px] border border-slate-200/60 dark:border-slate-700/60">
+          <span className="font-bold text-slate-800 dark:text-slate-200 font-mono-num bg-slate-100 dark:bg-black/50 px-2 py-0.5 rounded-md text-[11px] border border-slate-200/60 dark:border-white/10">
             {summary.savingsRate.toFixed(1)}% poupado
           </span>
         </div>
@@ -156,10 +156,10 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, onOpenBudge
       {/* 4. TETO ORÇAMENTÁRIO & EXECUÇÃO */}
       <div 
         id="card-summary-budget"
-        className="relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between group"
+        className="relative overflow-hidden bg-white dark-brushed-metal rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:border-slate-300 dark:hover:border-white/20 transition-all duration-300 flex flex-col justify-between group"
       >
         <div>
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80 mb-3">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10 mb-3">
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Teto Orçamentário
             </span>
@@ -185,14 +185,14 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, onOpenBudge
               </div>
 
               {/* Precision Executive Progress Bar */}
-              <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-3 overflow-hidden">
+              <div className="w-full bg-slate-100 dark:bg-black/60 rounded-full h-2 mt-3 overflow-hidden border border-transparent dark:border-white/5">
                 <div 
                   className={`h-full rounded-full transition-all duration-700 ${
                     isBudgetExceeded 
-                      ? 'bg-rose-500' 
+                      ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]' 
                       : isBudgetWarning 
-                        ? 'bg-amber-500' 
-                        : 'bg-emerald-500'
+                        ? 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.5)]' 
+                        : 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]'
                   }`}
                   style={{ width: `${Math.min(100, summary.budgetPercentageUsed)}%` }}
                 />
@@ -214,10 +214,10 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, onOpenBudge
           )}
         </div>
 
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
           {summary.totalBudgetLimit > 0 ? (
             isBudgetExceeded ? (
-              <span className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1 text-[11px]">
+              <span className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1 text-[11px] dark:dark-text-glow-rose">
                 <AlertCircle className="w-3.5 h-3.5" />
                 Excedeu {formatCurrency(summary.totalExpense - summary.totalBudgetLimit)}
               </span>
