@@ -19,6 +19,7 @@ import {
   ArrowRightLeft,
   Zap,
   HelpCircle,
+  PawPrint,
   LucideProps
 } from 'lucide-react';
 
@@ -28,6 +29,8 @@ interface CategoryIconProps extends LucideProps {
 
 export const CategoryIcon: React.FC<CategoryIconProps> = ({ name, className = 'w-4 h-4', ...props }) => {
   switch (name) {
+    case 'PawPrint':
+      return <PawPrint className={className} {...props} />;
     case 'Home':
       return <Home className={className} {...props} />;
     case 'Utensils':

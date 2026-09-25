@@ -84,6 +84,15 @@ export const CATEGORIES: Category[] = [
     type: 'expense',
   },
   {
+    id: 'pets',
+    name: 'Pets',
+    icon: 'PawPrint',
+    color: '#0d9488', // teal-600
+    bgLight: 'bg-teal-50 text-teal-700 border-teal-200',
+    textColor: 'text-teal-700',
+    type: 'expense',
+  },
+  {
     id: 'outros_gastos',
     name: 'Outros Gastos',
     icon: 'MoreHorizontal',
@@ -154,6 +163,7 @@ export const DEFAULT_BUDGETS: CategoryBudget[] = [
   { categoryId: 'lazer', limit: 600 },
   { categoryId: 'servicos', limit: 250 },
   { categoryId: 'compras', limit: 400 },
+  { categoryId: 'pets', limit: 300 },
 ];
 
 export function getSampleTransactions(): Transaction[] {
