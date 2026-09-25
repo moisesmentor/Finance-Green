@@ -488,7 +488,7 @@ function FinanceApp() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#060606] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-emerald-100 selection:text-emerald-900 transition-colors duration-300">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 dark:bg-[#060606] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-emerald-100 selection:text-emerald-900 transition-colors duration-300">
       
       {/* Top Header */}
       <Header
@@ -518,7 +518,7 @@ function FinanceApp() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-x-hidden">
         
         {/* Due Date Payment Alerts (Boletos e Contas a Vencer) */}
         <DueAlertsBanner

@@ -328,7 +328,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 placeholder={type === 'expense' ? 'Ex: Supermercado, Aluguel...' : 'Ex: Salário, Freelance...'}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
+                className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
                 autoFocus
               />
             </div>
@@ -338,7 +338,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 Valor Total (R$) <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-2 text-sm font-semibold text-slate-400">
+                <span className="absolute left-3 top-2 text-base sm:text-sm font-semibold text-slate-400">
                   R$
                 </span>
                 <input
@@ -351,7 +351,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     setAmountStr(val);
                   }}
                   placeholder="0,00"
-                  className="w-full pl-9 pr-3 py-2 text-sm font-mono-num font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
+                  className="w-full pl-9 pr-3 py-2 text-base sm:text-sm font-mono-num font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
                 />
               </div>
             </div>
@@ -388,7 +388,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     setCategoryId(e.target.value);
                   }
                 }}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
+                className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
               >
                 {filteredCategories.some(c => c.isCustom) && (
                   <optgroup label="⭐ Minhas Categorias">
@@ -421,7 +421,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 type="date"
                 value={date}
                 onChange={e => setDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
               />
             </div>
           </div>
@@ -472,7 +472,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       if (catError) setCatError('');
                     }}
                     placeholder="Ex: Cursos & Mentoria, Presentes, Academia..."
-                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                    className="w-full px-3 py-1.5 text-base sm:text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                     autoFocus
                   />
                 </div>
@@ -606,7 +606,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 id="tx-payment-method"
                 value={paymentMethod}
                 onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
               >
                 {PAYMENT_METHODS.map(pm => (
                   <option key={pm.id} value={pm.id}>
@@ -627,7 +627,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   onClick={() => setStatus('paid')}
                   className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                     status === 'paid'
-                      ? 'bg-emerald-600 text-white shadow-xs'
+                       ? 'bg-emerald-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
@@ -680,7 +680,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       <select
                         value={installmentsCount}
                         onChange={e => setInstallmentsCount(parseInt(e.target.value, 10))}
-                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold cursor-pointer"
+                        className="w-full px-2.5 py-1.5 text-base sm:text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold cursor-pointer"
                       >
                         {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 30, 36, 48, 60].map(n => (
                           <option key={n} value={n}>
@@ -733,7 +733,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     <select
                       value={recurringMonths}
                       onChange={e => setRecurringMonths(parseInt(e.target.value, 10))}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
+                      className="px-3 py-1.5 text-base sm:text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
                     >
                       <option value={2}>2 meses</option>
                       <option value={3}>3 meses</option>
@@ -772,7 +772,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Ex: Compra do almoço de domingo, taxa de entrega..."
-              className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
+              className="w-full px-3 py-2 text-base sm:text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
             />
           </div>
 

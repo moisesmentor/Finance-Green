@@ -171,7 +171,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
         </div>
 
         {/* Tab Buttons Segmented Control */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-black/50 rounded-xl border border-slate-200/70 dark:border-white/10 self-start sm:self-auto text-xs font-bold">
+        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-black/50 rounded-xl border border-slate-200/70 dark:border-white/10 self-start sm:self-auto text-xs font-bold max-w-full overflow-x-auto scrollbar-none">
           <button
             onClick={() => setActiveTab('categories')}
             className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -402,7 +402,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
 
           {/* SubView 1: Smooth Bézier Area Chart */}
           {chartSubView === 'area' ? (
-            <div className="p-4 rounded-2xl bg-slate-50/60 dark:bg-black/40 border border-slate-100 dark:border-white/10 relative">
+            <div className="p-4 rounded-2xl bg-slate-50/60 dark:bg-black/40 border border-slate-100 dark:border-white/10 relative overflow-hidden">
               <div className="h-44 w-full relative">
                 <svg 
                   className="w-full h-full overflow-visible" 
@@ -480,7 +480,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
             </div>
           ) : (
             /* SubView 2: Classic Capsule Bars */
-            <div className="p-4 rounded-2xl bg-slate-50/60 dark:bg-black/40 border border-slate-100 dark:border-white/10">
+            <div className="p-4 rounded-2xl bg-slate-50/60 dark:bg-black/40 border border-slate-100 dark:border-white/10 overflow-hidden">
               <div className="h-44 w-full flex items-end gap-1 sm:gap-1.5 pt-4 pb-2 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
                 {dailySpending.days.map(d => {
                   const heightPercent = d.amount > 0 ? Math.max(8, (d.amount / dailySpending.maxAmount) * 100) : 0;

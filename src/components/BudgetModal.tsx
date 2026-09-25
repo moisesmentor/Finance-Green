@@ -158,7 +158,7 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
                         value={limitStr}
                         onChange={e => handleInputChange(cat.id, e.target.value)}
                         placeholder="Ex: 800"
-                        className="w-28 px-2.5 py-1.5 text-xs sm:text-sm font-mono-num font-semibold text-right rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
+                        className="w-28 px-2.5 py-1.5 text-base sm:text-sm font-mono-num font-semibold text-right rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
                       />
                     </div>
 

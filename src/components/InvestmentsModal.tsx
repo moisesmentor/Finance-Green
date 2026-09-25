@@ -296,7 +296,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                     value={amountStr}
                     onChange={e => setAmountStr(e.target.value.replace(/[^0-9,.]/g, ''))}
                     placeholder="0,00"
-                    className="w-full px-3 py-2 text-xs font-mono-num font-bold rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100"
+                    className="w-full px-3 py-2 text-base sm:text-xs font-mono-num font-bold rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100"
                     autoFocus
                   />
                 </div>
@@ -309,7 +309,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                     type="date"
                     value={date}
                     onChange={e => setDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-800 dark:text-slate-200"
+                    className="w-full px-3 py-2 text-base sm:text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-800 dark:text-slate-200"
                   />
                 </div>
 
@@ -322,7 +322,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                     value={institution}
                     onChange={e => setInstitution(e.target.value)}
                     placeholder="Ex: XP, Nubank, Itaú..."
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100"
+                    className="w-full px-3 py-2 text-base sm:text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100"
                   />
                 </div>
               </div>
@@ -336,7 +336,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                   value={note}
                   onChange={e => setNote(e.target.value)}
                   placeholder="Ex: Aporte mensal recorrente, cota 25/60..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100"
+                  className="w-full px-3 py-2 text-base sm:text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100"
                 />
               </div>
 
