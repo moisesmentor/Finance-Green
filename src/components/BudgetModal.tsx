@@ -3,7 +3,7 @@ import { X, Target, Check, AlertTriangle, Plus, Sparkles } from 'lucide-react';
 import { CategoryBudget, Transaction, Category } from '../types';
 import { CATEGORIES } from '../utils/constants';
 import { CategoryIcon } from './CategoryIcon';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, parseCurrencyInput } from '../utils/formatters';
 import { CreateCategoryForm } from './CreateCategoryForm';
 
 interface BudgetModalProps {
@@ -51,7 +51,8 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
   if (!isOpen) return null;
 
   const handleInputChange = (catId: string, val: string) => {
-    const clean = val.replace(/[^0-9.]/g, '');
+    // Permite dígitos, pontos e vírgulas para flexibilidade com pontuação brasileira
+    const clean = val.replace(/[^0-9.,]/g, '');
     setBudgetValues(prev => ({ ...prev, [catId]: clean }));
   };
 
@@ -59,11 +60,11 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
     e.preventDefault();
     const updated: CategoryBudget[] = [];
 
-    for (const [catId, val] of Object.entries(budgetValues)) {
-      const num = parseFloat(val);
-      if (!isNaN(num) && num > 0) {
-        updated.push({ categoryId: catId, limit: Math.round(num * 100) / 100 });
-      }
+    // Garante que todas as categorias de despesa sejam contabilizadas com limite (ou 0 se limpo)
+    for (const cat of expenseCategories) {
+      const val = budgetValues[cat.id] ?? '';
+      const limit = parseCurrencyInput(val);
+      updated.push({ categoryId: cat.id, limit });
     }
 
     onSaveBudgets(updated);
@@ -83,11 +84,12 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
     setIsCreatingCategory(false);
   };
 
-  // Total budgeted sum
+  // Total budgeted sum com parsing robusto
   const totalBudgeted = Object.values(budgetValues).reduce((acc, val) => {
-    const num = parseFloat(val);
-    return acc + (isNaN(num) ? 0 : num);
+    const num = parseCurrencyInput(val);
+    return acc + num;
   }, 0);
+
 
   const totalSpent = Object.values(categorySpentMap).reduce((acc, val) => acc + val, 0);
 
@@ -172,7 +174,7 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
             {expenseCategories.map(cat => {
               const spent = categorySpentMap[cat.id] || 0;
               const limitStr = budgetValues[cat.id] || '';
-              const limitNum = parseFloat(limitStr) || 0;
+              const limitNum = parseCurrencyInput(limitStr);
               const hasLimit = limitNum > 0;
               const percent = hasLimit ? (spent / limitNum) * 100 : 0;
               const isOver = percent > 100;

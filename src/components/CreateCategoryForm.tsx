@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, X, Check, AlertCircle, Target } from 'lucide-react';
 import { Category, TransactionType } from '../types';
 import { CategoryIcon } from './CategoryIcon';
+import { parseCurrencyInput } from '../utils/formatters';
 
 export const PRESET_ICONS = [
   'Tag',
@@ -117,11 +118,12 @@ export const CreateCategoryForm: React.FC<CreateCategoryFormProps> = ({
 
     let budgetNum: number | undefined = undefined;
     if (showInitialBudget && budgetLimitStr) {
-      const parsed = parseFloat(budgetLimitStr.replace(/[^0-9.]/g, ''));
-      if (!isNaN(parsed) && parsed > 0) {
-        budgetNum = Math.round(parsed * 100) / 100;
+      const parsed = parseCurrencyInput(budgetLimitStr);
+      if (parsed > 0) {
+        budgetNum = parsed;
       }
     }
+
 
     setIsSaving(true);
     try {
@@ -235,7 +237,7 @@ export const CreateCategoryForm: React.FC<CreateCategoryFormProps> = ({
                 inputMode="decimal"
                 value={budgetLimitStr}
                 onChange={e => {
-                  const clean = e.target.value.replace(/[^0-9.]/g, '');
+                  const clean = e.target.value.replace(/[^0-9.,]/g, '');
                   setBudgetLimitStr(clean);
                 }}
                 placeholder="Ex: 500"

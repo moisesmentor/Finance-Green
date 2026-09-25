@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Check, Calendar, Tag, CreditCard, FileText, Repeat, Layers, Calculator, Plus } from 'lucide-react';
 import { Transaction, TransactionType, PaymentMethod, MonthPeriod, Category } from '../types';
 import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, parseCurrencyInput } from '../utils/formatters';
 import { CategoryIcon } from './CategoryIcon';
 import { CreateCategoryForm } from './CreateCategoryForm';
 
@@ -115,7 +115,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const filteredCategories = allCategories.filter(c => c.type === type || c.type === 'both');
 
-  const parsedAmount = parseFloat(amountStr.replace(/\./g, '').replace(',', '.')) || 0;
+  const parsedAmount = parseCurrencyInput(amountStr);
   const installmentValue = installmentsCount > 0 ? parsedAmount / installmentsCount : 0;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -126,8 +126,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       return;
     }
 
-    const cleanedAmount = amountStr.replace(/\./g, '').replace(',', '.');
-    const amountNum = parseFloat(cleanedAmount);
+    const amountNum = parseCurrencyInput(amountStr);
 
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('Digite um valor monetário válido maior que zero.');

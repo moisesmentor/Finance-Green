@@ -32,6 +32,7 @@ import {
   Category
 } from '../types';
 import { DEFAULT_BUDGETS } from './constants';
+import { loadStoredBudgets } from './storage';
 
 const STORAGE_KEYS = {
   DEVICE_ID: 'financas_mensais_device_id_v1',
@@ -315,11 +316,19 @@ export function subscribeToUserBudgets(
     const colRef = collection(db, 'users', userId, 'budgets');
     return onSnapshot(colRef, (snapshot) => {
       if (snapshot.empty) {
-        onData(DEFAULT_BUDGETS);
+        // Se a subcoleção remota ainda estiver vazia, tenta primeiro o cache local exclusivo deste usuário
+        const cached = loadStoredBudgets(userId);
+        onData(cached && cached.length > 0 ? cached : DEFAULT_BUDGETS);
         return;
       }
       const list: CategoryBudget[] = [];
-      snapshot.forEach(d => list.push(d.data() as CategoryBudget));
+      snapshot.forEach(d => {
+        const data = d.data();
+        const catId = data.categoryId || data.id || data.category || d.id;
+        const rawLimit = data.limit ?? data.amount ?? data.budget;
+        const limit = typeof rawLimit === 'number' ? rawLimit : parseFloat(rawLimit) || 0;
+        list.push({ categoryId: catId, limit });
+      });
       onData(list);
     }, onError);
   } catch (err: any) {
@@ -335,20 +344,43 @@ export async function saveUserBudgets(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const { db } = getFirebaseInstances();
+    // 1. Tenta batch commit primeiro para atomicidade
     const batch = writeBatch(db);
     for (const b of budgets) {
       if (b.categoryId) {
         const bRef = doc(db, 'users', userId, 'budgets', b.categoryId);
-        batch.set(bRef, JSON.parse(JSON.stringify(b)), { merge: true });
+        batch.set(bRef, {
+          categoryId: b.categoryId,
+          limit: Number(b.limit) || 0,
+          updatedAt: Date.now(),
+        }, { merge: true });
       }
     }
     await batch.commit();
     return { success: true };
-  } catch (err: any) {
-    console.error('Erro ao salvar orçamentos:', err);
-    return { success: false, error: err.message };
+  } catch (batchErr: any) {
+    console.warn('Batch commit de orçamentos falhou, tentando gravação individual (setDoc):', batchErr);
+    try {
+      const { db } = getFirebaseInstances();
+      await Promise.all(
+        budgets.map(async (b) => {
+          if (!b.categoryId) return;
+          const bRef = doc(db, 'users', userId, 'budgets', b.categoryId);
+          await setDoc(bRef, {
+            categoryId: b.categoryId,
+            limit: Number(b.limit) || 0,
+            updatedAt: Date.now(),
+          }, { merge: true });
+        })
+      );
+      return { success: true };
+    } catch (individualErr: any) {
+      console.error('Erro ao salvar orçamentos no Firestore:', individualErr);
+      return { success: false, error: individualErr.message };
+    }
   }
 }
+
 
 // 8. Escutar metas da subcoleção /users/{userId}/goals
 export function subscribeToUserGoals(

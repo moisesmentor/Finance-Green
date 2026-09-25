@@ -362,9 +362,16 @@ function FinanceApp() {
   const handleSaveBudgets = async (newBudgets: CategoryBudget[]) => {
     if (!currentUser?.uid) return;
     setBudgets(newBudgets);
-    await saveUserBudgets(currentUser.uid, newBudgets);
-    showToast('Tetos orçamentários atualizados com sucesso!');
+    saveStoredBudgets(newBudgets, currentUser.uid);
+    const res = await saveUserBudgets(currentUser.uid, newBudgets);
+    if (res.success) {
+      showToast('Tetos orçamentários atualizados com sucesso!');
+    } else {
+      console.warn('Orçamentos salvos localmente, sincronização remota pendente:', res.error);
+      showToast('Tetos salvos localmente!', 'info');
+    }
   };
+
 
   // Handlers para Metas (Subcoleção /users/{uid}/goals)
   const handleSaveGoals = async (newGoals: FinancialGoal[]) => {
@@ -412,7 +419,10 @@ function FinanceApp() {
   ) => {
     if (!currentUser?.uid) return;
     setTransactions(newTransactions);
-    if (newBudgets && newBudgets.length > 0) setBudgets(newBudgets);
+    if (newBudgets && newBudgets.length > 0) {
+      setBudgets(newBudgets);
+      saveStoredBudgets(newBudgets, currentUser.uid);
+    }
     if (newGoals && newGoals.length > 0) setGoals(newGoals);
     if (newInvestments && newInvestments.length > 0) {
       setInvestments(newInvestments);
