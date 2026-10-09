@@ -62,7 +62,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 {isError && <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />}
                 {isWarning && <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />}
                 {!isSuccess && !isError && !isWarning && <Info className="w-4 h-4 text-sky-400 shrink-0" />}
-                <span className="text-xs font-semibold text-slate-200 truncate">
+                <span className="text-xs font-semibold text-slate-200 break-words leading-tight">
                   {toast.message}
                 </span>
               </div>

@@ -52,12 +52,14 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showManualSection, setShowManualSection] = useState(false);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
+  const [configError, setConfigError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   // 1. Abrir Widget Oficial Pluggy Connect para Conectar Novo Banco
   const handleOpenConnectWidget = async (updateItemId?: string) => {
     setIsLoadingToken(true);
+    setConfigError(null);
     try {
       const connectToken = await fetchPluggyConnectToken(updateItemId);
       setIsLoadingToken(false);
@@ -98,7 +100,11 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
     } catch (err: any) {
       setIsLoadingToken(false);
       console.error('Erro ao iniciar widget Pluggy:', err);
-      showToast(err.message || 'Falha ao inicializar o widget de conexão. Verifique as credenciais da Pluggy na Vercel.', 'error');
+      const msg = err.message || 'Falha ao inicializar o widget de conexão. Verifique as credenciais da Pluggy na Vercel.';
+      if (msg.includes('PLUGGY') || msg.includes('variáveis') || msg.includes('autenticação') || msg.includes('Redeploy')) {
+        setConfigError(msg);
+      }
+      showToast(msg, 'error');
     }
   };
 
@@ -106,6 +112,7 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
   const handleDiscoverExistingItems = async () => {
     setIsDiscovering(true);
     setDiscoveredItems(null);
+    setConfigError(null);
     try {
       const items = await fetchExistingPluggyItems();
       setDiscoveredItems(items);
@@ -116,7 +123,11 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
       }
     } catch (err: any) {
       console.error('Erro ao buscar conexões:', err);
-      showToast(err.message || 'Não foi possível buscar as conexões na Pluggy.', 'error');
+      const msg = err.message || 'Não foi possível buscar as conexões na Pluggy.';
+      if (msg.includes('PLUGGY') || msg.includes('variáveis') || msg.includes('autenticação') || msg.includes('Redeploy')) {
+        setConfigError(msg);
+      }
+      showToast(msg, 'error');
     } finally {
       setIsDiscovering(false);
     }
@@ -316,6 +327,24 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
         {/* Modal Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           
+          {/* Config Error Banner */}
+          {configError && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-2 animate-in fade-in">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-amber-300 text-sm">Atenção com as Variáveis na Vercel</p>
+                  <p className="text-slate-300 leading-relaxed">{configError}</p>
+                  <div className="pt-2 text-[11px] text-slate-400 border-t border-amber-500/20 mt-2 space-y-1">
+                    <p className="font-semibold text-slate-200">Como resolver:</p>
+                    <p>1. No dashboard da <b>Vercel &gt; Settings &gt; Environment Variables</b>, certifique-se de que <code>PLUGGY_CLIENT_ID</code> e <code>PLUGGY_CLIENT_SECRET</code> foram salvas com o ambiente <b>Production</b> marcado.</p>
+                    <p>2. Na aba <b>Deployments</b> da Vercel, acione um <b>Redeploy</b> (ou envie um novo deploy) para que as funções serverless leiam as novas variáveis.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Action Header Card */}
           <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/20 dark:border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">

@@ -11,17 +11,21 @@ let apiKeyExpiresAt: number = 0;
  * Cacheada em memória por 1h45 (duração de 2h na Pluggy)
  */
 export async function getPluggyApiKey(): Promise<string> {
-  const clientId = process.env.PLUGGY_CLIENT_ID;
-  const clientSecret = process.env.PLUGGY_CLIENT_SECRET;
+  const rawClientId = process.env.PLUGGY_CLIENT_ID || process.env.VITE_PLUGGY_CLIENT_ID;
+  const rawClientSecret = process.env.PLUGGY_CLIENT_SECRET || process.env.VITE_PLUGGY_CLIENT_SECRET;
+
+  const clientId = rawClientId?.trim().replace(/^["']|["']$/g, '');
+  const clientSecret = rawClientSecret?.trim().replace(/^["']|["']$/g, '');
 
   if (!clientId || !clientSecret) {
-    throw new Error('PLUGGY_CLIENT_ID ou PLUGGY_CLIENT_SECRET não configurados nas variáveis de ambiente da Vercel.');
+    throw new Error('PLUGGY_CLIENT_ID ou PLUGGY_CLIENT_SECRET não foram encontrados nas variáveis de ambiente da Vercel. Certifique-se de salvá-las em Project Settings > Environment Variables marcando "Production", e em seguida acione um Redeploy na aba Deployments.');
   }
 
   // Reutiliza se faltarem mais de 10 minutos para expirar
   if (cachedApiKey && Date.now() < apiKeyExpiresAt - 10 * 60 * 1000) {
     return cachedApiKey;
   }
+
 
   const response = await fetch(`${PLUGGY_BASE_URL}/auth`, {
     method: 'POST',
