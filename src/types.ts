@@ -193,5 +193,28 @@ export interface UserProfile {
   photoURL?: string | null;
 }
 
+export type BankConnectionStatus = 
+  | 'UPDATED' 
+  | 'UPDATING' 
+  | 'WAITING_USER_INPUT' 
+  | 'LOGIN_ERROR' 
+  | 'OUTDATED' 
+  | 'DISCONNECTED'
+  | string;
+
+export interface BankConnection {
+  id: string; // Document ID (geralmente itemId ou id único)
+  itemId: string; // ID da conexão na Pluggy
+  institutionName: string; // ex: 'Nubank', 'Santander'
+  connectorId?: number; // ex: 201 (Nubank), etc.
+  connectorColor?: string; // Cor primária da instituição
+  connectorImageUrl?: string; // Logo/ícone da instituição
+  status: BankConnectionStatus;
+  createdAt: number;
+  updatedAt: number;
+  lastSyncAt?: number;
+  error?: string | null;
+}
+
 
 

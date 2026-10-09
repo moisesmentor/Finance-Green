@@ -8,7 +8,8 @@ import {
   AnnualMonthSummary,
   CloudConfig,
   InvestmentAsset,
-  Category
+  Category,
+  BankConnection
 } from '../types';
 import { CATEGORIES, DEFAULT_BUDGETS, getSampleTransactions, PAYMENT_METHODS } from './constants';
 
@@ -18,6 +19,7 @@ const STORAGE_KEYS = {
   GOALS: 'financas_mensais_goals_v1',
   INVESTMENTS: 'financas_mensais_investments_v1',
   CUSTOM_CATEGORIES: 'financas_mensais_custom_categories_v1',
+  BANK_CONNECTIONS: 'financas_mensais_bank_connections_v1',
   CLOUD_CONFIG: 'financas_mensais_cloud_v1',
 };
 
@@ -246,6 +248,31 @@ export function saveStoredCustomCategories(categories: Category[], userId?: stri
     console.error('Erro ao salvar categorias personalizadas:', err);
   }
 }
+
+export function loadStoredBankConnections(userId?: string | null): BankConnection[] {
+  if (!userId) return [];
+  try {
+    const key = getStorageKey(STORAGE_KEYS.BANK_CONNECTIONS, userId);
+    const data = localStorage.getItem(key);
+    if (!data) return [];
+    const parsed = JSON.parse(data);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.error('Erro ao carregar conexões bancárias:', err);
+    return [];
+  }
+}
+
+export function saveStoredBankConnections(connections: BankConnection[], userId?: string | null): void {
+  if (!userId) return;
+  try {
+    const key = getStorageKey(STORAGE_KEYS.BANK_CONNECTIONS, userId);
+    localStorage.setItem(key, JSON.stringify(connections));
+  } catch (err) {
+    console.error('Erro ao salvar conexões bancárias no localStorage:', err);
+  }
+}
+
 
 export function loadStoredCloudConfig(): CloudConfig {
   try {

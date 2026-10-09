@@ -16,7 +16,8 @@ import {
   LogOut, 
   ShieldCheck,
   TrendingUp,
-  BellRing
+  BellRing,
+  Building2
 } from 'lucide-react';
 import { MonthPeriod, ThemeMode, UserProfile } from '../types';
 import { getMonthLabel, isCurrentMonth } from '../utils/formatters';
@@ -33,6 +34,8 @@ interface HeaderProps {
   onOpenAnnualReport: () => void;
   onOpenCloud?: () => void;
   onOpenFirebaseSync?: () => void;
+  onOpenConnectedBanks?: () => void;
+  connectedBanksCount?: number;
   firebaseStatus: 'connected' | 'syncing' | 'offline' | 'unconfigured' | 'error';
   syncKey?: string;
   theme: ThemeMode;
@@ -41,6 +44,7 @@ interface HeaderProps {
   onLogout: () => void;
   urgentAlertsCount?: number;
 }
+
 
 export const Header: React.FC<HeaderProps> = ({
   period,
@@ -53,6 +57,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenInvestments,
   onOpenAnnualReport,
   onOpenCloud,
+  onOpenConnectedBanks,
+  connectedBanksCount = 0,
   firebaseStatus,
   theme,
   onToggleTheme,
@@ -307,6 +313,33 @@ export const Header: React.FC<HeaderProps> = ({
                     <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span>Backup & Sincronização</span>
                   </button>
+
+                  {/* Bancos Conectados (Open Finance / Pluggy) */}
+                  {onOpenConnectedBanks && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onOpenConnectedBanks();
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>Bancos Conectados</span>
+                      </div>
+                      {connectedBanksCount > 0 ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          {connectedBanksCount}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/5">
+                          Open Finance
+                        </span>
+                      )}
+                    </button>
+                  )}
+
 
                   {/* Cloud Config Modal (if configured) */}
                   {onOpenCloud && (

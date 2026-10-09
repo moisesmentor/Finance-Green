@@ -13,7 +13,8 @@ import {
   Category,
   CloudConfig,
   FirebaseSyncStatus,
-  UserProfile
+  UserProfile,
+  BankConnection
 } from './types';
 import { 
   loadStoredTransactions, 
@@ -27,6 +28,8 @@ import {
   saveStoredInvestments,
   loadStoredCustomCategories,
   saveStoredCustomCategories,
+  loadStoredBankConnections,
+  saveStoredBankConnections,
   loadStoredCloudConfig, 
   saveStoredCloudConfig, 
   calculateSummary, 
@@ -48,8 +51,12 @@ import {
   subscribeToUserInvestments,
   saveUserInvestments,
   subscribeToUserCustomCategories,
-  saveUserCustomCategory 
+  saveUserCustomCategory,
+  subscribeToUserBankConnections,
+  saveUserBankConnection,
+  deleteUserBankConnection 
 } from './utils/firebase';
+
 import { DEFAULT_BUDGETS, CATEGORIES } from './utils/constants';
 import { useTheme } from './utils/useTheme';
 import { getDueDateStatus } from './utils/formatters';
@@ -66,6 +73,7 @@ import { GoalsModal } from './components/GoalsModal';
 import { InvestmentsModal } from './components/InvestmentsModal';
 import { AnnualReportModal } from './components/AnnualReportModal';
 import { CloudConfigModal } from './components/CloudConfigModal';
+import { ConnectedBanksModal } from './components/ConnectedBanksModal';
 import { AuthScreen } from './components/AuthScreen';
 import { ToastProvider, useToast } from './components/Toast';
 
@@ -83,6 +91,7 @@ function FinanceApp() {
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
   const [investments, setInvestments] = useState<InvestmentAsset[]>(DEFAULT_INVESTMENTS);
   const [customCategories, setCustomCategories] = useState<Category[]>([]);
+  const [bankConnections, setBankConnections] = useState<BankConnection[]>([]);
   const [cloudConfig, setCloudConfig] = useState<CloudConfig>(() => loadStoredCloudConfig());
   const [firebaseStatus, setFirebaseStatus] = useState<FirebaseSyncStatus>('unconfigured');
 
@@ -107,6 +116,8 @@ function FinanceApp() {
   const [isInvestmentsModalOpen, setIsInvestmentsModalOpen] = useState(false);
   const [isAnnualReportModalOpen, setIsAnnualReportModalOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+
 
   // 1. Escuta de estado de autenticação (Firebase Auth)
   useEffect(() => {
@@ -121,6 +132,7 @@ function FinanceApp() {
         setGoals([]);
         setInvestments(DEFAULT_INVESTMENTS);
         setCustomCategories([]);
+        setBankConnections([]);
         setFirebaseStatus('unconfigured');
       } else {
         // Carrega cache exclusivo deste UID
@@ -129,11 +141,14 @@ function FinanceApp() {
         const cachedGoals = loadStoredGoals(user.uid);
         const cachedInvestments = loadStoredInvestments(user.uid);
         const cachedCustomCats = loadStoredCustomCategories(user.uid);
+        const cachedBanks = loadStoredBankConnections(user.uid);
         setTransactions(cachedTxs);
         setBudgets(cachedBudgets);
         setGoals(cachedGoals);
         setInvestments(cachedInvestments);
         setCustomCategories(cachedCustomCats);
+        setBankConnections(cachedBanks);
+
 
         // Se o usuário possuir transações em Outubro/2026, posiciona o calendário no mês correto
         if (cachedTxs.some(t => t.date && t.date.startsWith('2026-10'))) {
@@ -223,13 +238,26 @@ function FinanceApp() {
       }
     );
 
+    // Escuta da subcoleção /users/{uid}/bankConnections (Open Finance / Pluggy)
+    const unsubBanks = subscribeToUserBankConnections(
+      currentUser.uid,
+      (remoteBanks) => {
+        if (Array.isArray(remoteBanks)) {
+          setBankConnections(remoteBanks);
+          saveStoredBankConnections(remoteBanks, currentUser.uid);
+        }
+      }
+    );
+
     return () => {
       unsubTx();
       unsubBudgets();
       unsubGoals();
       unsubInvestments();
       unsubCustomCats();
+      unsubBanks();
     };
+
   }, [currentUser?.uid]);
 
   // Salvar configurações do Supabase (opcional)
@@ -409,6 +437,31 @@ function FinanceApp() {
     showToast(`Categoria "${newCategory.name}" criada com sucesso!`);
   };
 
+  // Handlers para Conexões Bancárias (Subcoleção /users/{uid}/bankConnections - Open Finance)
+  const handleSaveBankConnection = async (connection: BankConnection) => {
+    if (!currentUser?.uid) return;
+    setBankConnections(prev => {
+      const exists = prev.some(c => c.id === connection.id || c.itemId === connection.itemId);
+      const updated = exists 
+        ? prev.map(c => (c.id === connection.id || c.itemId === connection.itemId) ? connection : c)
+        : [connection, ...prev];
+      saveStoredBankConnections(updated, currentUser.uid);
+      return updated;
+    });
+    await saveUserBankConnection(currentUser.uid, connection);
+  };
+
+  const handleDeleteBankConnection = async (connectionId: string) => {
+    if (!currentUser?.uid) return;
+    setBankConnections(prev => {
+      const updated = prev.filter(c => c.id !== connectionId && c.itemId !== connectionId);
+      saveStoredBankConnections(updated, currentUser.uid);
+      return updated;
+    });
+    await deleteUserBankConnection(currentUser.uid, connectionId);
+  };
+
+
   // Handlers para Backup / Importação
   const handleImportData = async (
     newTransactions: Transaction[], 
@@ -518,6 +571,8 @@ function FinanceApp() {
         onOpenInvestments={() => setIsInvestmentsModalOpen(true)}
         onOpenAnnualReport={() => setIsAnnualReportModalOpen(true)}
         onOpenCloud={() => setIsCloudModalOpen(true)}
+        onOpenConnectedBanks={() => setIsBankModalOpen(true)}
+        connectedBanksCount={bankConnections.length}
         firebaseStatus={firebaseStatus}
         syncKey={currentUser.uid}
         theme={theme}
@@ -680,6 +735,16 @@ function FinanceApp() {
         onResetToSample={handleResetToSample}
         onClearAll={handleClearAll}
       />
+
+      <ConnectedBanksModal
+        isOpen={isBankModalOpen}
+        onClose={() => setIsBankModalOpen(false)}
+        connections={bankConnections}
+        onSaveConnection={handleSaveBankConnection}
+        onDeleteConnection={handleDeleteBankConnection}
+        showToast={showToast}
+      />
+
 
     </div>
   );

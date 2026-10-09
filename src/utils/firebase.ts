@@ -29,7 +29,8 @@ import {
   FinancialGoal,
   UserProfile,
   InvestmentAsset,
-  Category
+  Category,
+  BankConnection
 } from '../types';
 import { DEFAULT_BUDGETS } from './constants';
 import { loadStoredBudgets } from './storage';
@@ -172,6 +173,19 @@ export function onAuthChange(callback: (user: UserProfile | null) => void): Unsu
     }
   });
 }
+
+// Obter ID Token do usuário atual autenticado (JWT para rotas serverless /api)
+export async function getCurrentUserToken(): Promise<string | null> {
+  try {
+    const { auth } = getFirebaseInstances();
+    if (!auth.currentUser) return null;
+    return await auth.currentUser.getIdToken(false);
+  } catch (err) {
+    console.error('Erro ao obter token do Firebase Auth:', err);
+    return null;
+  }
+}
+
 
 // Tradutor amigável de erros do Firebase para Português
 export function translateAuthError(errorCode: string): string {
@@ -529,6 +543,81 @@ export async function deleteUserCustomCategory(
     return { success: false, error: err.message };
   }
 }
+
+// 16. Escutar conexões bancárias da subcoleção /users/{userId}/bankConnections
+export function subscribeToUserBankConnections(
+  userId: string,
+  onData: (connections: BankConnection[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  try {
+    const { db } = getFirebaseInstances();
+    const colRef = collection(db, 'users', userId, 'bankConnections');
+    return onSnapshot(colRef, (snapshot) => {
+      const list: BankConnection[] = [];
+      snapshot.forEach(d => {
+        const data = d.data();
+        list.push({
+          id: d.id,
+          itemId: data.itemId || d.id,
+          institutionName: data.institutionName || 'Instituição',
+          connectorId: data.connectorId,
+          connectorColor: data.connectorColor,
+          connectorImageUrl: data.connectorImageUrl,
+          status: data.status || 'UPDATED',
+          createdAt: data.createdAt || Date.now(),
+          updatedAt: data.updatedAt || Date.now(),
+          lastSyncAt: data.lastSyncAt,
+          error: data.error || null,
+        });
+      });
+      list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      onData(list);
+    }, onError);
+  } catch (err: any) {
+    if (onError) onError(err);
+    return () => {};
+  }
+}
+
+// 17. Salvar ou atualizar conexão bancária em /users/{userId}/bankConnections/{connectionId}
+export async function saveUserBankConnection(
+  userId: string,
+  connection: BankConnection
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const docId = connection.id || connection.itemId;
+    const docRef = doc(db, 'users', userId, 'bankConnections', docId);
+    const cleanData = JSON.parse(JSON.stringify({
+      ...connection,
+      id: docId,
+      updatedAt: Date.now(),
+    }));
+    await setDoc(docRef, cleanData, { merge: true });
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao salvar conexão bancária no Firestore:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 18. Excluir conexão bancária em /users/{userId}/bankConnections/{connectionId}
+export async function deleteUserBankConnection(
+  userId: string,
+  connectionId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const docRef = doc(db, 'users', userId, 'bankConnections', connectionId);
+    await deleteDoc(docRef);
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao excluir conexão bancária:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 
 // Regras de segurança oficiais do Firestore para o modo de isolamento estrito
 export const FIRESTORE_AUTH_RULES = `rules_version = '2';
