@@ -7,18 +7,82 @@ let cachedApiKey: string | null = null;
 let apiKeyExpiresAt: number = 0;
 
 /**
- * Obtém a chave de API temporária da Pluggy (POST /auth)
- * Cacheada em memória por 1h45 (duração de 2h na Pluggy)
+ * Localiza de forma flexível as credenciais da Pluggy em process.env,
+ * aceitando variações de nomenclatura e maiúsculas/minúsculas.
  */
-export async function getPluggyApiKey(): Promise<string> {
-  const rawClientId = process.env.PLUGGY_CLIENT_ID || process.env.VITE_PLUGGY_CLIENT_ID;
-  const rawClientSecret = process.env.PLUGGY_CLIENT_SECRET || process.env.VITE_PLUGGY_CLIENT_SECRET;
+export function getPluggyCredentials() {
+  const env = process.env;
+  const allKeys = Object.keys(env);
+
+  const findValue = (candidates: string[]) => {
+    for (const cand of candidates) {
+      if (env[cand]) return { key: cand, val: env[cand] };
+      const lower = cand.toLowerCase();
+      const match = allKeys.find(k => k.toLowerCase() === lower);
+      if (match && env[match]) return { key: match, val: env[match] };
+    }
+    return null;
+  };
+
+  const clientIdCandidate = findValue([
+    'PLUGGY_CLIENT_ID',
+    'VITE_PLUGGY_CLIENT_ID',
+    'PLUGGY_CLIENTID',
+    'PLUGGY_ID',
+    'PLUGGY_CLIENT',
+    'CLIENT_ID',
+    'PLUGGY_KEY',
+    'PLUGGY_CLIENT_ID_PROD'
+  ]);
+
+  const clientSecretCandidate = findValue([
+    'PLUGGY_CLIENT_SECRET',
+    'VITE_PLUGGY_CLIENT_SECRET',
+    'PLUGGY_CLIENTSECRET',
+    'PLUGGY_SECRET',
+    'CLIENT_SECRET',
+    'PLUGGY_SECRET_KEY',
+    'PLUGGY_CLIENT_SECRET_PROD'
+  ]);
+
+  const rawClientId = clientIdCandidate?.val;
+  const rawClientSecret = clientSecretCandidate?.val;
 
   const clientId = rawClientId?.trim().replace(/^["']|["']$/g, '');
   const clientSecret = rawClientSecret?.trim().replace(/^["']|["']$/g, '');
 
+  const pluggyRelatedKeys = allKeys.filter(k => 
+    k.toUpperCase().includes('PLUGGY') || 
+    (!k.startsWith('npm_') && (k.toUpperCase().includes('CLIENT') || k.toUpperCase().includes('SECRET')))
+  );
+
+  return {
+    clientId,
+    clientSecret,
+    clientIdKey: clientIdCandidate?.key,
+    clientSecretKey: clientSecretCandidate?.key,
+    pluggyRelatedKeys,
+    vercelEnv: env.VERCEL_ENV,
+  };
+}
+
+/**
+ * Obtém a chave de API temporária da Pluggy (POST /auth)
+ * Cacheada em memória por 1h45 (duração de 2h na Pluggy)
+ */
+export async function getPluggyApiKey(): Promise<string> {
+  const creds = getPluggyCredentials();
+  const { clientId, clientSecret, pluggyRelatedKeys, vercelEnv } = creds;
+
   if (!clientId || !clientSecret) {
-    throw new Error('PLUGGY_CLIENT_ID ou PLUGGY_CLIENT_SECRET não foram encontrados nas variáveis de ambiente da Vercel. Certifique-se de salvá-las em Project Settings > Environment Variables marcando "Production", e em seguida acione um Redeploy na aba Deployments.');
+    const envInfo = vercelEnv ? ` (Ambiente Vercel detectado: ${vercelEnv})` : '';
+    const detectedStr = pluggyRelatedKeys.length > 0
+      ? `Variáveis detectadas em process.env: [${pluggyRelatedKeys.join(', ')}].`
+      : 'Nenhuma variável contendo PLUGGY/CLIENT/SECRET foi encontrada em process.env.';
+
+    throw new Error(
+      `Credenciais da Pluggy não encontradas no servidor${envInfo}. ${detectedStr} Certifique-se de salvar PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET em Vercel > Settings > Environment Variables com as 3 opções (Production, Preview, Development) marcadas, e depois faça um Redeploy na aba Deployments.`
+    );
   }
 
   // Reutiliza se faltarem mais de 10 minutos para expirar

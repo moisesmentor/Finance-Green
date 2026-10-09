@@ -337,8 +337,8 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
                   <p className="text-slate-300 leading-relaxed">{configError}</p>
                   <div className="pt-2 text-[11px] text-slate-400 border-t border-amber-500/20 mt-2 space-y-1">
                     <p className="font-semibold text-slate-200">Como resolver:</p>
-                    <p>1. No dashboard da <b>Vercel &gt; Settings &gt; Environment Variables</b>, certifique-se de que <code>PLUGGY_CLIENT_ID</code> e <code>PLUGGY_CLIENT_SECRET</code> foram salvas com o ambiente <b>Production</b> marcado.</p>
-                    <p>2. Na aba <b>Deployments</b> da Vercel, acione um <b>Redeploy</b> (ou envie um novo deploy) para que as funções serverless leiam as novas variáveis.</p>
+                    <p>1. No dashboard da <b>Vercel &gt; Settings &gt; Environment Variables</b>, certifique-se de que <code>PLUGGY_CLIENT_ID</code> e <code>PLUGGY_CLIENT_SECRET</code> foram salvas com as 3 caixas marcadas: <b>Production</b>, <b>Preview</b> e <b>Development</b>.</p>
+                    <p>2. Na aba <b>Deployments</b> da Vercel, clique nos três pontinhos <b>(...) &gt; Redeploy</b> no deploy mais recente (ou envie este novo commit) para que a Vercel recarregue as variáveis.</p>
                   </div>
                 </div>
               </div>
