@@ -154,7 +154,18 @@ export async function logoutUser(): Promise<void> {
 // Envio de E-mail de Recuperação de Senha
 export async function sendPasswordReset(email: string): Promise<void> {
   const { auth } = getFirebaseInstances();
-  await sendPasswordResetEmail(auth, email.trim());
+  const appUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_URL) || 'https://greenfinancepro.com.br';
+  try {
+    // Configura o link do e-mail para retornar ao domínio da aplicação
+    await sendPasswordResetEmail(auth, email.trim(), {
+      url: appUrl,
+      handleCodeInApp: false,
+    });
+  } catch (err) {
+    // Caso o domínio ainda não esteja em Authorized Domains no Firebase, fallback seguro para o envio padrão
+    console.warn('Fallback para envio de redefinição sem ActionCodeSettings:', err);
+    await sendPasswordResetEmail(auth, email.trim());
+  }
 }
 
 // Monitoramento de Estado da Sessão
