@@ -133,50 +133,39 @@ export const Header: React.FC<HeaderProps> = ({
       {/* =================================================================== */}
       {/* LAYER 1: BRAND, CENTERED MONTH SELECTOR, ALERTS & USER MENU */}
       {/* =================================================================== */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-2.5 border-b border-slate-100 dark:border-white/5">
-        <div className="flex items-center justify-between gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 border-b border-slate-100 dark:border-white/5">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
           
           {/* 1.1 Left: Logo & App Title */}
-          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-xs dark:shadow-[0_0_20px_-3px_rgba(16,185,129,0.45)]">
-              <Wallet className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <h1 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">
-                  Finance
-                </h1>
-                <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 dark:border-emerald-500/40">
-                  <Sparkles className="w-2.5 h-2.5 text-emerald-500" /> Pro
-                </span>
-              </div>
-              <p className="hidden md:block text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-none mt-1">
-                Gestão Patrimonial & Finanças
-              </p>
-            </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+              Finance
+            </span>
+            <span className="px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wide bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 rounded-md">
+              PRO
+            </span>
           </div>
 
-          {/* 1.2 Center: Month Capsule Selector */}
+          {/* 1.2 Center: Clean Month Capsule Selector */}
           <div className="flex items-center justify-center">
-            <div className="flex items-center gap-0.5 sm:gap-1 bg-slate-100/90 dark:bg-black/50 p-1 rounded-xl border border-slate-200/80 dark:border-white/10 shadow-xs">
+            <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-slate-200/80 dark:border-white/10 shadow-xs">
               <button
                 id="btn-prev-month"
                 onClick={handlePrevMonth}
-                className="p-1 sm:p-1.5 rounded-lg hover:bg-white dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
+                className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all cursor-pointer"
                 title="Mês anterior"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
 
-              <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm select-none">
-                <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span className="whitespace-nowrap">{getMonthLabel(period.year, period.month)}</span>
-              </div>
+              <span className="px-2 sm:px-3 text-slate-800 dark:text-zinc-100 font-bold text-xs sm:text-sm select-none whitespace-nowrap">
+                {getMonthLabel(period.year, period.month)}
+              </span>
 
               <button
                 id="btn-next-month"
                 onClick={handleNextMonth}
-                className="p-1 sm:p-1.5 rounded-lg hover:bg-white dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
+                className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all cursor-pointer"
                 title="Próximo mês"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -186,7 +175,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   id="btn-today-month"
                   onClick={handleCurrentMonth}
-                  className="ml-0.5 sm:ml-1 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer whitespace-nowrap"
+                  className="ml-1 px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   Hoje
                 </button>
@@ -202,7 +191,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="btn-due-alerts-bell"
                 onClick={scrollToAlerts}
-                className="relative p-1.5 sm:p-2 rounded-xl text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 active:scale-95 transition-transform cursor-pointer"
+                className="relative p-1.5 sm:p-2 rounded-full text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 active:scale-95 transition-transform cursor-pointer"
                 title={`${urgentAlertsCount} conta(s) a vencer ou atrasada(s)`}
               >
                 <BellRing className="w-4 h-4 animate-bounce" />
@@ -212,35 +201,27 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* User Chip Trigger */}
+            {/* User Capsule Pill Trigger */}
             {user && (
               <button
                 id="btn-user-menu-trigger"
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl bg-slate-100/90 dark:bg-black/40 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200/80 dark:border-white/10 transition-all cursor-pointer active:scale-95 group"
+                className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-white/5 border border-slate-200/80 dark:border-white/10 shadow-xs transition-all cursor-pointer active:scale-95 group text-xs font-semibold text-slate-700 dark:text-zinc-200"
                 aria-expanded={isUserMenuOpen}
                 title={`Conta: ${user.email}`}
               >
-                <div 
-                  className="relative flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-600 text-white font-bold text-xs uppercase shadow-xs select-none shrink-0"
-                >
-                  {user.displayName ? user.displayName.charAt(0) : (user.email ? user.email.charAt(0) : 'U')}
-                  <span 
-                    className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border-2 border-white dark:border-[#121214] ${
-                      firebaseStatus === 'connected' ? 'bg-emerald-500' : firebaseStatus === 'syncing' ? 'bg-amber-400 animate-pulse' : 'bg-slate-400'
-                    }`}
-                  />
-                </div>
-                
-                <div className="hidden sm:flex flex-col text-left">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs max-w-[120px] truncate leading-tight">
-                    {user.displayName || user.email?.split('@')[0]}
-                  </span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 max-w-[120px] truncate leading-tight">
-                    {firebaseStatus === 'connected' ? 'Sincronizado' : firebaseStatus === 'syncing' ? 'Sincronizando...' : 'Offline'}
-                  </span>
-                </div>
-
+                <span 
+                  className={`w-2 h-2 rounded-full shrink-0 ${
+                    firebaseStatus === 'connected' ? 'bg-emerald-500' : firebaseStatus === 'syncing' ? 'bg-amber-400 animate-pulse' : 'bg-slate-400'
+                  }`}
+                />
+                <span className="max-w-[130px] truncate">
+                  {user.displayName || user.email?.split('@')[0]}
+                </span>
+                <span className="text-slate-300 dark:text-zinc-600">·</span>
+                <span className="text-slate-500 dark:text-zinc-400 font-medium">
+                  {firebaseStatus === 'connected' ? 'Sincronizado' : firebaseStatus === 'syncing' ? 'Sincronizando' : 'Offline'}
+                </span>
                 <ChevronDown className={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-white transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
               </button>
             )}
@@ -404,12 +385,24 @@ export const Header: React.FC<HeaderProps> = ({
       {/* =================================================================== */}
       {/* LAYER 2: NAVIGATION TABS & FIXED NEW TRANSACTION CTA */}
       {/* =================================================================== */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-2 sm:gap-4 h-11 sm:h-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
           
-          {/* 2.1 Horizontal Tabs Navigation with smooth touch scroll */}
-          <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-1 text-xs font-semibold -mb-px">
+          {/* 2.1 Horizontal Tabs Pill Group */}
+          <nav className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1 sm:pb-0 text-xs sm:text-sm font-semibold">
             
+            {/* Tab: Dashboard */}
+            <button
+              onClick={() => setActiveTab(null)}
+              className={`px-4 py-2 rounded-full transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === null
+                  ? 'bg-[#059669] text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-zinc-800/60 font-medium'
+              }`}
+            >
+              Dashboard
+            </button>
+
             {/* Tab: Reserva */}
             <button
               id="btn-open-reserve"
@@ -417,18 +410,14 @@ export const Header: React.FC<HeaderProps> = ({
                 setActiveTab('reserve');
                 (onOpenReserve || onOpenGoals)();
               }}
-              className={`group relative inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-full transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'reserve'
-                  ? 'text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-white/10'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                  ? 'bg-[#059669] text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-zinc-800/60 font-medium'
               }`}
               title="Caixa de Reserva de Emergência"
             >
-              <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>Reserva</span>
-              {activeTab === 'reserve' && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-emerald-500 rounded-full" />
-              )}
+              Reserva
             </button>
 
             {/* Tab: Patrimônio */}
@@ -438,18 +427,14 @@ export const Header: React.FC<HeaderProps> = ({
                 setActiveTab('investments');
                 if (onOpenInvestments) onOpenInvestments();
               }}
-              className={`group relative inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-full transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'investments'
-                  ? 'text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-white/10'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                  ? 'bg-[#059669] text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-zinc-800/60 font-medium'
               }`}
               title="Investimentos e Patrimônio Consolidado"
             >
-              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>Patrimônio</span>
-              {activeTab === 'investments' && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-emerald-500 rounded-full" />
-              )}
+              Patrimônio
             </button>
 
             {/* Tab: Metas */}
@@ -459,18 +444,14 @@ export const Header: React.FC<HeaderProps> = ({
                 setActiveTab('goals');
                 onOpenGoals();
               }}
-              className={`group relative inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-full transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'goals'
-                  ? 'text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-white/10'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                  ? 'bg-[#059669] text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-zinc-800/60 font-medium'
               }`}
               title="Metas e Cofrinhos"
             >
-              <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>Metas</span>
-              {activeTab === 'goals' && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-emerald-500 rounded-full" />
-              )}
+              Metas
             </button>
 
             {/* Tab: Anual */}
@@ -480,18 +461,14 @@ export const Header: React.FC<HeaderProps> = ({
                 setActiveTab('annual');
                 onOpenAnnualReport();
               }}
-              className={`group relative inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-full transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'annual'
-                  ? 'text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-500/10 dark:bg-white/10'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                  ? 'bg-[#059669] text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-zinc-800/60 font-medium'
               }`}
               title="Demonstrativo Anual"
             >
-              <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <span>Anual</span>
-              {activeTab === 'annual' && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-indigo-500 rounded-full" />
-              )}
+              Anual
             </button>
 
             {/* Tab: Orçamentos */}
@@ -501,33 +478,28 @@ export const Header: React.FC<HeaderProps> = ({
                 setActiveTab('budgets');
                 onOpenBudgets();
               }}
-              className={`group relative inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-full transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'budgets'
-                  ? 'text-amber-700 dark:text-amber-400 font-bold bg-amber-500/10 dark:bg-white/10'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                  ? 'bg-[#059669] text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-zinc-800/60 font-medium'
               }`}
               title="Planejamento de Orçamentos"
             >
-              <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <span>Orçamentos</span>
-              {activeTab === 'budgets' && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-amber-500 rounded-full" />
-              )}
+              Orçamentos
             </button>
 
           </nav>
 
           {/* 2.2 Right: Fixed "Novo Lançamento" CTA Button */}
-          <div className="shrink-0 flex items-center">
+          <div className="w-full sm:w-auto shrink-0 flex items-center justify-end">
             <button
               id="btn-new-transaction"
               onClick={onOpenNewTransaction}
-              className="inline-flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all shadow-md dark:shadow-[0_0_20px_-3px_rgba(16,185,129,0.45)] cursor-pointer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#047857] hover:bg-[#065f46] text-white text-xs sm:text-sm font-bold shadow-sm hover:shadow transition-all cursor-pointer active:scale-95"
               title="Criar Novo Lançamento"
             >
-              <Plus className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline">Novo Lançamento</span>
-              <span className="sm:hidden">Novo</span>
+              <Plus className="w-4 h-4 shrink-0 stroke-[2.5]" />
+              <span>Novo Lançamento</span>
             </button>
           </div>
 

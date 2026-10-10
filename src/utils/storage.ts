@@ -388,6 +388,8 @@ export function generateRecurringTransactions(
 
 export function calculateSummary(transactions: Transaction[], budgets: CategoryBudget[]): FinancialSummary {
   let totalIncome = 0;
+  let paidIncome = 0;
+  let pendingIncome = 0;
   let totalExpense = 0;
   let paidExpense = 0;
   let pendingExpense = 0;
@@ -395,6 +397,11 @@ export function calculateSummary(transactions: Transaction[], budgets: CategoryB
   for (const t of transactions) {
     if (t.type === 'income') {
       totalIncome += t.amount;
+      if (t.status === 'paid') {
+        paidIncome += t.amount;
+      } else {
+        pendingIncome += t.amount;
+      }
     } else if (t.type === 'expense') {
       totalExpense += t.amount;
       if (t.status === 'paid') {
@@ -406,6 +413,7 @@ export function calculateSummary(transactions: Transaction[], budgets: CategoryB
   }
 
   const netBalance = totalIncome - totalExpense;
+  const realizedNetBalance = paidIncome - paidExpense;
   const savingsRate = totalIncome > 0 ? Math.max(0, ((totalIncome - totalExpense) / totalIncome) * 100) : 0;
   
   const totalBudgetLimit = budgets.reduce((acc, b) => acc + b.limit, 0);
@@ -413,8 +421,11 @@ export function calculateSummary(transactions: Transaction[], budgets: CategoryB
 
   return {
     totalIncome,
+    paidIncome,
+    pendingIncome,
     totalExpense,
     netBalance,
+    realizedNetBalance,
     paidExpense,
     pendingExpense,
     savingsRate,

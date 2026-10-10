@@ -36,6 +36,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
   const [chartSubView, setChartSubView] = useState<'area' | 'bars'>('area');
   const [hoveredDay, setHoveredDay] = useState<{ day: number; amount: number; count: number } | null>(null);
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [showDetailedCards, setShowDetailedCards] = useState(false);
 
   // Category breakdown for expenses
   const categorySpending = useMemo(() => {
@@ -47,6 +48,12 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
   }, [transactions]);
+
+  const totalBudgetLimit = useMemo(() => {
+    return budgets.reduce((acc, b) => acc + b.limit, 0);
+  }, [budgets]);
+
+  const isBudgetExceeded = totalBudgetLimit > 0 && totalExpense > totalBudgetLimit;
 
   // Donut chart calculations
   const donutSegments = useMemo(() => {
@@ -153,219 +160,147 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
   }, [transactions, totalExpense]);
 
   if (totalExpense === 0) {
-    return null;
+    return (
+      <div className="bg-white dark:bg-zinc-900 rounded-[28px] border border-slate-200/80 dark:border-white/10 shadow-xs p-6 sm:p-7 flex flex-col items-center justify-center text-center min-h-[220px]">
+        <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400 mb-2">
+          <PieChart className="w-5 h-5" />
+        </div>
+        <h4 className="text-sm font-bold text-slate-800 dark:text-zinc-200">Nenhuma despesa no período</h4>
+        <p className="text-xs text-slate-400 dark:text-zinc-500 mt-1 max-w-xs">
+          Cadastre novos lançamentos para visualizar a distribuição por categorias e evolução diária.
+        </p>
+      </div>
+    );
   }
 
   return (
-    <div className="bg-white dark-brushed-metal rounded-2xl border border-slate-200/80 dark:border-white/[0.08] shadow-xs dark:shadow-2xl p-5 mb-6 transition-all duration-300">
+    <div id="section-monthly-charts" className="bg-white dark:bg-zinc-900 rounded-[28px] border border-slate-200/80 dark:border-white/10 shadow-xs p-6 sm:p-7 flex flex-col justify-between flex-1 transition-all">
       
       {/* Header with Segmented Pills */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-white/10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-white/5">
         <div>
-          <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            Análise & Demonstrações Visuais
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            {activeTab === 'categories' ? 'Distribuição de Despesas' : activeTab === 'daily' ? 'Evolução Diária' : 'Formas de Pagamento'}
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Distribuição por categorias, fluxo diário de saídas e formas de pagamento
+          <p className="text-xs text-slate-400 dark:text-zinc-500">
+            {activeTab === 'categories' ? `${categorySpending.length} categorias` : activeTab === 'daily' ? 'Ritmo diário de gastos' : 'Meios de pagamento utilizados'}
           </p>
         </div>
 
         {/* Tab Buttons Segmented Control */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-black/50 rounded-xl border border-slate-200/70 dark:border-white/10 self-start sm:self-auto text-xs font-bold max-w-full overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-zinc-800 rounded-full border border-slate-200/60 dark:border-white/5 text-xs font-semibold self-start sm:self-auto overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('categories')}
-            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'categories'
-                ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <PieChart className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             Por Categoria
           </button>
           <button
             onClick={() => setActiveTab('daily')}
-            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'daily'
-                ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <TrendingUp className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
             Evolução Diária
           </button>
           <button
             onClick={() => setActiveTab('payments')}
-            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'payments'
-                ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <CreditCard className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            Formas de Pagamento
+            Pagamento
           </button>
         </div>
       </div>
 
-      {/* TAB 1: Categories Breakdown (Donut Chart + Executive Grid) */}
+      {/* TAB 1: Categories Breakdown (Executive Donut + Category Legend & Progressive Detail) */}
       {activeTab === 'categories' && (
-        <div className="pt-4 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="pt-4 flex flex-col justify-between flex-1 space-y-4">
+          
+          {/* Executive Donut + Category Legend Side-by-Side (as in mockup) */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 my-auto">
             
-            {/* Modern Donut Chart Component (5 cols) */}
-            <div className="lg:col-span-4 p-5 rounded-2xl bg-slate-50/70 dark:bg-black/40 border border-slate-100 dark:border-white/10 flex flex-col items-center justify-center">
-              <div className="relative w-44 h-44 flex items-center justify-center">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                  {/* Background Track */}
-                  <circle cx="50" cy="50" r="38" fill="transparent" stroke="currentColor" strokeWidth="12" className="text-slate-200/80 dark:text-slate-700/60" />
-                  
-                  {/* Category Donut Segments */}
-                  {donutSegments.map(segment => {
-                    const isHovered = hoveredCategory === segment.category.id;
-                    return (
-                      <circle
-                        key={segment.category.id}
-                        cx="50"
-                        cy="50"
-                        r="38"
-                        fill="transparent"
-                        stroke={segment.color}
-                        strokeWidth={isHovered ? 16 : 12}
-                        strokeDasharray={segment.strokeDasharray}
-                        strokeDashoffset={segment.strokeDashoffset}
-                        className="transition-all duration-300 cursor-pointer"
-                        onMouseEnter={() => setHoveredCategory(segment.category.id)}
-                        onMouseLeave={() => setHoveredCategory(null)}
-                      />
-                    );
-                  })}
-                </svg>
+            {/* Donut Graphic */}
+            <div className="relative w-44 h-44 shrink-0 flex items-center justify-center">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" className="text-slate-100 dark:text-zinc-800" strokeWidth="14" />
+                {donutSegments.map(segment => {
+                  const isHovered = hoveredCategory === segment.category.id;
+                  return (
+                    <circle
+                      key={segment.category.id}
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      fill="none"
+                      stroke={segment.color}
+                      strokeWidth={isHovered ? 16 : 14}
+                      strokeDasharray={segment.strokeDasharray}
+                      strokeDashoffset={segment.strokeDashoffset}
+                      className="transition-all duration-300 cursor-pointer"
+                      onMouseEnter={() => setHoveredCategory(segment.category.id)}
+                      onMouseLeave={() => setHoveredCategory(null)}
+                    />
+                  );
+                })}
+              </svg>
 
-                {/* Donut Center Display */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-2">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                    {hoveredCategory 
-                      ? categorySpending.find(c => c.category.id === hoveredCategory)?.category.name 
-                      : 'Despesas'}
+              {/* Center Cutout Display */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-2">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-zinc-500">
+                  {hoveredCategory 
+                    ? categorySpending.find(c => c.category.id === hoveredCategory)?.category.name 
+                    : 'DESPESAS'}
+                </span>
+                <span className="text-base sm:text-lg font-extrabold tabular-nums text-slate-900 dark:text-white">
+                  {hoveredCategory
+                    ? formatCurrency(categorySpending.find(c => c.category.id === hoveredCategory)?.total || 0)
+                    : formatCurrency(totalExpense)}
+                </span>
+                {hoveredCategory && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                    {(categorySpending.find(c => c.category.id === hoveredCategory)?.percentage || 0).toFixed(1)}% do total
                   </span>
-                  <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white font-mono-num tracking-tight">
-                    {hoveredCategory
-                      ? formatCurrency(categorySpending.find(c => c.category.id === hoveredCategory)?.total || 0)
-                      : formatCurrency(totalExpense)}
-                  </span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
-                    {hoveredCategory
-                      ? `${(categorySpending.find(c => c.category.id === hoveredCategory)?.percentage || 0).toFixed(1)}%`
-                      : `${categorySpending.length} categorias`}
-                  </span>
-                </div>
+                )}
               </div>
-
-              <span className="text-[11px] text-slate-400 mt-3 text-center">
-                Passe o cursor sobre os anéis ou categorias
-              </span>
             </div>
 
-            {/* Category Cards with Progress Bars (8 cols) */}
-            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {categorySpending.map(item => {
-                const hasBudget = Boolean(item.budgetLimit && item.budgetLimit > 0);
-                const isOverBudget = Boolean(hasBudget && item.budgetPercentage && item.budgetPercentage > 100);
+            {/* Category Legend List */}
+            <div className="w-full space-y-1.5">
+              {categorySpending.slice(0, 6).map(item => {
                 const isHovered = hoveredCategory === item.category.id;
-
                 return (
-                  <div 
+                  <div
                     key={item.category.id}
                     onMouseEnter={() => setHoveredCategory(item.category.id)}
                     onMouseLeave={() => setHoveredCategory(null)}
-                    className={`p-3.5 rounded-2xl border transition-all ${
-                      isHovered
-                        ? 'border-emerald-500/50 bg-white dark:bg-black/60 shadow-sm'
-                        : 'border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-black/40 hover:bg-slate-50 dark:hover:bg-white/[0.04]'
+                    className={`flex items-center justify-between text-xs sm:text-sm px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                      isHovered 
+                        ? 'bg-slate-100 dark:bg-white/10 font-bold' 
+                        : 'hover:bg-slate-50 dark:hover:bg-white/5'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div 
-                          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-xs border"
-                          style={{
-                            backgroundColor: `${item.category.color}15`,
-                            borderColor: `${item.category.color}35`,
-                            color: item.category.color
-                          }}
-                        >
-                          <CategoryIcon name={item.category.icon} className="w-4 h-4" />
-                        </div>
-                        <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
-                          {item.category.name}
-                        </span>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <div className="text-xs sm:text-sm font-extrabold font-mono-num text-slate-900 dark:text-white">
-                          {formatCurrency(item.total)}
-                        </div>
-                        {hasBudget ? (
-                          <div className={`text-[10px] font-semibold ${isOverBudget ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
-                            {item.budgetPercentage?.toFixed(0)}% da meta
-                          </div>
-                        ) : (
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                            {item.percentage.toFixed(1)}% do total
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Unified progress bar: represents % of budget if configured, or % of total spending otherwise */}
-                    <div className="w-full bg-slate-200/80 dark:bg-slate-700/80 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          hasBudget && isOverBudget ? 'bg-rose-500' : ''
-                        }`}
-                        style={{ 
-                          width: `${Math.min(100, hasBudget ? (item.budgetPercentage || 0) : item.percentage)}%`,
-                          backgroundColor: (hasBudget && isOverBudget) ? undefined : item.category.color 
-                        }}
+                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                      <span 
+                        className="w-2.5 h-2.5 rounded-full shrink-0" 
+                        style={{ backgroundColor: item.category.color }} 
                       />
+                      <span className="text-slate-700 dark:text-zinc-300 truncate font-medium">
+                        {item.category.name}
+                      </span>
                     </div>
-
-                    {/* Budget comparison or discreet action to define budget */}
-                    {hasBudget ? (
-                      <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500 dark:text-slate-400">
-                          Teto: <strong className="font-mono-num text-slate-700 dark:text-slate-300 font-bold">{formatCurrency(item.budgetLimit!)}</strong>
-                        </span>
-                        {isOverBudget ? (
-                          <span className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
-                            <AlertCircle className="w-3.5 h-3.5" />
-                            +{(item.budgetPercentage! - 100).toFixed(0)}%
-                          </span>
-                        ) : (
-                          <span className="text-emerald-700 dark:text-emerald-400 font-bold">
-                            {(item.budgetPercentage!).toFixed(0)}%
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px]">
-                        <span className="text-slate-400 dark:text-slate-500 italic">
-                          Sem meta definida
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenBudgets();
-                          }}
-                          className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-semibold cursor-pointer"
-                        >
-                          Definir meta
-                        </button>
-                      </div>
-                    )}
-
+                    <span className="font-bold tabular-nums text-slate-900 dark:text-white shrink-0">
+                      {formatCurrency(item.total)}
+                    </span>
                   </div>
                 );
               })}
@@ -373,13 +308,136 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
 
           </div>
 
-          <div className="pt-1 text-right">
+          {/* Toggle for Detailed Category Cards with Progress Bars */}
+          <div className="pt-1">
+            <button
+              onClick={() => setShowDetailedCards(!showDetailedCards)}
+              className="text-xs text-slate-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>{showDetailedCards ? 'Ocultar tetos detalhados' : 'Ver progresso de tetos por categoria'}</span>
+              <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showDetailedCards ? 'rotate-90' : ''}`} />
+            </button>
+
+            {showDetailedCards && (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-200">
+                {categorySpending.map(item => {
+                  const hasBudget = Boolean(item.budgetLimit && item.budgetLimit > 0);
+                  const isOverBudget = Boolean(hasBudget && item.budgetPercentage && item.budgetPercentage > 100);
+                  const isHovered = hoveredCategory === item.category.id;
+
+                  return (
+                    <div 
+                      key={item.category.id}
+                      onMouseEnter={() => setHoveredCategory(item.category.id)}
+                      onMouseLeave={() => setHoveredCategory(null)}
+                      className={`p-3.5 rounded-2xl border transition-all ${
+                        isHovered
+                          ? 'border-emerald-500/50 bg-white dark:bg-black/60 shadow-sm'
+                          : 'border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-black/40 hover:bg-slate-50 dark:hover:bg-white/[0.04]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div 
+                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-xs border"
+                            style={{
+                              backgroundColor: `${item.category.color}15`,
+                              borderColor: `${item.category.color}35`,
+                              color: item.category.color
+                            }}
+                          >
+                            <CategoryIcon name={item.category.icon} className="w-4 h-4" />
+                          </div>
+                          <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
+                            {item.category.name}
+                          </span>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="text-xs sm:text-sm font-extrabold tabular-nums text-slate-900 dark:text-white">
+                            {formatCurrency(item.total)}
+                          </div>
+                          {hasBudget ? (
+                            <div className={`text-[10px] font-semibold ${isOverBudget ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
+                              {item.budgetPercentage?.toFixed(0)}% da meta
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                              {item.percentage.toFixed(1)}% do total
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Unified progress bar */}
+                      <div className="w-full bg-slate-200/80 dark:bg-slate-700/80 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            hasBudget && isOverBudget ? 'bg-rose-500' : ''
+                          }`}
+                          style={{ 
+                            width: `${Math.min(100, hasBudget ? (item.budgetPercentage || 0) : item.percentage)}%`,
+                            backgroundColor: (hasBudget && isOverBudget) ? undefined : item.category.color 
+                          }}
+                        />
+                      </div>
+
+                      {/* Budget comparison or action */}
+                      {hasBudget ? (
+                        <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px]">
+                          <span className="text-slate-500 dark:text-slate-400">
+                            Teto: <strong className="tabular-nums text-slate-700 dark:text-slate-300 font-bold">{formatCurrency(item.budgetLimit!)}</strong>
+                          </span>
+                          {isOverBudget ? (
+                            <span className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
+                              <AlertCircle className="w-3.5 h-3.5" />
+                              +{(item.budgetPercentage! - 100).toFixed(0)}%
+                            </span>
+                          ) : (
+                            <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                              {(item.budgetPercentage!).toFixed(0)}%
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px]">
+                          <span className="text-slate-400 dark:text-slate-500 italic">
+                            Sem meta definida
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenBudgets();
+                            }}
+                            className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-semibold cursor-pointer"
+                          >
+                            Definir meta
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Footer with Budget Summary and Action */}
+          <div className="pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>
+              Teto total: <strong className="text-slate-800 dark:text-zinc-200 tabular-nums">{formatCurrency(totalBudgetLimit)}</strong>
+              {totalBudgetLimit > 0 && (
+                <span className={`ml-2 font-bold ${isBudgetExceeded ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  {isBudgetExceeded ? `+${((totalExpense / totalBudgetLimit - 1) * 100).toFixed(0)}% acima` : `${formatCurrency(totalBudgetLimit - totalExpense)} disponível`}
+                </span>
+              )}
+            </span>
             <button
               onClick={onOpenBudgets}
-              className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-bold inline-flex items-center gap-1 cursor-pointer"
+              className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
             >
-              Gerenciar tetos orçamentários por categoria
-              <ChevronRight className="w-3.5 h-3.5" />
+              Gerenciar tetos
             </button>
           </div>
         </div>

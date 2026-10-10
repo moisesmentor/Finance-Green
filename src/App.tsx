@@ -602,20 +602,24 @@ function FinanceApp() {
           categories={allCategories}
         />
 
-        {/* Key Metrics Cards */}
+        {/* Key Metrics Cards & Integrated Charts Grid */}
         <SummaryCards
           summary={summary}
-          onOpenBudgets={() => setIsBudgetModalOpen(true)}
-        />
-
-        {/* Visual Charts & Category Spending Insights */}
-        <MonthlyCharts
           transactions={monthTransactions}
-          budgets={budgets}
+          allTransactions={transactions}
           period={period}
           onOpenBudgets={() => setIsBudgetModalOpen(true)}
-          categories={allCategories}
-        />
+          onMarkAsPaid={handleToggleStatus}
+        >
+          {/* Visual Charts & Category Spending Insights */}
+          <MonthlyCharts
+            transactions={monthTransactions}
+            budgets={budgets}
+            period={period}
+            onOpenBudgets={() => setIsBudgetModalOpen(true)}
+            categories={allCategories}
+          />
+        </SummaryCards>
 
         {/* Extrato & Transaction List */}
         <TransactionList

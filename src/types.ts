@@ -50,8 +50,11 @@ export interface MonthPeriod {
 
 export interface FinancialSummary {
   totalIncome: number;
+  paidIncome?: number;
+  pendingIncome?: number;
   totalExpense: number;
   netBalance: number;
+  realizedNetBalance?: number;
   paidExpense: number;
   pendingExpense: number;
   savingsRate: number;
