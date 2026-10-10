@@ -94,7 +94,12 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
         },
         onError: (err: any) => {
           console.error('Erro no widget Pluggy:', err);
-          showToast('Houve um problema durante a conexão. Tente novamente.', 'error');
+          const raw = typeof err === 'string' ? err : err?.message || JSON.stringify(err || {});
+          let userMsg = 'Houve um problema durante a conexão. Tente novamente.';
+          if (raw.toLowerCase().includes('sandbox') || raw.toLowerCase().includes('dados reais') || raw.toLowerCase().includes('demo') || raw.toLowerCase().includes('pluggy bank')) {
+            userMsg = 'Aplicação em modo Demo/Sandbox: contas de teste só podem conectar conectores de teste (Pluggy Bank) ou via conector Meu Pluggy.';
+          }
+          showToast(userMsg, 'warning');
         },
       });
     } catch (err: any) {
@@ -191,7 +196,16 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
       showToast(`${institutionName} vinculado com sucesso!`);
     } catch (err: any) {
       console.error('Erro ao vincular itemId:', err);
-      showToast(err.message || 'Item ID não encontrado na Pluggy. Verifique o ID e suas credenciais.', 'error');
+      let msg = err.message || 'Item ID não encontrado na Pluggy.';
+      if (
+        msg.includes('404') || 
+        msg.includes('ITEM_NOT_FOUND') || 
+        msg.includes('não encontrada nesta aplicação') ||
+        msg.includes('item not found')
+      ) {
+        msg = 'Item ID não encontrado nesta aplicação. Conexões criadas no portal "Meu Pluggy" pertencem a outra conta da Pluggy e não são visíveis para a sua chave de API de desenvolvedor.';
+      }
+      showToast(msg, 'error');
     } finally {
       setIsLinkingManual(false);
     }
@@ -537,9 +551,14 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
                 </span>
                 
                 {discoveredItems.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic">
-                    Nenhum item listado via API. Você pode vincular colando o Item ID manualmente abaixo.
-                  </p>
+                  <div className="p-3 rounded-xl bg-slate-100/80 dark:bg-black/30 border border-slate-200 dark:border-white/5 space-y-1 text-xs">
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">
+                      Nenhuma conexão criada sob a sua aplicação do Dashboard da Pluggy.
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Conexões criadas diretamente no portal <b>meu.pluggy.ai</b> pertencem à aplicação da própria Pluggy e não aparecem na sua API de desenvolvedor.
+                    </p>
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     {discoveredItems.map(item => {
@@ -592,21 +611,26 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
               </button>
 
               {showManualSection && (
-                <form onSubmit={handleLinkManualItemId} className="mt-3 flex gap-2">
-                  <input
-                    type="text"
-                    value={manualItemId}
-                    onChange={(e) => setManualItemId(e.target.value)}
-                    placeholder="Cole o itemId da Pluggy (ex: c1f7b7f1-79b8-4c12-...)"
-                    className="flex-1 px-3 py-2 text-xs font-mono rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isLinkingManual || !manualItemId.trim()}
-                    className="px-3 py-2 text-xs font-semibold rounded-lg text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors cursor-pointer shrink-0"
-                  >
-                    {isLinkingManual ? 'Validando...' : 'Vincular ID'}
-                  </button>
+                <form onSubmit={handleLinkManualItemId} className="mt-3 space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={manualItemId}
+                      onChange={(e) => setManualItemId(e.target.value)}
+                      placeholder="Cole o Item ID da Pluggy (ex: c1f7b7f1-79b8-4c12-...)"
+                      className="flex-1 px-3 py-2 text-xs font-mono rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isLinkingManual || !manualItemId.trim()}
+                      className="px-3 py-2 text-xs font-semibold rounded-lg text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors cursor-pointer shrink-0"
+                    >
+                      {isLinkingManual ? 'Validando...' : 'Vincular ID'}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    O Item ID precisa ter sido gerado na sua aplicação do dashboard da Pluggy. IDs copiados do portal <code>meu.pluggy.ai</code> pertencem à aplicação da Pluggy e retornam 404 nesta API.
+                  </p>
                 </form>
               )}
             </div>

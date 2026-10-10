@@ -144,7 +144,12 @@ export async function createConnectToken(clientUserId?: string, itemId?: string)
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`Erro ao gerar Connect Token na Pluggy (${response.status}): ${errorBody}`);
+    let detail = errorBody;
+    try {
+      const parsed = JSON.parse(errorBody);
+      detail = parsed.message || parsed.codeDescription || errorBody;
+    } catch {}
+    throw new Error(`Erro ao gerar Connect Token na Pluggy (${response.status}): ${detail}`);
   }
 
   const data = await response.json();
@@ -172,7 +177,12 @@ export async function listPluggyItems(clientUserId?: string): Promise<any[]> {
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`Erro ao listar conexões na Pluggy (${response.status}): ${errorBody}`);
+    let detail = errorBody;
+    try {
+      const parsed = JSON.parse(errorBody);
+      detail = parsed.message || parsed.codeDescription || errorBody;
+    } catch {}
+    throw new Error(`Erro ao listar conexões na Pluggy (${response.status}): ${detail}`);
   }
 
   const data = await response.json();
@@ -198,7 +208,19 @@ export async function getPluggyItem(itemId: string): Promise<any> {
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`Erro ao obter item ${itemId} na Pluggy (${response.status}): ${errorBody}`);
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(errorBody);
+    } catch {}
+
+    if (response.status === 404 || parsed?.codeDescription === 'ITEM_NOT_FOUND') {
+      throw new Error(
+        `Conexão (${itemId.slice(0, 8)}...) não encontrada nesta aplicação. O Item ID do portal 'Meu Pluggy' pertence a uma aplicação separada da Pluggy e não é acessível com as credenciais da sua aplicação.`
+      );
+    }
+
+    const detail = parsed?.message || parsed?.codeDescription || errorBody;
+    throw new Error(`A Pluggy retornou erro (${response.status}): ${detail}`);
   }
 
   return await response.json();
