@@ -270,8 +270,8 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
             {/* Category Cards with Progress Bars (8 cols) */}
             <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {categorySpending.map(item => {
-                const hasBudget = item.budgetLimit && item.budgetLimit > 0;
-                const isOverBudget = item.budgetPercentage && item.budgetPercentage > 100;
+                const hasBudget = Boolean(item.budgetLimit && item.budgetLimit > 0);
+                const isOverBudget = Boolean(hasBudget && item.budgetPercentage && item.budgetPercentage > 100);
                 const isHovered = hoveredCategory === item.category.id;
 
                 return (
@@ -306,25 +306,33 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                         <div className="text-xs sm:text-sm font-extrabold font-mono-num text-slate-900 dark:text-white">
                           {formatCurrency(item.total)}
                         </div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                          {item.percentage.toFixed(1)}% do total
-                        </div>
+                        {hasBudget ? (
+                          <div className={`text-[10px] font-semibold ${isOverBudget ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
+                            {item.budgetPercentage?.toFixed(0)}% da meta
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                            {item.percentage.toFixed(1)}% do total
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Relative visual bar against total spending */}
+                    {/* Unified progress bar: represents % of budget if configured, or % of total spending otherwise */}
                     <div className="w-full bg-slate-200/80 dark:bg-slate-700/80 rounded-full h-1.5 overflow-hidden">
                       <div
-                        className="h-full rounded-full transition-all duration-500"
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          hasBudget && isOverBudget ? 'bg-rose-500' : ''
+                        }`}
                         style={{ 
-                          width: `${Math.min(100, item.percentage)}%`,
-                          backgroundColor: item.category.color 
+                          width: `${Math.min(100, hasBudget ? (item.budgetPercentage || 0) : item.percentage)}%`,
+                          backgroundColor: (hasBudget && isOverBudget) ? undefined : item.category.color 
                         }}
                       />
                     </div>
 
-                    {/* Budget comparison if configured */}
-                    {hasBudget && (
+                    {/* Budget comparison or discreet action to define budget */}
+                    {hasBudget ? (
                       <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px]">
                         <span className="text-slate-500 dark:text-slate-400">
                           Teto: <strong className="font-mono-num text-slate-700 dark:text-slate-300 font-bold">{formatCurrency(item.budgetLimit!)}</strong>
@@ -339,6 +347,22 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                             {(item.budgetPercentage!).toFixed(0)}%
                           </span>
                         )}
+                      </div>
+                    ) : (
+                      <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400 dark:text-slate-500 italic">
+                          Sem meta definida
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenBudgets();
+                          }}
+                          className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-semibold cursor-pointer"
+                        >
+                          Definir meta
+                        </button>
                       </div>
                     )}
 

@@ -174,14 +174,20 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, onOpenBudge
 
           {summary.totalBudgetLimit > 0 ? (
             <>
-              <div className="flex items-baseline justify-between">
-                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-mono-num tracking-tight">
-                  {summary.budgetPercentageUsed.toFixed(0)}%
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 ml-1.5 font-sans">consumido</span>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-mono-num tracking-tight">
+                      {summary.budgetPercentageUsed.toFixed(0)}%
+                    </span>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 font-sans">
+                      consumido
+                    </span>
+                  </div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold whitespace-nowrap shrink-0">
+                    Teto: <span className="font-mono-num text-slate-700 dark:text-slate-300 font-bold">{formatCurrency(summary.totalBudgetLimit)}</span>
+                  </span>
                 </div>
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono-num font-semibold">
-                  Teto: {formatCurrency(summary.totalBudgetLimit)}
-                </span>
               </div>
 
               {/* Precision Executive Progress Bar */}
