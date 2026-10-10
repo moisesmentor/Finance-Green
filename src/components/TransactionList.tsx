@@ -16,9 +16,9 @@ import {
   ArrowDownLeft,
   Calendar,
   X,
-  CreditCard,
   AlertTriangle,
-  AlertCircle
+  AlertCircle,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Transaction, FilterOptions, Category } from '../types';
 import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
@@ -32,6 +32,7 @@ interface TransactionListProps {
   onDeleteGroup?: (groupId: string) => void;
   onToggleStatus: (id: string) => void;
   onAddNew: () => void;
+  onOpenImportStatement?: () => void;
   categories?: Category[];
 }
 
@@ -42,6 +43,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   onDeleteGroup,
   onToggleStatus,
   onAddNew,
+  onOpenImportStatement,
   categories,
 }) => {
   const [search, setSearch] = useState('');
@@ -178,6 +180,18 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {onOpenImportStatement && (
+              <button
+                type="button"
+                onClick={onOpenImportStatement}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 border border-slate-200/80 dark:border-white/10 transition-all cursor-pointer"
+                title="Importar extrato bancário (OFX ou CSV)"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Importar Extrato</span>
+              </button>
+            )}
+
             <button
               onClick={onAddNew}
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all shadow-xs dark:shadow-[0_0_20px_-3px_rgba(16,185,129,0.45)] cursor-pointer"

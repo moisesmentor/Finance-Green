@@ -74,6 +74,7 @@ import { InvestmentsModal } from './components/InvestmentsModal';
 import { AnnualReportModal } from './components/AnnualReportModal';
 import { CloudConfigModal } from './components/CloudConfigModal';
 import { ConnectedBanksModal } from './components/ConnectedBanksModal';
+import { ImportBankStatementModal } from './components/ImportBankStatementModal';
 import { AuthScreen } from './components/AuthScreen';
 import { ToastProvider, useToast } from './components/Toast';
 
@@ -117,6 +118,7 @@ function FinanceApp() {
   const [isAnnualReportModalOpen, setIsAnnualReportModalOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
 
   // 1. Escuta de estado de autenticação (Firebase Auth)
@@ -351,6 +353,13 @@ function FinanceApp() {
     }
   };
 
+  // Importação em Lote de Extratos Bancários (OFX / CSV)
+  const handleSaveBatchImportedTransactions = async (newTxs: Transaction[]) => {
+    if (!currentUser?.uid || newTxs.length === 0) return;
+    setTransactions(prev => [...newTxs, ...prev]);
+    await batchSaveUserTransactions(currentUser.uid, newTxs);
+  };
+
   const handleDeleteTransaction = async (id: string) => {
     if (!currentUser?.uid) return;
     setTransactions(prev => prev.filter(t => t.id !== id));
@@ -573,6 +582,7 @@ function FinanceApp() {
         onOpenCloud={() => setIsCloudModalOpen(true)}
         onOpenConnectedBanks={() => setIsBankModalOpen(true)}
         connectedBanksCount={bankConnections.length}
+        onOpenImportStatement={() => setIsImportModalOpen(true)}
         firebaseStatus={firebaseStatus}
         syncKey={currentUser.uid}
         theme={theme}
@@ -615,6 +625,7 @@ function FinanceApp() {
           onDeleteGroup={handleDeleteInstallmentGroup}
           onToggleStatus={handleToggleStatus}
           onAddNew={handleOpenNewTransaction}
+          onOpenImportStatement={() => setIsImportModalOpen(true)}
           categories={allCategories}
         />
 
@@ -742,6 +753,19 @@ function FinanceApp() {
         connections={bankConnections}
         onSaveConnection={handleSaveBankConnection}
         onDeleteConnection={handleDeleteBankConnection}
+        onOpenImportStatement={() => {
+          setIsBankModalOpen(false);
+          setIsImportModalOpen(true);
+        }}
+        showToast={showToast}
+      />
+
+      <ImportBankStatementModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        categories={allCategories}
+        existingTransactions={transactions}
+        onSaveBatchTransactions={handleSaveBatchImportedTransactions}
         showToast={showToast}
       />
 

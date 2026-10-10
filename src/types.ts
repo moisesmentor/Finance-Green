@@ -216,5 +216,33 @@ export interface BankConnection {
   error?: string | null;
 }
 
+export interface ParsedBankTransaction {
+  id: string;
+  rawId?: string;
+  date: string;
+  description: string;
+  originalDescription: string;
+  amount: number;
+  type: TransactionType;
+  paymentMethod: PaymentMethod;
+  categoryId: string;
+  selected: boolean;
+  isDuplicate?: boolean;
+  isInvoicePayment?: boolean;
+  bankName?: string;
+  notes?: string;
+}
+
+export interface BankParseResult {
+  transactions: ParsedBankTransaction[];
+  bankName?: string;
+  format: 'ofx' | 'csv' | 'unknown';
+  totalFound: number;
+  duplicateCount: number;
+  invoicePaymentCount: number;
+  totalIncome: number;
+  totalExpense: number;
+}
+
 
 

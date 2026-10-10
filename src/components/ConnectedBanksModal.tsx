@@ -15,7 +15,8 @@ import {
   Search,
   Sparkles,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  FileSpreadsheet
 } from 'lucide-react';
 import { BankConnection } from '../types';
 import { 
@@ -33,6 +34,7 @@ interface ConnectedBanksModalProps {
   connections: BankConnection[];
   onSaveConnection: (connection: BankConnection) => Promise<void>;
   onDeleteConnection: (connectionId: string) => Promise<void>;
+  onOpenImportStatement?: () => void;
   showToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
 }
 
@@ -42,6 +44,7 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
   connections,
   onSaveConnection,
   onDeleteConnection,
+  onOpenImportStatement,
   showToast,
 }) => {
   const [isLoadingToken, setIsLoadingToken] = useState(false);
@@ -356,6 +359,32 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Atalho Alternativo: Importação OFX / CSV */}
+          {onOpenImportStatement && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-sky-500/5 to-transparent border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+                  Alternativa sem burocracia: Importação OFX / CSV
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Importe extratos do Nubank ou Santander diretamente por arquivo com caixa de revisão e categorização automática.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenImportStatement();
+                }}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 dark:bg-emerald-600 hover:bg-emerald-600 dark:hover:bg-emerald-500 transition-all cursor-pointer shrink-0 flex items-center gap-1.5"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Importar OFX/CSV</span>
+              </button>
             </div>
           )}
 

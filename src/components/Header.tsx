@@ -17,7 +17,8 @@ import {
   ShieldCheck,
   TrendingUp,
   BellRing,
-  Building2
+  Building2,
+  FileSpreadsheet
 } from 'lucide-react';
 import { MonthPeriod, ThemeMode, UserProfile } from '../types';
 import { getMonthLabel, isCurrentMonth } from '../utils/formatters';
@@ -36,6 +37,7 @@ interface HeaderProps {
   onOpenFirebaseSync?: () => void;
   onOpenConnectedBanks?: () => void;
   connectedBanksCount?: number;
+  onOpenImportStatement?: () => void;
   firebaseStatus: 'connected' | 'syncing' | 'offline' | 'unconfigured' | 'error';
   syncKey?: string;
   theme: ThemeMode;
@@ -59,6 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCloud,
   onOpenConnectedBanks,
   connectedBanksCount = 0,
+  onOpenImportStatement,
   firebaseStatus,
   theme,
   onToggleTheme,
@@ -337,6 +340,26 @@ export const Header: React.FC<HeaderProps> = ({
                           Open Finance
                         </span>
                       )}
+                    </button>
+                  )}
+
+                  {/* Importar Extrato Bancário (OFX / CSV) */}
+                  {onOpenImportStatement && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onOpenImportStatement();
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>Importar Extrato</span>
+                      </div>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        OFX / CSV
+                      </span>
                     </button>
                   )}
 
