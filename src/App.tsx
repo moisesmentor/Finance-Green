@@ -121,9 +121,15 @@ function FinanceApp() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
 
-  // 1. Escuta de estado de autenticação (Firebase Auth)
+  // 1. Escuta de estado de autenticação (Firebase Auth) com timeout de segurança
   useEffect(() => {
+    // Timeout de segurança: nunca travar na tela de carregamento se o Firebase demorar
+    const safetyTimer = setTimeout(() => {
+      setIsAuthLoading(false);
+    }, 2500);
+
     const unsubscribe = onAuthChange((user) => {
+      clearTimeout(safetyTimer);
       setCurrentUser(user);
       setIsAuthLoading(false);
 
@@ -159,7 +165,10 @@ function FinanceApp() {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(safetyTimer);
+      unsubscribe();
+    };
   }, []);
 
   // 2. Limpeza de URL: remover qualquer parâmetro ?sync= legado
