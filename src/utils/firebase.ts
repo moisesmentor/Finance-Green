@@ -30,7 +30,8 @@ import {
   UserProfile,
   InvestmentAsset,
   Category,
-  BankConnection
+  BankConnection,
+  UserSubscription
 } from '../types';
 import { DEFAULT_BUDGETS } from './constants';
 import { loadStoredBudgets } from './storage';
@@ -630,13 +631,76 @@ export async function deleteUserBankConnection(
 }
 
 
-// Regras de segurança oficiais do Firestore para o modo de isolamento estrito
+// 19. Escutar status da assinatura em /users/{userId}/subscription/current
+export function subscribeToUserSubscription(
+  userId: string,
+  onData: (subscription: UserSubscription | null) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  try {
+    const { db } = getFirebaseInstances();
+    const docRef = doc(db, 'users', userId, 'subscription', 'current');
+    return onSnapshot(docRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        onData(null);
+        return;
+      }
+      onData(snapshot.data() as UserSubscription);
+    }, onError);
+  } catch (err: any) {
+    if (onError) onError(err);
+    return () => {};
+  }
+}
+
+// Regras de segurança oficiais do Firestore com verificação de assinatura e whitelist admin
 export const FIRESTORE_AUTH_RULES = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Isolamento estrito por usuário: cada conta só acessa suas próprias subcoleções
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    
+    // Validação estrita: usuário autenticado + dono + assinatura ativa (ou admin liberado)
+    function hasValidAccess(userId) {
+      let isOwner = request.auth != null && request.auth.uid == userId;
+      let isAdmin = request.auth != null && (
+        request.auth.token.email == 'contatomoisesrodrigues@gmail.com'
+      );
+      let subDoc = /databases/$(database)/documents/users/$(userId)/subscription/current;
+      let isSubscribed = exists(subDoc) && (
+        get(subDoc).data.status in ['active', 'trialing', 'lifetime'] ||
+        get(subDoc).data.isLifetime == true
+      );
+      return isOwner && (isAdmin || isSubscribed);
+    }
+
+    // Assinatura: o próprio usuário pode LER seu status. NINGUÉM no cliente pode escrever (só Admin SDK no servidor)
+    match /users/{userId}/subscription/{docId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // Dados financeiros e configurações: exige assinatura ativa ou admin
+    match /users/{userId}/transactions/{txId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+
+    match /users/{userId}/budgets/{budgetId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+
+    match /users/{userId}/goals/{goalId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+
+    match /users/{userId}/investments/{assetId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+
+    match /users/{userId}/custom_categories/{catId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+
+    match /users/{userId}/bankConnections/{connId} {
+      allow read, write: if hasValidAccess(userId);
     }
   }
 }`;

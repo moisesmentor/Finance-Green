@@ -247,5 +247,23 @@ export interface BankParseResult {
   totalExpense: number;
 }
 
+export type SubscriptionStatus = 
+  | 'none' 
+  | 'trialing' 
+  | 'active' 
+  | 'past_due' 
+  | 'canceled' 
+  | 'lifetime';
 
-
+export interface UserSubscription {
+  status: SubscriptionStatus;
+  asaasCustomerId?: string | null;
+  asaasSubscriptionId?: string | null;
+  plan?: string;
+  currentPeriodEnd?: number | null; // Timestamp ms
+  updatedAt?: number;
+  paymentMethod?: 'CREDIT_CARD' | 'PIX' | 'BOLETO' | 'MANUAL' | null;
+  isLifetime?: boolean;
+  trialEndsAt?: number | null;
+  customerEmail?: string | null;
+}

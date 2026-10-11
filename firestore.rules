@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Validação estrita de acesso:
+    // 1. Usuário precisa estar autenticado e ser o dono dos dados (request.auth.uid == userId)
+    // 2. Administradores liberados diretamente por e-mail (contatomoisesrodrigues@gmail.com) nunca são bloqueados
+    // 3. Usuários comuns precisam ter documento /users/{userId}/subscription/current com status 'active', 'trialing', 'lifetime' ou isLifetime == true
+    function hasValidAccess(userId) {
+      let isOwner = request.auth != null && request.auth.uid == userId;
+      let isAdmin = request.auth != null && (
+        request.auth.token.email == 'contatomoisesrodrigues@gmail.com'
+      );
+      let subDoc = /databases/$(database)/documents/users/$(userId)/subscription/current;
+      let isSubscribed = exists(subDoc) && (
+        get(subDoc).data.status in ['active', 'trialing', 'lifetime'] ||
+        get(subDoc).data.isLifetime == true
+      );
+      return isOwner && (isAdmin || isSubscribed);
+    }
+
+    // Assinatura:
+    // - O próprio usuário pode LER sua assinatura para verificar o status
+    // - NINGUÉM no cliente pode ESCREVER (somente o Firebase Admin SDK no servidor Vercel pode atualizar)
+    match /users/{userId}/subscription/{docId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // Perfil do usuário (opcional de leitura/escrita básica do próprio usuário)
+    match /users/{userId}/profile/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Transações financeiras: bloqueadas se não houver assinatura válida
+    match /users/{userId}/transactions/{txId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+
+    // Orçamentos por categoria: bloqueados se não houver assinatura válida
+    match /users/{userId}/budgets/{budgetId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+
+    // Metas financeiras: bloqueadas se não houver assinatura válida
+    match /users/{userId}/goals/{goalId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+
+    // Investimentos / Ativos: bloqueados se não houver assinatura válida
+    match /users/{userId}/investments/{assetId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+
+    // Categorias personalizadas: bloqueadas se não houver assinatura válida
+    match /users/{userId}/custom_categories/{catId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+
+    // Conexões bancárias Open Finance (Pluggy): bloqueadas se não houver assinatura válida
+    match /users/{userId}/bankConnections/{connId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+  }
+}
