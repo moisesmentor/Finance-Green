@@ -91,7 +91,24 @@ import { ConnectedBanksModal } from './components/ConnectedBanksModal';
 import { ImportBankStatementModal } from './components/ImportBankStatementModal';
 import { BankAccountsModal } from './components/BankAccountsModal';
 import { AuthScreen } from './components/AuthScreen';
+import { LandingPage } from './components/LandingPage';
+import { LegalPages, LegalPageType } from './components/LegalPages';
 import { ToastProvider, useToast } from './components/Toast';
+
+type PublicViewType = 'app' | 'assinatura' | 'register' | LegalPageType;
+
+function getPublicViewFromUrl(): PublicViewType {
+  if (typeof window === 'undefined') return 'app';
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get('mode');
+  if (path === '/assinatura') return 'assinatura';
+  if (path === '/termos') return 'termos';
+  if (path === '/privacidade') return 'privacidade';
+  if (path === '/excluir-conta') return 'excluir-conta';
+  if (mode === 'register' || path === '/cadastro') return 'register';
+  return 'app';
+}
 
 function FinanceApp() {
   const { theme, toggleTheme } = useTheme();
@@ -100,6 +117,39 @@ function FinanceApp() {
   // Authentication State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [publicView, setPublicView] = useState<PublicViewType>(() => getPublicViewFromUrl());
+  const [cameFromAssinatura, setCameFromAssinatura] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.location.pathname.startsWith('/assinatura');
+  });
+
+  const navigatePublic = (nextView: PublicViewType) => {
+    if (publicView === 'assinatura') {
+      setCameFromAssinatura(true);
+    }
+    setPublicView(nextView);
+    if (typeof window !== 'undefined') {
+      const targetPath =
+        nextView === 'app'
+          ? '/'
+          : nextView === 'assinatura'
+          ? '/assinatura'
+          : nextView === 'register'
+          ? '/?mode=register'
+          : `/${nextView}`;
+      if (window.location.pathname + window.location.search !== targetPath) {
+        window.history.pushState({}, '', targetPath);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setPublicView(getPublicViewFromUrl());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Financial Data State (sempre isolados pelo UID do usuário logado)
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -712,9 +762,48 @@ function FinanceApp() {
     );
   }
 
-  // 2. Proteção Total de Rotas: se não autenticado, renderiza exclusivamente a tela de Login/Cadastro
+  // 2. Páginas Legais (/termos, /privacidade, /excluir-conta) acessíveis sempre
+  if (publicView === 'termos' || publicView === 'privacidade' || publicView === 'excluir-conta') {
+    return (
+      <LegalPages
+        page={publicView}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onBack={() => navigatePublic('assinatura')}
+        onNavigatePage={(p) => navigatePublic(p)}
+        onNavigateAuth={(mode) => navigatePublic(mode === 'register' ? 'register' : 'app')}
+      />
+    );
+  }
+
+  // 3. Landing Page de Vendas em /assinatura:
+  // - Visitantes deslogados veem a página de vendas em greenfinancepro.com.br/assinatura
+  // - Quem já está logado é levado direto ao app na raiz (sem ficar preso na landing)
+  if (!currentUser && publicView === 'assinatura') {
+    return (
+      <LandingPage
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onNavigateAuth={(mode) => navigatePublic(mode === 'register' ? 'register' : 'app')}
+        onNavigateLegal={(page) => navigatePublic(page)}
+      />
+    );
+  }
+
+  // 4. Na raiz (/) ou em /?mode=register, mantém o comportamento original do app:
+  // se não autenticado, exibe a tela de Login/Cadastro
   if (!currentUser) {
-    return <AuthScreen onAuthSuccess={() => {}} />;
+    return (
+      <AuthScreen
+        initialMode={publicView === 'register' ? 'register' : 'login'}
+        onBackToLanding={cameFromAssinatura ? () => navigatePublic('assinatura') : undefined}
+        onAuthSuccess={() => {
+          if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+            window.history.replaceState({}, '', '/');
+          }
+        }}
+      />
+    );
   }
 
   return (
