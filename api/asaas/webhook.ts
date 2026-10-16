@@ -250,6 +250,7 @@ export default async function handler(req: any, res: any) {
           currentPeriodEnd: now,
           canceledAt: existingSub?.canceledAt || now,
           refundRequestedAt: existingSub?.refundRequestedAt || now,
+          refundStatus: 'refunded',
         });
 
         await markWebhookEventProcessed(eventKey, {

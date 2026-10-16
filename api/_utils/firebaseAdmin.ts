@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
 // Inicialização segura do Firebase Admin SDK em funções serverless da Vercel
 function initFirebaseAdmin(): App {
@@ -64,6 +65,7 @@ export interface AdminSubscriptionPayload {
   firstPaymentConfirmedAt?: number | null;
   canceledAt?: number | null;
   refundRequestedAt?: number | null;
+  refundStatus?: 'none' | 'refunded' | 'pending_manual' | null;
   updatedAt?: number;
   paymentMethod?: 'CREDIT_CARD' | 'PIX' | 'BOLETO' | 'UNDEFINED' | 'MANUAL' | null;
   isLifetime?: boolean;
@@ -97,6 +99,70 @@ export async function getServerUserSubscription(
     return null;
   }
   return snapshot.data() as AdminSubscriptionPayload;
+}
+
+// Registra solicitação de reembolso em /refund_requests/{userId} para auditoria e eventual estorno manual (ex: boleto)
+export async function recordRefundRequest(
+  userId: string,
+  payload: {
+    plan: string;
+    asaasSubscriptionId?: string | null;
+    asaasPaymentId?: string | null;
+    paymentMethod?: string | null;
+    status: 'refunded_automatically' | 'pending_manual';
+    reason?: string;
+    userEmail?: string | null;
+  }
+): Promise<void> {
+  const db = getAdminFirestore();
+  await db.collection('refund_requests').doc(userId).set(
+    {
+      userId,
+      ...payload,
+      requestedAt: Date.now(),
+      updatedAt: Date.now(),
+    },
+    { merge: true }
+  );
+}
+
+// Apaga todas as subcoleções do usuário no Firestore e remove a credencial no Firebase Auth
+export async function deleteUserAccountData(userId: string): Promise<void> {
+  const db = getAdminFirestore();
+  const userDocRef = db.collection('users').doc(userId);
+  const subcollections = [
+    'transactions',
+    'budgets',
+    'goals',
+    'investments',
+    'custom_categories',
+    'bankConnections',
+    'bank_accounts',
+    'bank_balance_history',
+    'profile',
+    'subscription',
+  ];
+
+  for (const subName of subcollections) {
+    const snap = await userDocRef.collection(subName).limit(450).get();
+    if (!snap.empty) {
+      const batch = db.batch();
+      snap.docs.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+  }
+
+  await userDocRef.delete().catch(() => {});
+
+  // Remove o usuário do Firebase Authentication
+  try {
+    initFirebaseAdmin();
+    await getAuth().deleteUser(userId);
+  } catch (err: any) {
+    if (err?.code !== 'auth/user-not-found') {
+      throw err;
+    }
+  }
 }
 
 // Verifica se um evento de webhook do Asaas já foi processado (idempotência)

@@ -85,7 +85,7 @@ import {
 import { DEFAULT_BUDGETS, CATEGORIES, DEFAULT_BANK_ACCOUNTS } from './utils/constants';
 import { useTheme } from './utils/useTheme';
 import { getDueDateStatus } from './utils/formatters';
-import { Wallet } from 'lucide-react';
+import { Wallet, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Header } from './components/Header';
 import { DueAlertsBanner } from './components/DueAlertsBanner';
 import { SummaryCards } from './components/SummaryCards';
@@ -105,7 +105,14 @@ import { AuthScreen } from './components/AuthScreen';
 import { LandingPage } from './components/LandingPage';
 import { LegalPages, LegalPageType } from './components/LegalPages';
 import { CheckoutSummaryModal } from './components/CheckoutSummaryModal';
-import { createAsaasSubscriptionCheckout, changeAsaasSubscriptionPlan } from './utils/asaasClient';
+import { SubscriptionModal } from './components/SubscriptionModal';
+import {
+  createAsaasSubscriptionCheckout,
+  changeAsaasSubscriptionPlan,
+  cancelAsaasSubscription,
+  requestAsaasRefund,
+  deleteUserAccountAndSubscription,
+} from './utils/asaasClient';
 import { ToastProvider, useToast } from './components/Toast';
 
 const PENDING_PLAN_STORAGE_KEY = 'greenfinance_pending_checkout_plan';
@@ -233,6 +240,7 @@ function FinanceApp() {
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isBankAccountsModalOpen, setIsBankAccountsModalOpen] = useState(false);
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
 
   // Bank Accounts State (isolados por UID do usuário logado)
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(() => loadStoredBankAccounts(null));
@@ -976,6 +984,45 @@ function FinanceApp() {
     }
   };
 
+  // ETAPA 6: Cancelamento em 1 clique (mantendo acesso até o fim do período já pago)
+  const handleCancelSubscription = async () => {
+    const result = await cancelAsaasSubscription();
+    setUserSubscription((prev) => ({
+      ...prev,
+      plan: result.plan,
+      pendingPlan: null,
+      status: 'canceled',
+      currentPeriodEnd: result.currentPeriodEnd,
+      canceledAt: Date.now(),
+      updatedAt: Date.now(),
+    }));
+    showToast(result.message, 'info');
+  };
+
+  // ETAPA 6: Solicitação de reembolso integral na garantia de 7 dias
+  const handleRequestRefund = async () => {
+    const result = await requestAsaasRefund();
+    setUserSubscription((prev) => ({
+      ...prev,
+      plan: 'free',
+      pendingPlan: null,
+      status: 'canceled',
+      currentPeriodEnd: Date.now(),
+      refundRequestedAt: Date.now(),
+      refundStatus: result.refundStatus,
+      updatedAt: Date.now(),
+    }));
+    showToast(result.message, 'success');
+  };
+
+  // ETAPA 6: Exclusão de conta cancelando assinatura ativa no Asaas primeiro
+  const handleDeleteAccount = async () => {
+    const result = await deleteUserAccountAndSubscription();
+    setIsSubscriptionModalOpen(false);
+    await logoutUser();
+    showToast(result.message, 'info');
+  };
+
   // 1. Páginas Legais (/termos, /privacidade, /excluir-conta) acessíveis imediatamente
   if (publicView === 'termos' || publicView === 'privacidade' || publicView === 'excluir-conta') {
     return (
@@ -1099,6 +1146,9 @@ function FinanceApp() {
         onOpenConnectedBanks={() => setIsBankModalOpen(true)}
         connectedBanksCount={bankConnections.length}
         onOpenImportStatement={handleOpenImportStatementModal}
+        onOpenSubscription={() => setIsSubscriptionModalOpen(true)}
+        effectivePlan={currentEffectivePlan}
+        subscriptionStatus={userSubscription.status}
         firebaseStatus={firebaseStatus}
         syncKey={currentUser.uid}
         theme={theme}
@@ -1111,6 +1161,40 @@ function FinanceApp() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-x-hidden">
         
+        {/* Aviso discreto quando a assinatura estiver past_due (em atraso com tolerância ativa) */}
+        {userSubscription.status === 'past_due' && (
+          <div className="mb-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-start sm:items-center gap-2.5 text-slate-800 dark:text-slate-200">
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5 sm:mt-0" />
+              <span>
+                <strong>Atenção à sua assinatura:</strong> identificamos uma cobrança em aberto no plano{' '}
+                <strong>{PLAN_DETAILS[userSubscription.plan]?.name}</strong>. Seu acesso permanece ativo
+                durante o prazo de tolerância.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {userSubscription.asaasCheckoutUrl && (
+                <a
+                  href={userSubscription.asaasCheckoutUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-white bg-amber-600 hover:bg-amber-500 transition-colors"
+                >
+                  <span>Regularizar pagamento</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsSubscriptionModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg font-semibold text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/10 hover:bg-white dark:hover:bg-white/15 border border-slate-200/80 dark:border-white/10 transition-colors cursor-pointer"
+              >
+                Minha assinatura
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Due Date Payment Alerts (Boletos e Contas a Vencer) */}
         <DueAlertsBanner
           transactions={transactions}
@@ -1336,6 +1420,23 @@ function FinanceApp() {
           setCheckoutErrorMessage(null);
           updatePendingCheckoutPlan(null);
         }}
+      />
+
+      <SubscriptionModal
+        isOpen={isSubscriptionModalOpen}
+        onClose={() => setIsSubscriptionModalOpen(false)}
+        user={currentUser}
+        subscription={userSubscription}
+        theme={theme}
+        onSelectPlanForCheckout={(plan) => {
+          setCheckoutErrorMessage(null);
+          updatePendingCheckoutPlan(plan);
+          setIsCheckoutSummaryOpen(true);
+        }}
+        onCancelSubscription={handleCancelSubscription}
+        onRequestRefund={handleRequestRefund}
+        onDeleteAccount={handleDeleteAccount}
+        onOpenLandingPlans={() => navigatePublic('assinatura')}
       />
 
     </div>

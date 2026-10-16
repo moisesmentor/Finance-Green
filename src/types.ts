@@ -273,6 +273,7 @@ export interface UserSubscription {
   firstPaymentConfirmedAt?: number | null; // Timestamp ms do 1º pagamento (para garantia de 7 dias)
   canceledAt?: number | null;
   refundRequestedAt?: number | null;
+  refundStatus?: 'none' | 'refunded' | 'pending_manual' | null;
   updatedAt?: number;
   paymentMethod?: 'CREDIT_CARD' | 'PIX' | 'BOLETO' | 'UNDEFINED' | 'MANUAL' | null;
   isLifetime?: boolean;

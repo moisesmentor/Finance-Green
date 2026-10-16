@@ -18,9 +18,11 @@ import {
   TrendingUp,
   BellRing,
   Building2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Crown,
+  CreditCard
 } from 'lucide-react';
-import { MonthPeriod, ThemeMode, UserProfile } from '../types';
+import { MonthPeriod, PlanTier, SubscriptionStatus, ThemeMode, UserProfile } from '../types';
 import { getMonthLabel, isCurrentMonth } from '../utils/formatters';
 
 interface HeaderProps {
@@ -39,6 +41,9 @@ interface HeaderProps {
   onOpenConnectedBanks?: () => void;
   connectedBanksCount?: number;
   onOpenImportStatement?: () => void;
+  onOpenSubscription?: () => void;
+  effectivePlan?: PlanTier;
+  subscriptionStatus?: SubscriptionStatus;
   firebaseStatus: 'connected' | 'syncing' | 'offline' | 'unconfigured' | 'error';
   syncKey?: string;
   theme: ThemeMode;
@@ -64,6 +69,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenConnectedBanks,
   connectedBanksCount = 0,
   onOpenImportStatement,
+  onOpenSubscription,
+  effectivePlan = 'free',
+  subscriptionStatus = 'none',
   firebaseStatus,
   theme,
   onToggleTheme,
@@ -266,6 +274,46 @@ export const Header: React.FC<HeaderProps> = ({
 
                 {/* Dropdown Menu Items */}
                 <div className="space-y-1">
+                  {/* Minha Assinatura */}
+                  {onOpenSubscription && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onOpenSubscription();
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {effectivePlan === 'pro' ? (
+                          <Crown className="w-4 h-4 text-emerald-500 shrink-0" />
+                        ) : (
+                          <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        )}
+                        <span>Minha Assinatura</span>
+                      </div>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-md font-bold border ${
+                          subscriptionStatus === 'past_due'
+                            ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                            : effectivePlan === 'pro'
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                            : effectivePlan === 'basic'
+                            ? 'bg-teal-500/15 text-teal-700 dark:text-teal-400 border-teal-500/30'
+                            : 'bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-300 border-transparent'
+                        }`}
+                      >
+                        {subscriptionStatus === 'past_due'
+                          ? 'Atraso'
+                          : effectivePlan === 'pro'
+                          ? 'PRO'
+                          : effectivePlan === 'basic'
+                          ? 'BASIC'
+                          : 'Grátis'}
+                      </span>
+                    </button>
+                  )}
+
                   {/* Theme Mode Switch */}
                   <button
                     type="button"
