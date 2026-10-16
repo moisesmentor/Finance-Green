@@ -2,70 +2,94 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Validação estrita de acesso:
-    // 1. Usuário precisa estar autenticado e ser o dono dos dados (request.auth.uid == userId)
-    // 2. Administradores liberados diretamente por e-mail (contatomoisesrodrigues@gmail.com) nunca são bloqueados
-    // 3. Usuários comuns precisam ter documento /users/{userId}/subscription/current com status 'active', 'trialing', 'lifetime' ou isLifetime == true
-    function hasValidAccess(userId) {
-      let isOwner = request.auth != null && request.auth.uid == userId;
-      let isAdmin = request.auth != null && (
-        request.auth.token.email == 'contatomoisesrodrigues@gmail.com'
-      );
-      let subDoc = /databases/$(database)/documents/users/$(userId)/subscription/current;
-      let isSubscribed = exists(subDoc) && (
-        get(subDoc).data.status in ['active', 'trialing', 'lifetime'] ||
-        get(subDoc).data.isLifetime == true
-      );
-      return isOwner && (isAdmin || isSubscribed);
+    // =========================================================================
+    // FUNÇÕES DE SEGURANÇA E NÍVEIS DE ACESSO (FREE / BASIC / PRO)
+    // =========================================================================
+
+    // 1. Verifica se o usuário está autenticado e é dono do caminho /users/{userId}
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
     }
 
+    // 2. Administrador liberado diretamente pelo token de e-mail (acesso Pro vitalício)
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email == 'contatomoisesrodrigues@gmail.com'
+      );
+    }
+
+    // 3. Documento de assinatura gerenciado exclusivamente pelo Firebase Admin SDK no servidor
+    function subDocPath(userId) {
+      return /databases/$(database)/documents/users/$(userId)/subscription/current;
+    }
+
+    // 4. Verifica se a assinatura está com status válido (ativa, vitalícia, ou dentro do período já pago/tolerância)
+    function hasValidPaidStatus(data) {
+      return data.isLifetime == true
+        || data.status in ['active', 'trialing', 'lifetime']
+        || (
+          data.status in ['past_due', 'canceled']
+          && data.currentPeriodEnd is number
+          && data.currentPeriodEnd > request.time.toMillis()
+        );
+    }
+
+    // 5. Permissão de escrita para recursos de nível BASIC ou superior (Basic ou Pro)
+    function hasBasicOrProAccess(userId) {
+      return isOwner(userId) && (
+        isAdmin() || (
+          exists(subDocPath(userId))
+          && hasValidPaidStatus(get(subDocPath(userId)).data)
+          && get(subDocPath(userId)).data.plan in ['basic', 'pro']
+        )
+      );
+    }
+
+    // 6. Permissão de escrita para recursos exclusivos do nível PRO
+    function hasProAccess(userId) {
+      return isOwner(userId) && (
+        isAdmin() || (
+          exists(subDocPath(userId))
+          && hasValidPaidStatus(get(subDocPath(userId)).data)
+          && (
+            get(subDocPath(userId)).data.plan == 'pro'
+            || get(subDocPath(userId)).data.isLifetime == true
+          )
+        )
+      );
+    }
+
+    // =========================================================================
+    // REGRAS POR SUBCOLEÇÃO DO USUÁRIO
+    // =========================================================================
+
     // Assinatura:
-    // - O próprio usuário pode LER sua assinatura para verificar o status
-    // - NINGUÉM no cliente pode ESCREVER (somente o Firebase Admin SDK no servidor Vercel pode atualizar)
+    // - O próprio usuário pode LER sua assinatura para a interface saber o nível
+    // - NINGUÉM no navegador pode criar, editar ou apagar (exclusivo via Admin SDK no servidor)
     match /users/{userId}/subscription/{docId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
       allow write: if false;
     }
 
-    // Perfil do usuário (opcional de leitura/escrita básica do próprio usuário)
+    // Perfil do usuário
     match /users/{userId}/profile/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
     }
 
-    // Transações financeiras: bloqueadas se não houver assinatura válida
+    // -------------------------------------------------------------------------
+    // NÍVEL GRÁTIS (FREE): liberado para qualquer usuário autenticado na própria conta
+    // (Todo usuário novo começa automaticamente como free)
+    // -------------------------------------------------------------------------
+
+    // Transações financeiras (Dashboard mensal, extrato, filtros, fixos e parcelados)
     match /users/{userId}/transactions/{txId} {
-      allow read, write: if hasValidAccess(userId);
-    }
-
-    // Orçamentos por categoria: bloqueados se não houver assinatura válida
-    match /users/{userId}/budgets/{budgetId} {
-      allow read, write: if hasValidAccess(userId);
-    }
-
-    // Metas financeiras: bloqueadas se não houver assinatura válida
-    match /users/{userId}/goals/{goalId} {
-      allow read, write: if hasValidAccess(userId);
-    }
-
-    // Investimentos / Ativos: bloqueados se não houver assinatura válida
-    match /users/{userId}/investments/{assetId} {
-      allow read, write: if hasValidAccess(userId);
-    }
-
-    // Categorias personalizadas: bloqueadas se não houver assinatura válida
-    match /users/{userId}/custom_categories/{catId} {
-      allow read, write: if hasValidAccess(userId);
-    }
-
-    // Conexões bancárias Open Finance (Pluggy): bloqueadas se não houver assinatura válida
-    match /users/{userId}/bankConnections/{connId} {
-      allow read, write: if hasValidAccess(userId);
+      allow read, write: if isOwner(userId);
     }
 
     // Contas bancárias manuais e carteiras: isoladas por usuário, com validação de tipos e limites
     match /users/{userId}/bank_accounts/{accountId} {
-      allow read, delete: if hasValidAccess(userId);
-      allow create, update: if hasValidAccess(userId)
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId)
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 100
@@ -74,14 +98,55 @@ service cloud.firestore {
         && request.resource.data.currentBalance <= 1000000000;
     }
 
-    // Histórico de saldos bancários: isolado por usuário, com validação de limites
+    // Histórico de saldos bancários manuais
     match /users/{userId}/bank_balance_history/{historyId} {
-      allow read, delete: if hasValidAccess(userId);
-      allow create, update: if hasValidAccess(userId)
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId)
         && request.resource.data.balance is number
         && request.resource.data.balance >= 0
         && request.resource.data.balance <= 1000000000;
     }
+
+    // -------------------------------------------------------------------------
+    // NÍVEL BASIC (BASIC OU PRO):
+    // - Leitura (read) permitida ao dono para preservar dados caso rebaixe para free
+    // - Escrita (write) bloqueada se não tiver plano Basic ou Pro ativo
+    // -------------------------------------------------------------------------
+
+    // Orçamentos e tetos de gasto por categoria
+    match /users/{userId}/budgets/{budgetId} {
+      allow read: if isOwner(userId);
+      allow write: if hasBasicOrProAccess(userId);
+    }
+
+    // Categorias personalizadas ilimitadas
+    match /users/{userId}/custom_categories/{catId} {
+      allow read: if isOwner(userId);
+      allow write: if hasBasicOrProAccess(userId);
+    }
+
+    // -------------------------------------------------------------------------
+    // NÍVEL PRO (EXCLUSIVO PRO):
+    // - Leitura (read) permitida ao dono para preservar dados caso rebaixe para free/basic
+    // - Escrita (write) bloqueada se não tiver plano Pro ativo
+    // -------------------------------------------------------------------------
+
+    // Reserva de Emergência e Cofrinhos de Metas
+    match /users/{userId}/goals/{goalId} {
+      allow read: if isOwner(userId);
+      allow write: if hasProAccess(userId);
+    }
+
+    // Módulo Patrimônio e Investimentos (Renda Fixa/Variável, Previdência, Consórcio, Capitalização)
+    match /users/{userId}/investments/{assetId} {
+      allow read: if isOwner(userId);
+      allow write: if hasProAccess(userId);
+    }
+
+    // Conexões bancárias Open Finance (Pluggy)
+    match /users/{userId}/bankConnections/{connId} {
+      allow read: if isOwner(userId);
+      allow write: if hasProAccess(userId);
+    }
   }
 }
-

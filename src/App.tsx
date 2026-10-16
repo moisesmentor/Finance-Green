@@ -17,7 +17,9 @@ import {
   BankConnection,
   BankAccount,
   BankBalanceHistoryEntry,
-  BankBalanceDisplayMode
+  BankBalanceDisplayMode,
+  UserSubscription,
+  PlanTier
 } from './types';
 import { 
   loadStoredTransactions, 
@@ -68,8 +70,17 @@ import {
   saveUserBankAccount,
   deleteUserBankAccount,
   subscribeToUserBankBalanceHistory,
-  saveUserBankBalanceHistoryEntry
+  saveUserBankBalanceHistoryEntry,
+  subscribeToUserSubscription
 } from './utils/firebase';
+import {
+  AppFeatureKey,
+  DEFAULT_FREE_SUBSCRIPTION,
+  FEATURE_MIN_PLAN,
+  PLAN_DETAILS,
+  canAccessFeature,
+  getEffectivePlan
+} from './utils/permissions';
 
 import { DEFAULT_BUDGETS, CATEGORIES, DEFAULT_BANK_ACCOUNTS } from './utils/constants';
 import { useTheme } from './utils/useTheme';
@@ -93,7 +104,21 @@ import { BankAccountsModal } from './components/BankAccountsModal';
 import { AuthScreen } from './components/AuthScreen';
 import { LandingPage } from './components/LandingPage';
 import { LegalPages, LegalPageType } from './components/LegalPages';
+import { CheckoutSummaryModal } from './components/CheckoutSummaryModal';
 import { ToastProvider, useToast } from './components/Toast';
+
+const PENDING_PLAN_STORAGE_KEY = 'greenfinance_pending_checkout_plan';
+
+function loadPendingCheckoutPlan(): Exclude<PlanTier, 'free'> | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = window.sessionStorage.getItem(PENDING_PLAN_STORAGE_KEY);
+    if (saved === 'basic' || saved === 'pro') return saved;
+  } catch {
+    // ignore storage errors
+  }
+  return null;
+}
 
 type PublicViewType = 'app' | 'assinatura' | 'register' | LegalPageType;
 
@@ -114,13 +139,33 @@ function FinanceApp() {
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
 
-  // Authentication State
+  // Authentication & Subscription State (todo usuário novo começa em free)
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [userSubscription, setUserSubscription] = useState<UserSubscription>(DEFAULT_FREE_SUBSCRIPTION);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [publicView, setPublicView] = useState<PublicViewType>(() => getPublicViewFromUrl());
   const [cameFromAssinatura, setCameFromAssinatura] = useState<boolean>(() => {
     return typeof window !== 'undefined' && window.location.pathname.startsWith('/assinatura');
   });
+  const [pendingCheckoutPlan, setPendingCheckoutPlan] = useState<Exclude<PlanTier, 'free'> | null>(() =>
+    loadPendingCheckoutPlan()
+  );
+  const [isCheckoutSummaryOpen, setIsCheckoutSummaryOpen] = useState(false);
+
+  const updatePendingCheckoutPlan = (plan: Exclude<PlanTier, 'free'> | null) => {
+    setPendingCheckoutPlan(plan);
+    if (typeof window !== 'undefined') {
+      try {
+        if (plan) {
+          window.sessionStorage.setItem(PENDING_PLAN_STORAGE_KEY, plan);
+        } else {
+          window.sessionStorage.removeItem(PENDING_PLAN_STORAGE_KEY);
+        }
+      } catch {
+        // ignore storage errors
+      }
+    }
+  };
 
   const navigatePublic = (nextView: PublicViewType) => {
     if (publicView === 'assinatura') {
@@ -205,6 +250,7 @@ function FinanceApp() {
 
       if (!user) {
         // Reset completo do estado ao sair: NUNCA vazar dados para o próximo login
+        setUserSubscription(DEFAULT_FREE_SUBSCRIPTION);
         setTransactions([]);
         setBudgets(DEFAULT_BUDGETS);
         setGoals([]);
@@ -367,6 +413,16 @@ function FinanceApp() {
       }
     );
 
+    // Escuta do documento /users/{uid}/subscription/current (todo usuário novo sem documento começa em free)
+    const unsubSubscription = subscribeToUserSubscription(
+      currentUser.uid,
+      (remoteSub) => {
+        const effectiveSub = remoteSub || DEFAULT_FREE_SUBSCRIPTION;
+        setUserSubscription(effectiveSub);
+        setCurrentUser((prev) => (prev ? { ...prev, subscription: effectiveSub } : prev));
+      }
+    );
+
     return () => {
       unsubTx();
       unsubBudgets();
@@ -376,9 +432,28 @@ function FinanceApp() {
       unsubBanks();
       unsubBankAccounts();
       unsubHistory();
+      unsubSubscription();
     };
 
   }, [currentUser?.uid]);
+
+  // Verifica se o nível de acesso atual do usuário permite usar um recurso (baseado na tabela única FEATURE_MIN_PLAN)
+  const checkFeatureOrNotify = (feature: AppFeatureKey): boolean => {
+    if (canAccessFeature(feature, userSubscription, currentUser?.email)) {
+      return true;
+    }
+    const featureConfig = FEATURE_MIN_PLAN[feature];
+    const requiredPlanName = PLAN_DETAILS[featureConfig.minPlan].name;
+    showToast(
+      `O recurso "${featureConfig.label}" faz parte do plano ${requiredPlanName}.`,
+      'info',
+      {
+        label: 'Ver Planos',
+        onClick: () => navigatePublic('assinatura'),
+      }
+    );
+    return false;
+  };
 
   // Salvar configurações do Supabase (opcional)
   useEffect(() => {
@@ -415,6 +490,7 @@ function FinanceApp() {
     try {
       await logoutUser();
       showToast('Sessão encerrada com sucesso', 'info');
+      setUserSubscription(DEFAULT_FREE_SUBSCRIPTION);
       setTransactions([]);
       setBudgets(DEFAULT_BUDGETS);
       setGoals([]);
@@ -471,9 +547,10 @@ function FinanceApp() {
     }
   };
 
-  // Importação em Lote de Extratos Bancários (OFX / CSV)
+  // Importação em Lote de Extratos Bancários (OFX / CSV) — Nível BASIC
   const handleSaveBatchImportedTransactions = async (newTxs: Transaction[]) => {
     if (!currentUser?.uid || newTxs.length === 0) return;
+    if (!checkFeatureOrNotify('import_ofx_csv')) return;
     setTransactions(prev => [...newTxs, ...prev]);
     await batchSaveUserTransactions(currentUser.uid, newTxs);
   };
@@ -569,9 +646,10 @@ function FinanceApp() {
     setIsTxModalOpen(true);
   };
 
-  // Handlers para Orçamentos (Subcoleção /users/{uid}/budgets)
+  // Handlers para Orçamentos (Subcoleção /users/{uid}/budgets — Nível BASIC)
   const handleSaveBudgets = async (newBudgets: CategoryBudget[]) => {
     if (!currentUser?.uid) return;
+    if (!checkFeatureOrNotify('category_budgets_and_alerts')) return;
     setBudgets(newBudgets);
     saveStoredBudgets(newBudgets, currentUser.uid);
     const res = await saveUserBudgets(currentUser.uid, newBudgets);
@@ -584,9 +662,10 @@ function FinanceApp() {
   };
 
 
-  // Handlers para Metas (Subcoleção /users/{uid}/goals)
+  // Handlers para Metas (Subcoleção /users/{uid}/goals — Nível PRO)
   const handleSaveGoals = async (newGoals: FinancialGoal[]) => {
     if (!currentUser?.uid) return;
+    if (!checkFeatureOrNotify('emergency_fund_and_goals')) return;
     setGoals(newGoals);
     await saveUserGoals(currentUser.uid, newGoals);
     showToast('Metas financeiras salvas!');
@@ -598,18 +677,20 @@ function FinanceApp() {
     return fund ? (fund.currentAmount || 0) : 0;
   }, [goals]);
 
-  // Handlers para Investimentos e Patrimônio (Subcoleção /users/{uid}/investments)
+  // Handlers para Investimentos e Patrimônio (Subcoleção /users/{uid}/investments — Nível PRO)
   const handleSaveInvestments = async (newInvestments: InvestmentAsset[]) => {
     if (!currentUser?.uid) return;
+    if (!checkFeatureOrNotify('patrimony_and_investments')) return;
     setInvestments(newInvestments);
     saveStoredInvestments(newInvestments, currentUser.uid);
     await saveUserInvestments(currentUser.uid, newInvestments);
     showToast('Patrimônio e investimentos atualizados com sucesso!');
   };
 
-  // Handler para Categoria Personalizada (Subcoleção /users/{uid}/custom_categories)
+  // Handler para Categoria Personalizada (Subcoleção /users/{uid}/custom_categories — Nível BASIC)
   const handleSaveCustomCategory = async (newCategory: Category) => {
     if (!currentUser?.uid) return;
+    if (!checkFeatureOrNotify('custom_categories')) return;
     setCustomCategories(prev => {
       const exists = prev.some(c => c.id === newCategory.id);
       const updated = exists ? prev.map(c => c.id === newCategory.id ? newCategory : c) : [...prev, newCategory];
@@ -644,7 +725,7 @@ function FinanceApp() {
     await deleteUserBankConnection(currentUser.uid, connectionId);
   };
 
-  // Handlers para Contas Bancárias (Subcoleção /users/{uid}/bank_accounts)
+  // Handlers para Contas Bancárias (Subcoleção /users/{uid}/bank_accounts — Nível FREE)
   const handleSaveBankAccount = async (account: BankAccount) => {
     if (!currentUser?.uid) return;
     setBankAccounts(prev => {
@@ -679,7 +760,7 @@ function FinanceApp() {
   };
 
 
-  // Handlers para Backup / Importação
+  // Handlers para Backup / Importação JSON (Nível BASIC)
   const handleImportData = async (
     newTransactions: Transaction[], 
     newBudgets: CategoryBudget[],
@@ -688,6 +769,7 @@ function FinanceApp() {
     newCustomCategories?: Category[]
   ) => {
     if (!currentUser?.uid) return;
+    if (!checkFeatureOrNotify('json_backup_restore')) return;
     setTransactions(newTransactions);
     if (newBudgets && newBudgets.length > 0) {
       setBudgets(newBudgets);
@@ -745,6 +827,112 @@ function FinanceApp() {
     showToast('Dados da nuvem aplicados!');
   };
 
+  // Abridores de modais protegidos pela tabela única de permissões (FEATURE_MIN_PLAN)
+  const handleOpenBudgetsModal = () => {
+    if (checkFeatureOrNotify('category_budgets_and_alerts')) {
+      setIsBudgetModalOpen(true);
+    }
+  };
+
+  const handleOpenBackupModal = () => {
+    if (checkFeatureOrNotify('json_backup_restore')) {
+      setIsBackupModalOpen(true);
+    }
+  };
+
+  const handleOpenImportStatementModal = () => {
+    if (checkFeatureOrNotify('import_ofx_csv')) {
+      setIsImportModalOpen(true);
+    }
+  };
+
+  const handleOpenGoalsModal = (tab: 'reserve' | 'goals') => {
+    if (checkFeatureOrNotify('emergency_fund_and_goals')) {
+      setGoalsInitialTab(tab);
+      setIsGoalsModalOpen(true);
+    }
+  };
+
+  const handleOpenInvestmentsModal = () => {
+    if (checkFeatureOrNotify('patrimony_and_investments')) {
+      setIsInvestmentsModalOpen(true);
+    }
+  };
+
+  const handleOpenAnnualReportModal = () => {
+    if (checkFeatureOrNotify('annual_report')) {
+      setIsAnnualReportModalOpen(true);
+    }
+  };
+
+  // Nível efetivo atual do usuário logado ('free', 'basic' ou 'pro')
+  const currentEffectivePlan = useMemo(
+    () => getEffectivePlan(userSubscription, currentUser?.email),
+    [userSubscription, currentUser?.email]
+  );
+
+  // ETAPA 2: Fluxo dos botões da página /assinatura ("Começar grátis", "Assinar Basic", "Assinar Pro")
+  const handleSelectPlanFromLanding = (plan: PlanTier) => {
+    // 1. "Começar grátis"
+    if (plan === 'free') {
+      updatePendingCheckoutPlan(null);
+      setIsCheckoutSummaryOpen(false);
+      if (currentUser) {
+        showToast('Você já está conectado! Aproveite o Green Finance Pro.', 'info');
+        navigatePublic('app');
+      } else {
+        navigatePublic('register');
+      }
+      return;
+    }
+
+    // 2. "Assinar Basic" ou "Assinar Pro"
+    updatePendingCheckoutPlan(plan);
+
+    // 2.a) Se NÃO estiver logado: leva ao login/cadastro mantendo o plano escolhido salvo
+    if (!currentUser) {
+      navigatePublic('register');
+      return;
+    }
+
+    // 2.c) Se já tiver o mesmo plano ativo: avisar e levar ao app
+    if (currentEffectivePlan === plan) {
+      updatePendingCheckoutPlan(null);
+      showToast(`Você já possui o plano ${PLAN_DETAILS[plan].name} ativo na sua conta!`, 'info');
+      navigatePublic('app');
+      return;
+    }
+
+    // 2.b) e 2.d) Se estiver logado (em free, ou mudando entre Basic e Pro): abre a tela de resumo antes de pagar
+    setIsCheckoutSummaryOpen(true);
+  };
+
+  // Quando o usuário conclui o login/cadastro tendo escolhido Basic ou Pro antes, abre o resumo automaticamente
+  useEffect(() => {
+    if (!currentUser || !pendingCheckoutPlan) return;
+
+    if (currentEffectivePlan === pendingCheckoutPlan) {
+      const planName = PLAN_DETAILS[pendingCheckoutPlan].name;
+      updatePendingCheckoutPlan(null);
+      setIsCheckoutSummaryOpen(false);
+      showToast(`Você já possui o plano ${planName} ativo na sua conta!`, 'info');
+      if (publicView !== 'app') {
+        navigatePublic('app');
+      }
+      return;
+    }
+
+    setIsCheckoutSummaryOpen(true);
+  }, [currentUser?.uid, pendingCheckoutPlan, currentEffectivePlan]);
+
+  // Handler do botão "Ir para o pagamento" na tela de resumo (será conectado ao Asaas na Etapa 3)
+  const handleProceedToPayment = (plan: Exclude<PlanTier, 'free'>) => {
+    showToast(
+      `Resumo do plano ${PLAN_DETAILS[plan].name} confirmado! O redirecionamento para o checkout Asaas será ativado na Etapa 3.`,
+      'info'
+    );
+  };
+
   // 1. Páginas Legais (/termos, /privacidade, /excluir-conta) acessíveis imediatamente
   if (publicView === 'termos' || publicView === 'privacidade' || publicView === 'excluir-conta') {
     return (
@@ -754,7 +942,10 @@ function FinanceApp() {
         onToggleTheme={toggleTheme}
         onBack={() => navigatePublic('assinatura')}
         onNavigatePage={(p) => navigatePublic(p)}
-        onNavigateAuth={(mode) => navigatePublic(mode === 'register' ? 'register' : 'app')}
+        onNavigateAuth={(mode) => {
+          updatePendingCheckoutPlan(null);
+          navigatePublic(mode === 'register' ? 'register' : 'app');
+        }}
       />
     );
   }
@@ -763,12 +954,41 @@ function FinanceApp() {
   // Abre SEMPRE a página de vendas em greenfinancepro.com.br/assinatura (mesmo se o usuário já estiver logado no navegador)
   if (publicView === 'assinatura') {
     return (
-      <LandingPage
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        onNavigateAuth={(mode) => navigatePublic(mode === 'register' ? 'register' : 'app')}
-        onNavigateLegal={(page) => navigatePublic(page)}
-      />
+      <>
+        <LandingPage
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          isAuthenticated={Boolean(currentUser)}
+          currentEffectivePlan={currentUser ? currentEffectivePlan : undefined}
+          onSelectPlan={handleSelectPlanFromLanding}
+          onNavigateAuth={(mode) => {
+            updatePendingCheckoutPlan(null);
+            if (currentUser) {
+              navigatePublic('app');
+            } else {
+              navigatePublic(mode === 'register' ? 'register' : 'app');
+            }
+          }}
+          onNavigateLegal={(page) => navigatePublic(page)}
+        />
+        <CheckoutSummaryModal
+          isOpen={isCheckoutSummaryOpen && Boolean(currentUser) && Boolean(pendingCheckoutPlan)}
+          selectedPlan={pendingCheckoutPlan}
+          user={currentUser}
+          subscription={userSubscription}
+          theme={theme}
+          onClose={() => {
+            setIsCheckoutSummaryOpen(false);
+            updatePendingCheckoutPlan(null);
+          }}
+          onProceedToPayment={handleProceedToPayment}
+          onGoToApp={() => {
+            setIsCheckoutSummaryOpen(false);
+            updatePendingCheckoutPlan(null);
+            navigatePublic('app');
+          }}
+        />
+      </>
     );
   }
 
@@ -795,11 +1015,18 @@ function FinanceApp() {
     return (
       <AuthScreen
         initialMode={publicView === 'register' ? 'register' : 'login'}
-        onBackToLanding={cameFromAssinatura ? () => navigatePublic('assinatura') : undefined}
+        pendingPlan={pendingCheckoutPlan}
+        theme={theme}
+        onBackToLanding={
+          cameFromAssinatura || pendingCheckoutPlan
+            ? () => navigatePublic('assinatura')
+            : undefined
+        }
         onAuthSuccess={() => {
           if (typeof window !== 'undefined' && window.location.pathname !== '/') {
             window.history.replaceState({}, '', '/');
           }
+          setPublicView('app');
         }}
       />
     );
@@ -813,23 +1040,17 @@ function FinanceApp() {
         period={period}
         onPeriodChange={setPeriod}
         onOpenNewTransaction={handleOpenNewTransaction}
-        onOpenBudgets={() => setIsBudgetModalOpen(true)}
-        onOpenBackup={() => setIsBackupModalOpen(true)}
-        onOpenGoals={() => {
-          setGoalsInitialTab('goals');
-          setIsGoalsModalOpen(true);
-        }}
-        onOpenReserve={() => {
-          setGoalsInitialTab('reserve');
-          setIsGoalsModalOpen(true);
-        }}
-        onOpenInvestments={() => setIsInvestmentsModalOpen(true)}
+        onOpenBudgets={handleOpenBudgetsModal}
+        onOpenBackup={handleOpenBackupModal}
+        onOpenGoals={() => handleOpenGoalsModal('goals')}
+        onOpenReserve={() => handleOpenGoalsModal('reserve')}
+        onOpenInvestments={handleOpenInvestmentsModal}
         onOpenBankAccounts={() => setIsBankAccountsModalOpen(true)}
-        onOpenAnnualReport={() => setIsAnnualReportModalOpen(true)}
+        onOpenAnnualReport={handleOpenAnnualReportModal}
         onOpenCloud={() => setIsCloudModalOpen(true)}
         onOpenConnectedBanks={() => setIsBankModalOpen(true)}
         connectedBanksCount={bankConnections.length}
-        onOpenImportStatement={() => setIsImportModalOpen(true)}
+        onOpenImportStatement={handleOpenImportStatementModal}
         firebaseStatus={firebaseStatus}
         syncKey={currentUser.uid}
         theme={theme}
@@ -857,7 +1078,7 @@ function FinanceApp() {
           period={period}
           bankAccounts={bankAccounts}
           bankDisplayMode={bankDisplayMode}
-          onOpenBudgets={() => setIsBudgetModalOpen(true)}
+          onOpenBudgets={handleOpenBudgetsModal}
           onOpenBankAccounts={() => setIsBankAccountsModalOpen(true)}
           onMarkAsPaid={handleToggleStatus}
         >
@@ -866,7 +1087,7 @@ function FinanceApp() {
             transactions={monthTransactions}
             budgets={budgets}
             period={period}
-            onOpenBudgets={() => setIsBudgetModalOpen(true)}
+            onOpenBudgets={handleOpenBudgetsModal}
             categories={allCategories}
           />
         </SummaryCards>
@@ -880,7 +1101,7 @@ function FinanceApp() {
           onToggleStatus={handleToggleStatus}
           onMarkAsPaid={handleMarkAsPaid}
           onAddNew={handleOpenNewTransaction}
-          onOpenImportStatement={() => setIsImportModalOpen(true)}
+          onOpenImportStatement={handleOpenImportStatementModal}
           categories={allCategories}
         />
 
@@ -899,21 +1120,21 @@ function FinanceApp() {
             </button>
             <span>•</span>
             <button
-              onClick={() => setIsInvestmentsModalOpen(true)}
+              onClick={handleOpenInvestmentsModal}
               className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
             >
               Patrimônio & Investimentos
             </button>
             <span>•</span>
             <button
-              onClick={() => setIsGoalsModalOpen(true)}
+              onClick={() => handleOpenGoalsModal('goals')}
               className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
             >
               Cofrinhos & Metas
             </button>
             <span>•</span>
             <button
-              onClick={() => setIsAnnualReportModalOpen(true)}
+              onClick={handleOpenAnnualReportModal}
               className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
             >
               Visão Anual
@@ -927,7 +1148,7 @@ function FinanceApp() {
             </button>
             <span>•</span>
             <button
-              onClick={() => setIsBackupModalOpen(true)}
+              onClick={handleOpenBackupModal}
               className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
             >
               Backup JSON
@@ -1047,6 +1268,22 @@ function FinanceApp() {
         showToast={showToast}
       />
 
+      <CheckoutSummaryModal
+        isOpen={isCheckoutSummaryOpen && Boolean(pendingCheckoutPlan)}
+        selectedPlan={pendingCheckoutPlan}
+        user={currentUser}
+        subscription={userSubscription}
+        theme={theme}
+        onClose={() => {
+          setIsCheckoutSummaryOpen(false);
+          updatePendingCheckoutPlan(null);
+        }}
+        onProceedToPayment={handleProceedToPayment}
+        onGoToApp={() => {
+          setIsCheckoutSummaryOpen(false);
+          updatePendingCheckoutPlan(null);
+        }}
+      />
 
     </div>
   );

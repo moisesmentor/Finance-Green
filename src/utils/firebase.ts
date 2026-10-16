@@ -655,64 +655,87 @@ export function subscribeToUserSubscription(
   }
 }
 
-// Regras de segurança oficiais do Firestore com verificação de assinatura e whitelist admin
+// Regras de segurança oficiais do Firestore com níveis de acesso (free, basic, pro) e whitelist admin
 export const FIRESTORE_AUTH_RULES = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Validação estrita: usuário autenticado + dono + assinatura ativa (ou admin liberado)
-    function hasValidAccess(userId) {
-      let isOwner = request.auth != null && request.auth.uid == userId;
-      let isAdmin = request.auth != null && (
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    function isAdmin() {
+      return request.auth != null && (
         request.auth.token.email == 'contatomoisesrodrigues@gmail.com'
       );
-      let subDoc = /databases/$(database)/documents/users/$(userId)/subscription/current;
-      let isSubscribed = exists(subDoc) && (
-        get(subDoc).data.status in ['active', 'trialing', 'lifetime'] ||
-        get(subDoc).data.isLifetime == true
+    }
+    function subDocPath(userId) {
+      return /databases/$(database)/documents/users/$(userId)/subscription/current;
+    }
+    function hasValidPaidStatus(data) {
+      return data.isLifetime == true
+        || data.status in ['active', 'trialing', 'lifetime']
+        || (
+          data.status in ['past_due', 'canceled']
+          && data.currentPeriodEnd is number
+          && data.currentPeriodEnd > request.time.toMillis()
+        );
+    }
+    function hasBasicOrProAccess(userId) {
+      return isOwner(userId) && (
+        isAdmin() || (
+          exists(subDocPath(userId))
+          && hasValidPaidStatus(get(subDocPath(userId)).data)
+          && get(subDocPath(userId)).data.plan in ['basic', 'pro']
+        )
       );
-      return isOwner && (isAdmin || isSubscribed);
+    }
+    function hasProAccess(userId) {
+      return isOwner(userId) && (
+        isAdmin() || (
+          exists(subDocPath(userId))
+          && hasValidPaidStatus(get(subDocPath(userId)).data)
+          && (
+            get(subDocPath(userId)).data.plan == 'pro'
+            || get(subDocPath(userId)).data.isLifetime == true
+          )
+        )
+      );
     }
 
-    // Assinatura: o próprio usuário pode LER seu status. NINGUÉM no cliente pode escrever (só Admin SDK no servidor)
     match /users/{userId}/subscription/{docId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
       allow write: if false;
     }
-
-    // Dados financeiros e configurações: exige assinatura ativa ou admin
+    match /users/{userId}/profile/{docId} {
+      allow read, write: if isOwner(userId);
+    }
     match /users/{userId}/transactions/{txId} {
-      allow read, write: if hasValidAccess(userId);
+      allow read, write: if isOwner(userId);
     }
-
-    match /users/{userId}/budgets/{budgetId} {
-      allow read, write: if hasValidAccess(userId);
-    }
-
-    match /users/{userId}/goals/{goalId} {
-      allow read, write: if hasValidAccess(userId);
-    }
-
-    match /users/{userId}/investments/{assetId} {
-      allow read, write: if hasValidAccess(userId);
-    }
-
-    match /users/{userId}/custom_categories/{catId} {
-      allow read, write: if hasValidAccess(userId);
-    }
-
-    match /users/{userId}/bankConnections/{connId} {
-      allow read, write: if hasValidAccess(userId);
-    }
-
-    // Contas bancárias manuais e carteiras
     match /users/{userId}/bank_accounts/{accountId} {
-      allow read, write: if hasValidAccess(userId);
+      allow read, write: if isOwner(userId);
     }
-
-    // Histórico de saldos bancários
     match /users/{userId}/bank_balance_history/{historyId} {
-      allow read, write: if hasValidAccess(userId);
+      allow read, write: if isOwner(userId);
+    }
+    match /users/{userId}/budgets/{budgetId} {
+      allow read: if isOwner(userId);
+      allow write: if hasBasicOrProAccess(userId);
+    }
+    match /users/{userId}/custom_categories/{catId} {
+      allow read: if isOwner(userId);
+      allow write: if hasBasicOrProAccess(userId);
+    }
+    match /users/{userId}/goals/{goalId} {
+      allow read: if isOwner(userId);
+      allow write: if hasProAccess(userId);
+    }
+    match /users/{userId}/investments/{assetId} {
+      allow read: if isOwner(userId);
+      allow write: if hasProAccess(userId);
+    }
+    match /users/{userId}/bankConnections/{connId} {
+      allow read: if isOwner(userId);
+      allow write: if hasProAccess(userId);
     }
   }
 }`;

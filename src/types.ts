@@ -247,8 +247,11 @@ export interface BankParseResult {
   totalExpense: number;
 }
 
+export type PlanTier = 'free' | 'basic' | 'pro';
+
 export type SubscriptionStatus = 
   | 'none' 
+  | 'pending'
   | 'trialing' 
   | 'active' 
   | 'past_due' 
@@ -256,13 +259,22 @@ export type SubscriptionStatus =
   | 'lifetime';
 
 export interface UserSubscription {
+  plan: PlanTier;
+  pendingPlan?: PlanTier | null;
   status: SubscriptionStatus;
   asaasCustomerId?: string | null;
   asaasSubscriptionId?: string | null;
-  plan?: string;
-  currentPeriodEnd?: number | null; // Timestamp ms
+  asaasCheckoutUrl?: string | null;
+  asaasLastPaymentId?: string | null;
+  billingCycle?: 'MONTHLY' | 'YEARLY' | null;
+  currentPeriodEnd?: number | null; // Timestamp ms do vencimento atual / fim do período pago
+  nextDueDate?: string | null;      // 'YYYY-MM-DD'
+  subscribedAt?: number | null;     // Timestamp ms da primeira assinatura ativa
+  firstPaymentConfirmedAt?: number | null; // Timestamp ms do 1º pagamento (para garantia de 7 dias)
+  canceledAt?: number | null;
+  refundRequestedAt?: number | null;
   updatedAt?: number;
-  paymentMethod?: 'CREDIT_CARD' | 'PIX' | 'BOLETO' | 'MANUAL' | null;
+  paymentMethod?: 'CREDIT_CARD' | 'PIX' | 'BOLETO' | 'UNDEFINED' | 'MANUAL' | null;
   isLifetime?: boolean;
   trialEndsAt?: number | null;
   customerEmail?: string | null;

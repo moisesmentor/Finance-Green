@@ -26,12 +26,15 @@ import {
   FileSpreadsheet,
   PiggyBank
 } from 'lucide-react';
-import { ThemeMode } from '../types';
+import { PlanTier, ThemeMode } from '../types';
 
 interface LandingPageProps {
   theme: ThemeMode;
   onToggleTheme: () => void;
   onNavigateAuth: (mode: 'login' | 'register') => void;
+  onSelectPlan?: (plan: PlanTier) => void;
+  isAuthenticated?: boolean;
+  currentEffectivePlan?: PlanTier;
   onNavigateLegal?: (page: 'termos' | 'privacidade' | 'excluir-conta') => void;
 }
 
@@ -84,8 +87,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   theme,
   onToggleTheme,
   onNavigateAuth,
+  onSelectPlan,
+  isAuthenticated = false,
+  currentEffectivePlan,
   onNavigateLegal,
 }) => {
+  const handleChoosePlan = (plan: PlanTier) => {
+    if (onSelectPlan) {
+      onSelectPlan(plan);
+    } else {
+      onNavigateAuth('register');
+    }
+  };
   // Subtle typing / phrase rotation respecting prefers-reduced-motion
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState(ROTATING_PHRASES[0]);
@@ -1020,10 +1033,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => onNavigateAuth('register')}
-                    className="mt-6 w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.08] dark:hover:bg-white/[0.14] border border-slate-200/80 dark:border-white/10 transition-all cursor-pointer"
+                    onClick={() => handleChoosePlan('free')}
+                    className="mt-6 w-full py-3 px-4 rounded-xl text-base sm:text-sm font-bold text-slate-800 dark:text-slate-100 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.08] dark:hover:bg-white/[0.14] border border-slate-200/80 dark:border-white/10 transition-all cursor-pointer"
                   >
-                    Começar grátis
+                    {isAuthenticated && currentEffectivePlan === 'free'
+                      ? 'Seu plano atual • Ir ao app'
+                      : 'Começar grátis'}
                   </button>
 
                   <div className="mt-6 pt-5 border-t border-slate-100 dark:border-white/[0.08] text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
@@ -1070,10 +1085,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => onNavigateAuth('register')}
-                    className="mt-6 w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.08] dark:hover:bg-white/[0.14] border border-slate-200/80 dark:border-white/10 transition-all cursor-pointer"
+                    onClick={() => handleChoosePlan('basic')}
+                    className="mt-6 w-full py-3 px-4 rounded-xl text-base sm:text-sm font-bold text-slate-800 dark:text-slate-100 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.08] dark:hover:bg-white/[0.14] border border-slate-200/80 dark:border-white/10 transition-all cursor-pointer"
                   >
-                    Assinar Basic
+                    {isAuthenticated && currentEffectivePlan === 'basic'
+                      ? 'Plano Basic ativo • Ir ao app'
+                      : 'Assinar Basic'}
                   </button>
 
                   <div className="mt-6 pt-5 border-t border-slate-100 dark:border-white/[0.08] text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
@@ -1120,10 +1137,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => onNavigateAuth('register')}
-                    className="mt-6 w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-[#059669] hover:bg-emerald-500 shadow-md shadow-emerald-600/25 transition-all cursor-pointer"
+                    onClick={() => handleChoosePlan('pro')}
+                    className="mt-6 w-full py-3 px-4 rounded-xl text-base sm:text-sm font-bold text-white bg-[#059669] hover:bg-emerald-500 shadow-md shadow-emerald-600/25 transition-all cursor-pointer"
                   >
-                    Assinar Pro
+                    {isAuthenticated && currentEffectivePlan === 'pro'
+                      ? 'Plano Pro ativo • Ir ao app'
+                      : 'Assinar Pro'}
                   </button>
 
                   <div className="mt-6 pt-5 border-t border-emerald-500/20 text-xs font-bold uppercase tracking-wider text-[#059669] dark:text-emerald-400">

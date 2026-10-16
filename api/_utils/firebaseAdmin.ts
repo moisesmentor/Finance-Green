@@ -50,13 +50,22 @@ export function getAdminFirestore(): Firestore {
 }
 
 export interface AdminSubscriptionPayload {
-  status: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'lifetime';
+  plan: 'free' | 'basic' | 'pro';
+  pendingPlan?: 'free' | 'basic' | 'pro' | null;
+  status: 'none' | 'pending' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'lifetime';
   asaasCustomerId?: string | null;
   asaasSubscriptionId?: string | null;
-  plan?: string;
+  asaasCheckoutUrl?: string | null;
+  asaasLastPaymentId?: string | null;
+  billingCycle?: 'MONTHLY' | 'YEARLY' | null;
   currentPeriodEnd?: number | null;
+  nextDueDate?: string | null;
+  subscribedAt?: number | null;
+  firstPaymentConfirmedAt?: number | null;
+  canceledAt?: number | null;
+  refundRequestedAt?: number | null;
   updatedAt?: number;
-  paymentMethod?: 'CREDIT_CARD' | 'PIX' | 'BOLETO' | 'MANUAL' | null;
+  paymentMethod?: 'CREDIT_CARD' | 'PIX' | 'BOLETO' | 'UNDEFINED' | 'MANUAL' | null;
   isLifetime?: boolean;
   trialEndsAt?: number | null;
   customerEmail?: string | null;
