@@ -745,24 +745,7 @@ function FinanceApp() {
     showToast('Dados da nuvem aplicados!');
   };
 
-  // 1. Tela de Carregamento da Sessão
-  if (isAuthLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 dark:bg-[#060606] flex flex-col items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-500/20 animate-pulse">
-            <Wallet className="w-6 h-6 text-white" />
-          </div>
-          <div className="flex items-center gap-2.5 text-slate-400 text-xs font-medium">
-            <div className="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-            <span>Carregando ambiente seguro...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 2. Páginas Legais (/termos, /privacidade, /excluir-conta) acessíveis sempre
+  // 1. Páginas Legais (/termos, /privacidade, /excluir-conta) acessíveis imediatamente
   if (publicView === 'termos' || publicView === 'privacidade' || publicView === 'excluir-conta') {
     return (
       <LegalPages
@@ -776,10 +759,9 @@ function FinanceApp() {
     );
   }
 
-  // 3. Landing Page de Vendas em /assinatura:
-  // - Visitantes deslogados veem a página de vendas em greenfinancepro.com.br/assinatura
-  // - Quem já está logado é levado direto ao app na raiz (sem ficar preso na landing)
-  if (!currentUser && publicView === 'assinatura') {
+  // 2. Landing Page de Vendas em /assinatura:
+  // Abre SEMPRE a página de vendas em greenfinancepro.com.br/assinatura (mesmo se o usuário já estiver logado no navegador)
+  if (publicView === 'assinatura') {
     return (
       <LandingPage
         theme={theme}
@@ -787,6 +769,23 @@ function FinanceApp() {
         onNavigateAuth={(mode) => navigatePublic(mode === 'register' ? 'register' : 'app')}
         onNavigateLegal={(page) => navigatePublic(page)}
       />
+    );
+  }
+
+  // 3. Tela de Carregamento da Sessão (somente para o App na raiz /)
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 dark:bg-[#060606] flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-500/20 animate-pulse">
+            <Wallet className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex items-center gap-2.5 text-slate-400 text-xs font-medium">
+            <div className="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <span>Carregando ambiente seguro...</span>
+          </div>
+        </div>
+      </div>
     );
   }
 
