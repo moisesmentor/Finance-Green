@@ -6,6 +6,7 @@ import {
   Edit3, 
   Trash2, 
   CheckCircle2, 
+  Check,
   Clock, 
   Plus, 
   Repeat,
@@ -31,6 +32,7 @@ interface TransactionListProps {
   onDelete: (id: string) => void;
   onDeleteGroup?: (groupId: string) => void;
   onToggleStatus: (id: string) => void;
+  onMarkAsPaid?: (id: string, paymentDate?: string) => void;
   onAddNew: () => void;
   onOpenImportStatement?: () => void;
   categories?: Category[];
@@ -42,14 +44,19 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   onDelete,
   onDeleteGroup,
   onToggleStatus,
+  onMarkAsPaid,
   onAddNew,
   onOpenImportStatement,
   categories,
 }) => {
   const [search, setSearch] = useState('');
-  const [quickTab, setQuickTab] = useState<'all' | 'expense' | 'income' | 'pending' | 'installments'>('all');
+  const [quickTab, setQuickTab] = useState<'all' | 'expense' | 'income' | 'pending' | 'paid' | 'installments'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
+
+  // Modal rápido de confirmação de pagamento com data
+  const [paymentPromptTx, setPaymentPromptTx] = useState<Transaction | null>(null);
+  const [paymentDate, setPaymentDate] = useState<string>('');
 
   const activeCategories = useMemo(() => categories || CATEGORIES, [categories]);
 
@@ -76,16 +83,20 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     let expense = 0;
     let income = 0;
     let pending = 0;
+    let paid = 0;
     let installments = 0;
 
     for (const t of transactions) {
-      if (t.type === 'expense') expense++;
+      if (t.type === 'expense') {
+        expense++;
+        if (t.status === 'paid') paid++;
+      }
       if (t.type === 'income') income++;
       if (t.status === 'pending') pending++;
       if (t.installmentTotal && t.installmentTotal > 1) installments++;
     }
 
-    return { all: transactions.length, expense, income, pending, installments };
+    return { all: transactions.length, expense, income, pending, paid, installments };
   }, [transactions]);
 
   // Filtered & Sorted transactions
@@ -96,6 +107,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         if (quickTab === 'expense' && tx.type !== 'expense') return false;
         if (quickTab === 'income' && tx.type !== 'income') return false;
         if (quickTab === 'pending' && tx.status !== 'pending') return false;
+        if (quickTab === 'paid' && (tx.type !== 'expense' || tx.status !== 'paid')) return false;
         if (quickTab === 'installments' && (!tx.installmentTotal || tx.installmentTotal <= 1)) return false;
 
         // Category filter
@@ -159,6 +171,25 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     onDelete(tx.id);
   };
 
+  const handleOpenPaymentPrompt = (tx: Transaction) => {
+    setPaymentPromptTx(tx);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    setPaymentDate(`${year}-${month}-${day}`);
+  };
+
+  const handleConfirmPayment = () => {
+    if (!paymentPromptTx) return;
+    if (onMarkAsPaid) {
+      onMarkAsPaid(paymentPromptTx.id, paymentDate);
+    } else {
+      onToggleStatus(paymentPromptTx.id);
+    }
+    setPaymentPromptTx(null);
+  };
+
   const hasActiveFilters = search || quickTab !== 'all' || categoryFilter !== 'all' || sortBy !== 'date_desc';
 
   return (
@@ -209,6 +240,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             { id: 'expense', label: 'Despesas', count: counts.expense },
             { id: 'income', label: 'Receitas', count: counts.income },
             { id: 'pending', label: 'Pendentes', count: counts.pending },
+            { id: 'paid', label: 'Pagas', count: counts.paid },
             { id: 'installments', label: 'Parceladas', count: counts.installments },
           ].map(tab => (
             <button
@@ -302,15 +334,27 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       {filteredTransactions.length === 0 ? (
         <div className="py-16 px-4 text-center">
           <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-zinc-500 flex items-center justify-center mx-auto mb-3 shadow-inner">
-            <Inbox className="w-6 h-6" />
+            {quickTab === 'paid' ? (
+              <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+            ) : (
+              <Inbox className="w-6 h-6" />
+            )}
           </div>
           <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">
-            Nenhuma transação encontrada
+            {quickTab === 'paid'
+              ? 'Nenhuma conta paga neste mês ainda'
+              : quickTab === 'pending'
+                ? 'Nenhuma conta pendente para este período'
+                : 'Nenhuma transação encontrada'}
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-4">
-            {hasActiveFilters
-              ? 'Nenhum lançamento corresponde aos filtros selecionados.'
-              : 'Você ainda não registrou nenhum gasto ou receita para este período.'}
+            {quickTab === 'paid'
+              ? 'Quando você liquidar ou marcar uma despesa como paga, ela aparecerá aqui.'
+              : quickTab === 'pending'
+                ? 'Todas as suas contas deste período estão em dia!'
+                : hasActiveFilters
+                  ? 'Nenhum lançamento corresponde aos filtros selecionados.'
+                  : 'Você ainda não registrou nenhum gasto ou receita para este período.'}
           </p>
           <button
             onClick={hasActiveFilters ? resetFilters : onAddNew}
@@ -463,18 +507,29 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                     {isIncome ? '+' : '-'} {formatCurrency(tx.amount)}
                   </div>
 
-                  {/* Quick Actions (Edit & Delete) */}
+                  {/* Quick Actions (Mark as Paid, Edit & Delete) */}
                   <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                    {!isPaid && !isIncome && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenPaymentPrompt(tx)}
+                        className="p-1.5 min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-xl text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 transition-all cursor-pointer active:scale-95"
+                        title="Marcar conta como paga"
+                        aria-label="Marcar como paga"
+                      >
+                        <Check className="w-4 h-4 stroke-[2.5]" />
+                      </button>
+                    )}
                     <button
                       onClick={() => onEdit(tx)}
-                      className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-all cursor-pointer"
+                      className="p-1.5 min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-all cursor-pointer"
                       title="Editar lançamento"
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteItem(tx)}
-                      className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-all cursor-pointer"
+                      className="p-1.5 min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-all cursor-pointer"
                       title="Excluir lançamento"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -506,6 +561,84 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 <ArrowUpRight className="w-4 h-4" /> -{formatCurrency(filteredTotal.expense)}
               </span>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Rápido de Confirmação de Pagamento */}
+      {paymentPromptTx && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setPaymentPromptTx(null)}
+        >
+          <div 
+            className="bg-white dark-brushed-metal-modal rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 dark:border-white/10 space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Marcar como Paga
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Confirmar liquidação desta despesa
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPaymentPromptTx(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-50 dark-subcard border border-slate-200/80 dark:border-white/10 flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200 truncate">
+                {paymentPromptTx.description}
+              </span>
+              <span className="text-xs font-mono-num font-extrabold text-rose-600 dark:text-rose-400 shrink-0">
+                -{formatCurrency(paymentPromptTx.amount)}
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Data do Pagamento
+              </label>
+              <input
+                type="date"
+                value={paymentDate}
+                onChange={e => setPaymentDate(e.target.value)}
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                required
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Por padrão, preenchida com a data de hoje.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setPaymentPromptTx(null)}
+                className="px-3.5 py-2 text-xs font-semibold rounded-xl text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPayment}
+                className="px-4 py-2 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all shadow-xs cursor-pointer"
+              >
+                Confirmar Pagamento
+              </button>
+            </div>
           </div>
         </div>
       )}

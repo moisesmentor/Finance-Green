@@ -7,10 +7,18 @@ export interface ToastItem {
   id: string;
   message: string;
   type: ToastType;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType) => void;
+  showToast: (
+    message: string, 
+    type?: ToastType, 
+    action?: { label: string; onClick: () => void }
+  ) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -18,13 +26,20 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const showToast = useCallback((message: string, type: ToastType = 'success') => {
+  const showToast = useCallback((
+    message: string, 
+    type: ToastType = 'success',
+    action?: { label: string; onClick: () => void }
+  ) => {
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts(prev => [...prev, { id, message, type }]);
+    setToasts(prev => [...prev, { id, message, type, action }]);
+
+    // Give a bit more time if there is an action (e.g. 5000ms instead of 3200ms)
+    const duration = action ? 5000 : 3200;
 
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3200);
+    }, duration);
   }, []);
 
   const removeToast = useCallback((id: string) => {
@@ -66,12 +81,26 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   {toast.message}
                 </span>
               </div>
-              <button
-                onClick={() => removeToast(toast.id)}
-                className="text-slate-400 hover:text-slate-200 p-0.5 rounded-lg hover:bg-slate-800 dark:hover:bg-white/10 transition-colors cursor-pointer shrink-0"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                {toast.action && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast.action!.onClick();
+                      removeToast(toast.id);
+                    }}
+                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 transition-all cursor-pointer active:scale-95"
+                  >
+                    {toast.action.label}
+                  </button>
+                )}
+                <button
+                  onClick={() => removeToast(toast.id)}
+                  className="text-slate-400 hover:text-slate-200 p-0.5 rounded-lg hover:bg-slate-800 dark:hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           );
         })}

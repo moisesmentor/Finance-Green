@@ -450,7 +450,52 @@ function FinanceApp() {
     const updated = { ...target, status: nextStatus as 'paid' | 'pending' };
     setTransactions(prev => prev.map(t => (t.id === id ? updated : t)));
     await saveUserTransaction(currentUser.uid, updated);
-    showToast(nextStatus === 'paid' ? 'Marcado como pago' : 'Marcado como pendente');
+    showToast(
+      nextStatus === 'paid' ? 'Marcado como pago' : 'Marcado como pendente',
+      'info',
+      {
+        label: 'Desfazer',
+        onClick: async () => {
+          const reverted = { ...target };
+          setTransactions(prev => prev.map(t => (t.id === id ? reverted : t)));
+          await saveUserTransaction(currentUser.uid, reverted);
+          showToast('Status revertido!', 'info');
+        },
+      }
+    );
+  };
+
+  const handleMarkAsPaid = async (id: string, paymentDate?: string) => {
+    if (!currentUser?.uid) return;
+    const target = transactions.find(t => t.id === id);
+    if (!target) return;
+
+    const previousStatus = target.status;
+    const previousDate = target.date;
+    const newDate = paymentDate || target.date;
+
+    const updated: Transaction = {
+      ...target,
+      status: 'paid',
+      date: newDate,
+    };
+
+    setTransactions(prev => prev.map(t => (t.id === id ? updated : t)));
+    await saveUserTransaction(currentUser.uid, updated);
+
+    showToast('Conta marcada como paga!', 'success', {
+      label: 'Desfazer',
+      onClick: async () => {
+        const reverted: Transaction = {
+          ...target,
+          status: previousStatus,
+          date: previousDate,
+        };
+        setTransactions(prev => prev.map(t => (t.id === id ? reverted : t)));
+        await saveUserTransaction(currentUser.uid, reverted);
+        showToast('Pagamento desfeito!', 'info');
+      },
+    });
   };
 
   const handleOpenNewTransaction = () => {
@@ -734,6 +779,7 @@ function FinanceApp() {
           onDelete={handleDeleteTransaction}
           onDeleteGroup={handleDeleteInstallmentGroup}
           onToggleStatus={handleToggleStatus}
+          onMarkAsPaid={handleMarkAsPaid}
           onAddNew={handleOpenNewTransaction}
           onOpenImportStatement={() => setIsImportModalOpen(true)}
           categories={allCategories}
