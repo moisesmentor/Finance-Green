@@ -447,11 +447,17 @@ function FinanceApp() {
     const target = transactions.find(t => t.id === id);
     if (!target) return;
     const nextStatus = target.status === 'paid' ? 'pending' : 'paid';
+    const isIncome = target.type === 'income';
     const updated = { ...target, status: nextStatus as 'paid' | 'pending' };
     setTransactions(prev => prev.map(t => (t.id === id ? updated : t)));
     await saveUserTransaction(currentUser.uid, updated);
+    
+    const message = nextStatus === 'paid'
+      ? (isIncome ? 'Receita marcada como recebida' : 'Marcado como pago')
+      : (isIncome ? 'Marcado como a receber' : 'Marcado como pendente');
+
     showToast(
-      nextStatus === 'paid' ? 'Marcado como pago' : 'Marcado como pendente',
+      message,
       'info',
       {
         label: 'Desfazer',
@@ -473,6 +479,7 @@ function FinanceApp() {
     const previousStatus = target.status;
     const previousDate = target.date;
     const newDate = paymentDate || target.date;
+    const isIncome = target.type === 'income';
 
     const updated: Transaction = {
       ...target,
@@ -483,19 +490,23 @@ function FinanceApp() {
     setTransactions(prev => prev.map(t => (t.id === id ? updated : t)));
     await saveUserTransaction(currentUser.uid, updated);
 
-    showToast('Conta marcada como paga!', 'success', {
-      label: 'Desfazer',
-      onClick: async () => {
-        const reverted: Transaction = {
-          ...target,
-          status: previousStatus,
-          date: previousDate,
-        };
-        setTransactions(prev => prev.map(t => (t.id === id ? reverted : t)));
-        await saveUserTransaction(currentUser.uid, reverted);
-        showToast('Pagamento desfeito!', 'info');
-      },
-    });
+    showToast(
+      isIncome ? 'Receita marcada como recebida!' : 'Conta marcada como paga!',
+      'success',
+      {
+        label: 'Desfazer',
+        onClick: async () => {
+          const reverted: Transaction = {
+            ...target,
+            status: previousStatus,
+            date: previousDate,
+          };
+          setTransactions(prev => prev.map(t => (t.id === id ? reverted : t)));
+          await saveUserTransaction(currentUser.uid, reverted);
+          showToast(isIncome ? 'Recebimento desfeito!' : 'Pagamento desfeito!', 'info');
+        },
+      }
+    );
   };
 
   const handleOpenNewTransaction = () => {

@@ -50,7 +50,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   categories,
 }) => {
   const [search, setSearch] = useState('');
-  const [quickTab, setQuickTab] = useState<'all' | 'expense' | 'income' | 'pending' | 'paid' | 'installments'>('all');
+  const [quickTab, setQuickTab] = useState<'all' | 'expense' | 'income' | 'pending' | 'paid' | 'received' | 'installments'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
 
@@ -84,6 +84,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     let income = 0;
     let pending = 0;
     let paid = 0;
+    let received = 0;
     let installments = 0;
 
     for (const t of transactions) {
@@ -91,12 +92,15 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         expense++;
         if (t.status === 'paid') paid++;
       }
-      if (t.type === 'income') income++;
+      if (t.type === 'income') {
+        income++;
+        if (t.status === 'paid') received++;
+      }
       if (t.status === 'pending') pending++;
       if (t.installmentTotal && t.installmentTotal > 1) installments++;
     }
 
-    return { all: transactions.length, expense, income, pending, paid, installments };
+    return { all: transactions.length, expense, income, pending, paid, received, installments };
   }, [transactions]);
 
   // Filtered & Sorted transactions
@@ -108,6 +112,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         if (quickTab === 'income' && tx.type !== 'income') return false;
         if (quickTab === 'pending' && tx.status !== 'pending') return false;
         if (quickTab === 'paid' && (tx.type !== 'expense' || tx.status !== 'paid')) return false;
+        if (quickTab === 'received' && (tx.type !== 'income' || tx.status !== 'paid')) return false;
         if (quickTab === 'installments' && (!tx.installmentTotal || tx.installmentTotal <= 1)) return false;
 
         // Category filter
@@ -241,6 +246,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             { id: 'income', label: 'Receitas', count: counts.income },
             { id: 'pending', label: 'Pendentes', count: counts.pending },
             { id: 'paid', label: 'Pagas', count: counts.paid },
+            { id: 'received', label: 'Recebidas', count: counts.received },
             { id: 'installments', label: 'Parceladas', count: counts.installments },
           ].map(tab => (
             <button
@@ -336,6 +342,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-zinc-500 flex items-center justify-center mx-auto mb-3 shadow-inner">
             {quickTab === 'paid' ? (
               <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+            ) : quickTab === 'received' ? (
+              <ArrowDownLeft className="w-6 h-6 text-emerald-500" />
             ) : (
               <Inbox className="w-6 h-6" />
             )}
@@ -343,18 +351,22 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">
             {quickTab === 'paid'
               ? 'Nenhuma conta paga neste mês ainda'
-              : quickTab === 'pending'
-                ? 'Nenhuma conta pendente para este período'
-                : 'Nenhuma transação encontrada'}
+              : quickTab === 'received'
+                ? 'Nenhuma receita recebida neste mês ainda'
+                : quickTab === 'pending'
+                  ? 'Nenhuma conta pendente para este período'
+                  : 'Nenhuma transação encontrada'}
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-4">
             {quickTab === 'paid'
               ? 'Quando você liquidar ou marcar uma despesa como paga, ela aparecerá aqui.'
-              : quickTab === 'pending'
-                ? 'Todas as suas contas deste período estão em dia!'
-                : hasActiveFilters
-                  ? 'Nenhum lançamento corresponde aos filtros selecionados.'
-                  : 'Você ainda não registrou nenhum gasto ou receita para este período.'}
+              : quickTab === 'received'
+                ? 'Quando você confirmar o recebimento de uma receita, ela aparecerá aqui.'
+                : quickTab === 'pending'
+                  ? 'Todas as suas contas deste período estão em dia!'
+                  : hasActiveFilters
+                    ? 'Nenhum lançamento corresponde aos filtros selecionados.'
+                    : 'Você ainda não registrou nenhum gasto ou receita para este período.'}
           </p>
           <button
             onClick={hasActiveFilters ? resetFilters : onAddNew}
@@ -509,13 +521,13 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
                   {/* Quick Actions (Mark as Paid, Edit & Delete) */}
                   <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                    {!isPaid && !isIncome && (
+                    {!isPaid && (
                       <button
                         type="button"
                         onClick={() => handleOpenPaymentPrompt(tx)}
                         className="p-1.5 min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-xl text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 transition-all cursor-pointer active:scale-95"
-                        title="Marcar conta como paga"
-                        aria-label="Marcar como paga"
+                        title={isIncome ? 'Marcar receita como recebida' : 'Marcar conta como paga'}
+                        aria-label={isIncome ? 'Marcar receita como recebida' : 'Marcar conta como paga'}
                       >
                         <Check className="w-4 h-4 stroke-[2.5]" />
                       </button>
@@ -565,7 +577,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         </div>
       )}
 
-      {/* Modal Rápido de Confirmação de Pagamento */}
+      {/* Modal Rápido de Confirmação de Pagamento / Recebimento */}
       {paymentPromptTx && (
         <div 
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
@@ -582,10 +594,10 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Marcar como Paga
+                    {paymentPromptTx.type === 'income' ? 'Marcar como Recebida' : 'Marcar como Paga'}
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Confirmar liquidação desta despesa
+                    {paymentPromptTx.type === 'income' ? 'Confirmar recebimento desta receita' : 'Confirmar liquidação desta despesa'}
                   </p>
                 </div>
               </div>
@@ -602,14 +614,16 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200 truncate">
                 {paymentPromptTx.description}
               </span>
-              <span className="text-xs font-mono-num font-extrabold text-rose-600 dark:text-rose-400 shrink-0">
-                -{formatCurrency(paymentPromptTx.amount)}
+              <span className={`text-xs font-mono-num font-extrabold shrink-0 ${
+                paymentPromptTx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+              }`}>
+                {paymentPromptTx.type === 'income' ? '+' : '-'}{formatCurrency(paymentPromptTx.amount)}
               </span>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Data do Pagamento
+                {paymentPromptTx.type === 'income' ? 'Data do Recebimento' : 'Data do Pagamento'}
               </label>
               <input
                 type="date"
@@ -636,7 +650,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 onClick={handleConfirmPayment}
                 className="px-4 py-2 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all shadow-xs cursor-pointer"
               >
-                Confirmar Pagamento
+                {paymentPromptTx.type === 'income' ? 'Confirmar Recebimento' : 'Confirmar Pagamento'}
               </button>
             </div>
           </div>
