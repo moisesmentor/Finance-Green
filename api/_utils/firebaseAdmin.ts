@@ -98,3 +98,31 @@ export async function getServerUserSubscription(
   }
   return snapshot.data() as AdminSubscriptionPayload;
 }
+
+// Verifica se um evento de webhook do Asaas já foi processado (idempotência)
+export async function isWebhookEventProcessed(eventKey: string): Promise<boolean> {
+  const db = getAdminFirestore();
+  const safeKey = eventKey.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120);
+  const docSnap = await db.collection('asaas_webhook_events').doc(safeKey).get();
+  return docSnap.exists;
+}
+
+// Registra o evento de webhook do Asaas como processado (sem dados pessoais nos logs/documento)
+export async function markWebhookEventProcessed(
+  eventKey: string,
+  meta: {
+    eventType: string;
+    userId?: string | null;
+    resultStatus: string;
+  }
+): Promise<void> {
+  const db = getAdminFirestore();
+  const safeKey = eventKey.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120);
+  await db.collection('asaas_webhook_events').doc(safeKey).set({
+    eventType: meta.eventType,
+    userId: meta.userId || null,
+    resultStatus: meta.resultStatus,
+    processedAt: Date.now(),
+  });
+}
+
