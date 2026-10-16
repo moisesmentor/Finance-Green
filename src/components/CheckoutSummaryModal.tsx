@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -11,6 +11,7 @@ import {
   Sparkles,
   UserCheck,
   AlertCircle,
+  FileText,
 } from 'lucide-react';
 import { PlanTier, ThemeMode, UserProfile, UserSubscription } from '../types';
 import { PLAN_DETAILS, getEffectivePlan } from '../utils/permissions';
@@ -24,7 +25,7 @@ interface CheckoutSummaryModalProps {
   isSubmitting?: boolean;
   errorMessage?: string | null;
   onClose: () => void;
-  onProceedToPayment: (plan: Exclude<PlanTier, 'free'>) => void;
+  onProceedToPayment: (plan: Exclude<PlanTier, 'free'>, cpfCnpj: string) => void;
   onGoToApp: () => void;
 }
 
@@ -45,6 +46,55 @@ const PLAN_HIGHLIGHTS: Record<Exclude<PlanTier, 'free'>, string[]> = {
   ],
 };
 
+function formatCpfCnpjInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 14);
+  if (digits.length <= 11) {
+    return digits
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  }
+  return digits
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2');
+}
+
+function validateCpfCnpjClient(raw: string): boolean {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 11) {
+    if (/^(\d)\1{10}$/.test(digits)) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += parseInt(digits.charAt(i), 10) * (10 - i);
+    let rev = 11 - (sum % 11);
+    if (rev === 10 || rev === 11) rev = 0;
+    if (rev !== parseInt(digits.charAt(9), 10)) return false;
+
+    sum = 0;
+    for (let i = 0; i < 10; i++) sum += parseInt(digits.charAt(i), 10) * (11 - i);
+    rev = 11 - (sum % 11);
+    if (rev === 10 || rev === 11) rev = 0;
+    return rev === parseInt(digits.charAt(10), 10);
+  }
+
+  if (digits.length === 14) {
+    if (/^(\d)\1{13}$/.test(digits)) return false;
+    const calc = (base: string, weights: number[]) => {
+      let s = 0;
+      for (let i = 0; i < weights.length; i++) s += parseInt(base.charAt(i), 10) * weights[i];
+      const rem = s % 11;
+      return rem < 2 ? 0 : 11 - rem;
+    };
+    const d1 = calc(digits, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    if (d1 !== parseInt(digits.charAt(12), 10)) return false;
+    const d2 = calc(digits, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    return d2 === parseInt(digits.charAt(13), 10);
+  }
+
+  return false;
+}
+
 export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
   isOpen,
   selectedPlan,
@@ -57,6 +107,9 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
   onProceedToPayment,
   onGoToApp,
 }) => {
+  const [cpfCnpj, setCpfCnpj] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
+
   if (!isOpen || !selectedPlan) return null;
 
   const planInfo = PLAN_DETAILS[selectedPlan];
@@ -64,6 +117,21 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
   const isSamePlanActive = effectivePlan === selectedPlan;
   const isUpgradeFromBasic = effectivePlan === 'basic' && selectedPlan === 'pro';
   const isDowngradeFromPro = effectivePlan === 'pro' && selectedPlan === 'basic';
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLocalError(null);
+
+    const digits = cpfCnpj.replace(/\D/g, '');
+    if (!validateCpfCnpjClient(digits)) {
+      setLocalError('Por favor, informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.');
+      return;
+    }
+
+    onProceedToPayment(selectedPlan, digits);
+  };
+
+  const activeError = localError || errorMessage;
 
   return (
     <div
@@ -106,7 +174,7 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
           </div>
 
           {/* Body */}
-          <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+          <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
             {/* Conta autenticada */}
             {user && (
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50 dark:bg-[#18181c] px-4 py-3">
@@ -189,10 +257,13 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
                 <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
                   <CreditCard className="w-4 h-4 text-[#059669] dark:text-emerald-400 shrink-0" />
                   <span>
-                    <strong>Pagamento:</strong> Cartão, Pix ou Boleto
+                    <strong>Formas:</strong> Cartão, Pix ou Boleto
                   </span>
                 </div>
               </div>
+              <p className="mt-2.5 text-xs text-slate-500 dark:text-slate-400">
+                Cartão e Pix liberam seu plano em instantes após o pagamento. Boleto bancário leva de 1 a 3 dias úteis para compensação.
+              </p>
             </div>
 
             {/* Recursos incluídos */}
@@ -213,6 +284,39 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
               </ul>
             </div>
 
+            {/* Campo de CPF / CNPJ exigido pelo Asaas (com fonte >= 16px no mobile) */}
+            {!isSamePlanActive && (
+              <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/70 dark:bg-[#18181c] p-4 space-y-2">
+                <label
+                  htmlFor="checkout-cpf-cnpj"
+                  className="block text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100"
+                >
+                  CPF ou CNPJ do titular do pagamento
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="checkout-cpf-cnpj"
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    value={cpfCnpj}
+                    onChange={(e) => {
+                      setCpfCnpj(formatCpfCnpjInput(e.target.value));
+                      if (localError) setLocalError(null);
+                    }}
+                    placeholder="000.000.000-00"
+                    className="w-full bg-white dark:bg-[#0c0c0e] border border-slate-300 dark:border-white/15 focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/20 text-slate-900 dark:text-white rounded-xl pl-10 pr-4 py-2.5 text-base font-mono placeholder:text-slate-400 dark:placeholder:text-slate-600 transition-all outline-none"
+                  />
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Solicitado exclusivamente para emissão da cobrança registrada no sistema bancário (Asaas / Banco Central).
+                </p>
+              </div>
+            )}
+
             {/* Política de Cancelamento e Garantia de 7 Dias */}
             <div className="rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50 dark:bg-[#18181c] p-4 space-y-2.5 text-xs sm:text-sm">
               <div className="flex items-start gap-2.5">
@@ -230,10 +334,10 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
             </div>
 
             {/* Mensagem de erro se houver */}
-            {errorMessage && (
+            {activeError && (
               <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 flex items-start gap-2.5 text-xs sm:text-sm text-rose-600 dark:text-rose-300">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{errorMessage}</span>
+                <span>{activeError}</span>
               </div>
             )}
 
@@ -250,15 +354,14 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
                 </button>
               ) : (
                 <button
-                  type="button"
+                  type="submit"
                   disabled={isSubmitting}
-                  onClick={() => onProceedToPayment(selectedPlan)}
                   className="w-full py-3.5 px-6 rounded-xl text-base font-bold text-white bg-[#059669] hover:bg-emerald-500 shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                 >
                   {isSubmitting ? (
                     <>
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Preparando checkout seguro...</span>
+                      <span>Redirecionando para o Asaas...</span>
                     </>
                   ) : (
                     <>
@@ -271,8 +374,9 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
 
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={onClose}
-                className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer disabled:opacity-50"
               >
                 Voltar aos planos
               </button>
@@ -282,7 +386,7 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
               <Lock className="w-3.5 h-3.5 text-[#059669] dark:text-emerald-400 shrink-0" />
               <span>Pagamento processado no ambiente criptografado do Asaas. Não armazenamos dados de cartão.</span>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>

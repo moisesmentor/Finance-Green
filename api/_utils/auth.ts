@@ -9,6 +9,7 @@ const FIREBASE_API_KEY =
 export interface AuthenticatedUser {
   uid: string;
   email?: string;
+  displayName?: string;
 }
 
 export async function verifyFirebaseUser(req: any): Promise<AuthenticatedUser | null> {
@@ -46,6 +47,7 @@ export async function verifyFirebaseUser(req: any): Promise<AuthenticatedUser | 
       return {
         uid: user.localId,
         email: user.email,
+        displayName: user.displayName,
       };
     }
 

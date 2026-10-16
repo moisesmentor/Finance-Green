@@ -105,6 +105,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { LandingPage } from './components/LandingPage';
 import { LegalPages, LegalPageType } from './components/LegalPages';
 import { CheckoutSummaryModal } from './components/CheckoutSummaryModal';
+import { createAsaasSubscriptionCheckout } from './utils/asaasClient';
 import { ToastProvider, useToast } from './components/Toast';
 
 const PENDING_PLAN_STORAGE_KEY = 'greenfinance_pending_checkout_plan';
@@ -151,6 +152,8 @@ function FinanceApp() {
     loadPendingCheckoutPlan()
   );
   const [isCheckoutSummaryOpen, setIsCheckoutSummaryOpen] = useState(false);
+  const [isCheckoutSubmitting, setIsCheckoutSubmitting] = useState(false);
+  const [checkoutErrorMessage, setCheckoutErrorMessage] = useState<string | null>(null);
 
   const updatePendingCheckoutPlan = (plan: Exclude<PlanTier, 'free'> | null) => {
     setPendingCheckoutPlan(plan);
@@ -925,12 +928,24 @@ function FinanceApp() {
     setIsCheckoutSummaryOpen(true);
   }, [currentUser?.uid, pendingCheckoutPlan, currentEffectivePlan]);
 
-  // Handler do botão "Ir para o pagamento" na tela de resumo (será conectado ao Asaas na Etapa 3)
-  const handleProceedToPayment = (plan: Exclude<PlanTier, 'free'>) => {
-    showToast(
-      `Resumo do plano ${PLAN_DETAILS[plan].name} confirmado! O redirecionamento para o checkout Asaas será ativado na Etapa 3.`,
-      'info'
-    );
+  // ETAPA 3: Handler do botão "Ir para o pagamento" — cria cliente e assinatura no Asaas e redireciona
+  const handleProceedToPayment = async (plan: Exclude<PlanTier, 'free'>, cpfCnpj: string) => {
+    setCheckoutErrorMessage(null);
+    setIsCheckoutSubmitting(true);
+    try {
+      const result = await createAsaasSubscriptionCheckout({
+        plan,
+        cpfCnpj,
+        name: currentUser?.displayName,
+      });
+      updatePendingCheckoutPlan(null);
+      window.location.href = result.checkoutUrl;
+    } catch (err: any) {
+      setCheckoutErrorMessage(
+        err?.message || 'Não foi possível gerar o link de pagamento no Asaas. Tente novamente.'
+      );
+      setIsCheckoutSubmitting(false);
+    }
   };
 
   // 1. Páginas Legais (/termos, /privacidade, /excluir-conta) acessíveis imediatamente
@@ -977,13 +992,17 @@ function FinanceApp() {
           user={currentUser}
           subscription={userSubscription}
           theme={theme}
+          isSubmitting={isCheckoutSubmitting}
+          errorMessage={checkoutErrorMessage}
           onClose={() => {
             setIsCheckoutSummaryOpen(false);
+            setCheckoutErrorMessage(null);
             updatePendingCheckoutPlan(null);
           }}
           onProceedToPayment={handleProceedToPayment}
           onGoToApp={() => {
             setIsCheckoutSummaryOpen(false);
+            setCheckoutErrorMessage(null);
             updatePendingCheckoutPlan(null);
             navigatePublic('app');
           }}
@@ -1274,13 +1293,17 @@ function FinanceApp() {
         user={currentUser}
         subscription={userSubscription}
         theme={theme}
+        isSubmitting={isCheckoutSubmitting}
+        errorMessage={checkoutErrorMessage}
         onClose={() => {
           setIsCheckoutSummaryOpen(false);
+          setCheckoutErrorMessage(null);
           updatePendingCheckoutPlan(null);
         }}
         onProceedToPayment={handleProceedToPayment}
         onGoToApp={() => {
           setIsCheckoutSummaryOpen(false);
+          setCheckoutErrorMessage(null);
           updatePendingCheckoutPlan(null);
         }}
       />
