@@ -9,9 +9,12 @@ import {
   CloudConfig,
   InvestmentAsset,
   Category,
-  BankConnection
+  BankConnection,
+  BankAccount,
+  BankBalanceHistoryEntry,
+  BankBalanceDisplayMode
 } from '../types';
-import { CATEGORIES, DEFAULT_BUDGETS, getSampleTransactions, PAYMENT_METHODS } from './constants';
+import { CATEGORIES, DEFAULT_BUDGETS, getSampleTransactions, PAYMENT_METHODS, DEFAULT_BANK_ACCOUNTS } from './constants';
 
 const STORAGE_KEYS = {
   TRANSACTIONS: 'financas_mensais_transactions_v1',
@@ -20,6 +23,9 @@ const STORAGE_KEYS = {
   INVESTMENTS: 'financas_mensais_investments_v1',
   CUSTOM_CATEGORIES: 'financas_mensais_custom_categories_v1',
   BANK_CONNECTIONS: 'financas_mensais_bank_connections_v1',
+  BANK_ACCOUNTS: 'financas_mensais_bank_accounts_v1',
+  BANK_BALANCE_HISTORY: 'financas_mensais_bank_balance_history_v1',
+  BANK_DISPLAY_MODE: 'financas_mensais_bank_display_mode_v1',
   CLOUD_CONFIG: 'financas_mensais_cloud_v1',
 };
 
@@ -272,6 +278,76 @@ export function saveStoredBankConnections(connections: BankConnection[], userId?
     console.error('Erro ao salvar conexões bancárias no localStorage:', err);
   }
 }
+
+export function loadStoredBankAccounts(userId?: string | null): BankAccount[] {
+  if (!userId) return DEFAULT_BANK_ACCOUNTS;
+  try {
+    const key = getStorageKey(STORAGE_KEYS.BANK_ACCOUNTS, userId);
+    const data = localStorage.getItem(key);
+    if (!data) return DEFAULT_BANK_ACCOUNTS;
+    const parsed = JSON.parse(data);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_BANK_ACCOUNTS;
+  } catch (err) {
+    console.error('Erro ao carregar contas bancárias:', err);
+    return DEFAULT_BANK_ACCOUNTS;
+  }
+}
+
+export function saveStoredBankAccounts(accounts: BankAccount[], userId?: string | null): void {
+  if (!userId) return;
+  try {
+    const key = getStorageKey(STORAGE_KEYS.BANK_ACCOUNTS, userId);
+    localStorage.setItem(key, JSON.stringify(accounts));
+  } catch (err) {
+    console.error('Erro ao salvar contas bancárias:', err);
+  }
+}
+
+export function loadStoredBankBalanceHistory(userId?: string | null): BankBalanceHistoryEntry[] {
+  if (!userId) return [];
+  try {
+    const key = getStorageKey(STORAGE_KEYS.BANK_BALANCE_HISTORY, userId);
+    const data = localStorage.getItem(key);
+    if (!data) return [];
+    const parsed = JSON.parse(data);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.error('Erro ao carregar histórico de saldos bancários:', err);
+    return [];
+  }
+}
+
+export function saveStoredBankBalanceHistory(history: BankBalanceHistoryEntry[], userId?: string | null): void {
+  if (!userId) return;
+  try {
+    const key = getStorageKey(STORAGE_KEYS.BANK_BALANCE_HISTORY, userId);
+    localStorage.setItem(key, JSON.stringify(history));
+  } catch (err) {
+    console.error('Erro ao salvar histórico de saldos bancários:', err);
+  }
+}
+
+export function loadStoredBankDisplayMode(userId?: string | null): BankBalanceDisplayMode {
+  if (!userId) return 'separate';
+  try {
+    const key = getStorageKey(STORAGE_KEYS.BANK_DISPLAY_MODE, userId);
+    const data = localStorage.getItem(key);
+    return data === 'combined' ? 'combined' : 'separate';
+  } catch {
+    return 'separate';
+  }
+}
+
+export function saveStoredBankDisplayMode(mode: BankBalanceDisplayMode, userId?: string | null): void {
+  if (!userId) return;
+  try {
+    const key = getStorageKey(STORAGE_KEYS.BANK_DISPLAY_MODE, userId);
+    localStorage.setItem(key, mode);
+  } catch (err) {
+    console.error('Erro ao salvar modo de exibição do saldo:', err);
+  }
+}
+
 
 
 export function loadStoredCloudConfig(): CloudConfig {

@@ -267,3 +267,39 @@ export interface UserSubscription {
   trialEndsAt?: number | null;
   customerEmail?: string | null;
 }
+
+export type BankAccountType = 
+  | 'checking'    // Conta Corrente
+  | 'savings'     // Poupança
+  | 'digital'     // Conta Digital
+  | 'cash'        // Dinheiro Físico / Carteira
+  | 'investment'  // Conta de Investimentos / Corretora
+  | 'other';      // Outro
+
+export interface BankAccount {
+  id: string;
+  name: string;
+  type: BankAccountType;
+  currentBalance: number;
+  color: string;
+  icon?: string;
+  isArchived?: boolean;
+  linkToReserve?: boolean; // Se true, vinculado à Reserva de Emergência (evita duplicar no Patrimônio)
+  lastUpdatedAt: number;   // Timestamp ms
+  createdAt: number;       // Timestamp ms
+}
+
+export interface BankBalanceHistoryEntry {
+  id: string;
+  accountId: string;
+  accountName: string;
+  date: string;            // 'YYYY-MM-DD'
+  timestamp: number;       // Timestamp ms
+  balance: number;         // Novo saldo
+  previousBalance: number; // Saldo anterior
+  difference: number;      // Diferença (+ ou -)
+  changeType: 'adjustment' | 'deposit' | 'withdraw';
+  note?: string;
+}
+
+export type BankBalanceDisplayMode = 'separate' | 'combined';

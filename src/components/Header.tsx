@@ -32,6 +32,7 @@ interface HeaderProps {
   onOpenGoals: () => void;
   onOpenReserve?: () => void;
   onOpenInvestments?: () => void;
+  onOpenBankAccounts?: () => void;
   onOpenAnnualReport: () => void;
   onOpenCloud?: () => void;
   onOpenFirebaseSync?: () => void;
@@ -57,6 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenGoals,
   onOpenReserve,
   onOpenInvestments,
+  onOpenBankAccounts,
   onOpenAnnualReport,
   onOpenCloud,
   onOpenConnectedBanks,
@@ -401,6 +403,24 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               Dashboard
+            </button>
+
+            {/* Tab: Bancos */}
+            <button
+              id="btn-open-banks"
+              onClick={() => {
+                setActiveTab('banks');
+                if (onOpenBankAccounts) onOpenBankAccounts();
+              }}
+              className={`px-3.5 py-2 rounded-full transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'banks'
+                  ? 'bg-[#059669] text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-zinc-800/60 font-medium'
+              }`}
+              title="Saldo em Bancos e Carteiras"
+            >
+              <Building2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <span>Bancos</span>
             </button>
 
             {/* Tab: Reserva */}

@@ -14,7 +14,10 @@ import {
   CloudConfig,
   FirebaseSyncStatus,
   UserProfile,
-  BankConnection
+  BankConnection,
+  BankAccount,
+  BankBalanceHistoryEntry,
+  BankBalanceDisplayMode
 } from './types';
 import { 
   loadStoredTransactions, 
@@ -30,6 +33,12 @@ import {
   saveStoredCustomCategories,
   loadStoredBankConnections,
   saveStoredBankConnections,
+  loadStoredBankAccounts,
+  saveStoredBankAccounts,
+  loadStoredBankBalanceHistory,
+  saveStoredBankBalanceHistory,
+  loadStoredBankDisplayMode,
+  saveStoredBankDisplayMode,
   loadStoredCloudConfig, 
   saveStoredCloudConfig, 
   calculateSummary, 
@@ -54,10 +63,15 @@ import {
   saveUserCustomCategory,
   subscribeToUserBankConnections,
   saveUserBankConnection,
-  deleteUserBankConnection 
+  deleteUserBankConnection,
+  subscribeToUserBankAccounts,
+  saveUserBankAccount,
+  deleteUserBankAccount,
+  subscribeToUserBankBalanceHistory,
+  saveUserBankBalanceHistoryEntry
 } from './utils/firebase';
 
-import { DEFAULT_BUDGETS, CATEGORIES } from './utils/constants';
+import { DEFAULT_BUDGETS, CATEGORIES, DEFAULT_BANK_ACCOUNTS } from './utils/constants';
 import { useTheme } from './utils/useTheme';
 import { getDueDateStatus } from './utils/formatters';
 import { Wallet } from 'lucide-react';
@@ -75,6 +89,7 @@ import { AnnualReportModal } from './components/AnnualReportModal';
 import { CloudConfigModal } from './components/CloudConfigModal';
 import { ConnectedBanksModal } from './components/ConnectedBanksModal';
 import { ImportBankStatementModal } from './components/ImportBankStatementModal';
+import { BankAccountsModal } from './components/BankAccountsModal';
 import { AuthScreen } from './components/AuthScreen';
 import { ToastProvider, useToast } from './components/Toast';
 
@@ -119,7 +134,12 @@ function FinanceApp() {
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isBankAccountsModalOpen, setIsBankAccountsModalOpen] = useState(false);
 
+  // Bank Accounts State (isolados por UID do usuário logado)
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(() => loadStoredBankAccounts(null));
+  const [bankBalanceHistory, setBankBalanceHistory] = useState<BankBalanceHistoryEntry[]>(() => loadStoredBankBalanceHistory(null));
+  const [bankDisplayMode, setBankDisplayMode] = useState<BankBalanceDisplayMode>(() => loadStoredBankDisplayMode(null));
 
   // 1. Escuta de estado de autenticação (Firebase Auth) com timeout de segurança
   useEffect(() => {
@@ -141,6 +161,9 @@ function FinanceApp() {
         setInvestments(DEFAULT_INVESTMENTS);
         setCustomCategories([]);
         setBankConnections([]);
+        setBankAccounts(DEFAULT_BANK_ACCOUNTS);
+        setBankBalanceHistory([]);
+        setBankDisplayMode('separate');
         setFirebaseStatus('unconfigured');
       } else {
         // Carrega cache exclusivo deste UID
@@ -150,12 +173,19 @@ function FinanceApp() {
         const cachedInvestments = loadStoredInvestments(user.uid);
         const cachedCustomCats = loadStoredCustomCategories(user.uid);
         const cachedBanks = loadStoredBankConnections(user.uid);
+        const cachedAccounts = loadStoredBankAccounts(user.uid);
+        const cachedHistory = loadStoredBankBalanceHistory(user.uid);
+        const cachedDisplayMode = loadStoredBankDisplayMode(user.uid);
+
         setTransactions(cachedTxs);
         setBudgets(cachedBudgets);
         setGoals(cachedGoals);
         setInvestments(cachedInvestments);
         setCustomCategories(cachedCustomCats);
         setBankConnections(cachedBanks);
+        setBankAccounts(cachedAccounts);
+        setBankBalanceHistory(cachedHistory);
+        setBankDisplayMode(cachedDisplayMode);
 
 
         // Se o usuário possuir transações em Outubro/2026, posiciona o calendário no mês correto
@@ -260,6 +290,33 @@ function FinanceApp() {
       }
     );
 
+    // Escuta da subcoleção /users/{uid}/bank_accounts
+    const unsubBankAccounts = subscribeToUserBankAccounts(
+      currentUser.uid,
+      (remoteAccounts) => {
+        if (remoteAccounts.length === 0) {
+          // Pré-cadastra Nubank e Santander com saldo R$ 0,00 caso a lista esteja vazia
+          DEFAULT_BANK_ACCOUNTS.forEach(acc => {
+            saveUserBankAccount(currentUser.uid, acc);
+          });
+          setBankAccounts(DEFAULT_BANK_ACCOUNTS);
+          saveStoredBankAccounts(DEFAULT_BANK_ACCOUNTS, currentUser.uid);
+        } else {
+          setBankAccounts(remoteAccounts);
+          saveStoredBankAccounts(remoteAccounts, currentUser.uid);
+        }
+      }
+    );
+
+    // Escuta da subcoleção /users/{uid}/bank_balance_history
+    const unsubHistory = subscribeToUserBankBalanceHistory(
+      currentUser.uid,
+      (remoteHistory) => {
+        setBankBalanceHistory(remoteHistory);
+        saveStoredBankBalanceHistory(remoteHistory, currentUser.uid);
+      }
+    );
+
     return () => {
       unsubTx();
       unsubBudgets();
@@ -267,6 +324,8 @@ function FinanceApp() {
       unsubInvestments();
       unsubCustomCats();
       unsubBanks();
+      unsubBankAccounts();
+      unsubHistory();
     };
 
   }, [currentUser?.uid]);
@@ -479,6 +538,40 @@ function FinanceApp() {
     await deleteUserBankConnection(currentUser.uid, connectionId);
   };
 
+  // Handlers para Contas Bancárias (Subcoleção /users/{uid}/bank_accounts)
+  const handleSaveBankAccount = async (account: BankAccount) => {
+    if (!currentUser?.uid) return;
+    setBankAccounts(prev => {
+      const exists = prev.some(a => a.id === account.id);
+      const updated = exists ? prev.map(a => a.id === account.id ? account : a) : [...prev, account];
+      saveStoredBankAccounts(updated, currentUser.uid);
+      return updated;
+    });
+    await saveUserBankAccount(currentUser.uid, account);
+    showToast('Conta bancária salva com sucesso!');
+  };
+
+  const handleDeleteBankAccount = async (accountId: string) => {
+    if (!currentUser?.uid) return;
+    setBankAccounts(prev => {
+      const updated = prev.filter(a => a.id !== accountId);
+      saveStoredBankAccounts(updated, currentUser.uid);
+      return updated;
+    });
+    await deleteUserBankAccount(currentUser.uid, accountId);
+    showToast('Conta bancária excluída com sucesso.', 'info');
+  };
+
+  const handleSaveBankBalanceHistoryEntry = async (entry: BankBalanceHistoryEntry) => {
+    if (!currentUser?.uid) return;
+    setBankBalanceHistory(prev => {
+      const updated = [entry, ...prev];
+      saveStoredBankBalanceHistory(updated, currentUser.uid);
+      return updated;
+    });
+    await saveUserBankBalanceHistoryEntry(currentUser.uid, entry);
+  };
+
 
   // Handlers para Backup / Importação
   const handleImportData = async (
@@ -587,6 +680,7 @@ function FinanceApp() {
           setIsGoalsModalOpen(true);
         }}
         onOpenInvestments={() => setIsInvestmentsModalOpen(true)}
+        onOpenBankAccounts={() => setIsBankAccountsModalOpen(true)}
         onOpenAnnualReport={() => setIsAnnualReportModalOpen(true)}
         onOpenCloud={() => setIsCloudModalOpen(true)}
         onOpenConnectedBanks={() => setIsBankModalOpen(true)}
@@ -617,7 +711,10 @@ function FinanceApp() {
           transactions={monthTransactions}
           allTransactions={transactions}
           period={period}
+          bankAccounts={bankAccounts}
+          bankDisplayMode={bankDisplayMode}
           onOpenBudgets={() => setIsBudgetModalOpen(true)}
+          onOpenBankAccounts={() => setIsBankAccountsModalOpen(true)}
           onMarkAsPaid={handleToggleStatus}
         >
           {/* Visual Charts & Category Spending Insights */}
@@ -649,6 +746,13 @@ function FinanceApp() {
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Finance Pro • Ambiente executivo isolado por credencial autenticada</span>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsBankAccountsModalOpen(true)}
+              className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
+            >
+              Bancos & Contas
+            </button>
+            <span>•</span>
             <button
               onClick={() => setIsInvestmentsModalOpen(true)}
               className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
@@ -727,6 +831,22 @@ function FinanceApp() {
         investments={investments}
         onSaveInvestments={handleSaveInvestments}
         emergencyFundBalance={emergencyFundBalance}
+        bankAccounts={bankAccounts}
+        onOpenBankAccounts={() => {
+          setIsInvestmentsModalOpen(false);
+          setIsBankAccountsModalOpen(true);
+        }}
+      />
+
+      <BankAccountsModal
+        isOpen={isBankAccountsModalOpen}
+        onClose={() => setIsBankAccountsModalOpen(false)}
+        accounts={bankAccounts}
+        history={bankBalanceHistory}
+        onSaveAccount={handleSaveBankAccount}
+        onDeleteAccount={handleDeleteBankAccount}
+        onSaveHistoryEntry={handleSaveBankBalanceHistoryEntry}
+        onAddTransaction={handleSaveTransaction}
       />
 
       <AnnualReportModal

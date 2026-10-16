@@ -18,7 +18,7 @@ import {
   ChevronUp,
   AlertCircle
 } from 'lucide-react';
-import { InvestmentAsset, InvestmentCategoryType, InvestmentEntry } from '../types';
+import { InvestmentAsset, InvestmentCategoryType, InvestmentEntry, BankAccount } from '../types';
 import { formatCurrency, formatDateShort } from '../utils/formatters';
 import { AnimatedCounter } from './AnimatedCounter';
 
@@ -28,6 +28,8 @@ interface InvestmentsModalProps {
   investments: InvestmentAsset[];
   onSaveInvestments: (investments: InvestmentAsset[]) => void;
   emergencyFundBalance: number;
+  bankAccounts?: BankAccount[];
+  onOpenBankAccounts?: () => void;
 }
 
 const CATEGORY_METADATA: Record<InvestmentCategoryType, {
@@ -73,6 +75,8 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
   investments,
   onSaveInvestments,
   emergencyFundBalance,
+  bankAccounts = [],
+  onOpenBankAccounts,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<InvestmentCategoryType | null>(null);
   const [movementType, setMovementType] = useState<'deposit' | 'withdraw'>('deposit');
@@ -107,7 +111,12 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
     return acc + (getAssetByType(type).balance || 0);
   }, 0);
 
-  const grandTotalPatrimonio = emergencyFundBalance + investmentsTotal;
+  // Contas bancárias que NÃO estão vinculadas à reserva (para não contar duas vezes)
+  const nonReserveBankAccounts = bankAccounts.filter(a => !a.isArchived && !a.linkToReserve);
+  const bankAccountsTotal = nonReserveBankAccounts.reduce((acc, a) => acc + (a.currentBalance || 0), 0);
+  const reserveLinkedAccounts = bankAccounts.filter(a => !a.isArchived && a.linkToReserve);
+
+  const grandTotalPatrimonio = emergencyFundBalance + investmentsTotal + bankAccountsTotal;
 
   const handleOpenMovementForm = (type: InvestmentCategoryType, mType: 'deposit' | 'withdraw') => {
     setSelectedCategory(type);
@@ -250,11 +259,17 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
             </div>
 
             {/* Distribution Pills */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-4 border-t border-slate-800/80 mt-4 text-[11px] relative z-10">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-4 border-t border-slate-800/80 mt-4 text-[11px] relative z-10">
               <div className="p-2 rounded-lg bg-black/40 border border-white/10">
-                <span className="text-slate-400 block">🛡️ Reserva:</span>
+                <span className="text-slate-400 block truncate">🛡️ Reserva:</span>
                 <strong className="font-mono-num text-emerald-400 font-bold">{formatCurrency(emergencyFundBalance)}</strong>
               </div>
+
+              <div className="p-2 rounded-lg bg-black/40 border border-white/10">
+                <span className="text-slate-400 block truncate">🏛️ Em Bancos:</span>
+                <strong className="font-mono-num text-teal-400 font-bold">{formatCurrency(bankAccountsTotal)}</strong>
+              </div>
+
               {categoriesList.map(type => {
                 const asset = getAssetByType(type);
                 const meta = CATEGORY_METADATA[type];
@@ -266,6 +281,24 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
                 );
               })}
             </div>
+
+            {reserveLinkedAccounts.length > 0 && (
+              <div className="mt-3 text-[11px] text-slate-400 bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/5 flex items-center justify-between">
+                <span>🛡️ {reserveLinkedAccounts.map(a => a.name).join(', ')} vinculadas à Reserva (sem contagem dupla).</span>
+                {onOpenBankAccounts && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenBankAccounts();
+                    }}
+                    className="text-emerald-400 hover:underline font-bold text-[10px] cursor-pointer"
+                  >
+                    Gerenciar Bancos →
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 2. FORM DE REGISTRO DE APORTE OU SAQUE */}

@@ -323,3 +323,47 @@ export function getSampleTransactions(): Transaction[] {
     },
   ];
 }
+
+import { BankAccount } from '../types';
+
+export const DEFAULT_BANK_ACCOUNTS: BankAccount[] = [
+  {
+    id: 'default-nubank',
+    name: 'Nubank',
+    type: 'digital',
+    currentBalance: 0,
+    color: '#820AD1',
+    icon: 'landmark',
+    isArchived: false,
+    linkToReserve: false,
+    lastUpdatedAt: Date.now(),
+    createdAt: Date.now(),
+  },
+  {
+    id: 'default-santander',
+    name: 'Santander',
+    type: 'checking',
+    currentBalance: 0,
+    color: '#CC0000',
+    icon: 'landmark',
+    isArchived: false,
+    linkToReserve: false,
+    lastUpdatedAt: Date.now(),
+    createdAt: Date.now(),
+  },
+];
+
+export const POPULAR_BANKS_PRESETS: { name: string; color: string; type: BankAccount['type']; initials: string }[] = [
+  { name: 'Nubank', color: '#820AD1', type: 'digital', initials: 'NU' },
+  { name: 'Santander', color: '#CC0000', type: 'checking', initials: 'SAN' },
+  { name: 'Itaú', color: '#EC7000', type: 'checking', initials: 'ITAU' },
+  { name: 'Banco Inter', color: '#FF7A00', type: 'digital', initials: 'INT' },
+  { name: 'Bradesco', color: '#CC092F', type: 'checking', initials: 'BRA' },
+  { name: 'Caixa Econômica', color: '#0066B3', type: 'savings', initials: 'CEF' },
+  { name: 'Banco do Brasil', color: '#FFF100', type: 'checking', initials: 'BB' },
+  { name: 'C6 Bank', color: '#242424', type: 'digital', initials: 'C6' },
+  { name: 'Mercado Pago', color: '#009EE3', type: 'digital', initials: 'MP' },
+  { name: 'BTG Pactual', color: '#001E62', type: 'investment', initials: 'BTG' },
+  { name: 'XP Investimentos', color: '#000000', type: 'investment', initials: 'XP' },
+  { name: 'Dinheiro em Casa', color: '#059669', type: 'cash', initials: '💵' },
+];

@@ -31,7 +31,9 @@ import {
   InvestmentAsset,
   Category,
   BankConnection,
-  UserSubscription
+  UserSubscription,
+  BankAccount,
+  BankBalanceHistoryEntry
 } from '../types';
 import { DEFAULT_BUDGETS } from './constants';
 import { loadStoredBudgets } from './storage';
@@ -702,5 +704,143 @@ service cloud.firestore {
     match /users/{userId}/bankConnections/{connId} {
       allow read, write: if hasValidAccess(userId);
     }
+
+    // Contas bancárias manuais e carteiras
+    match /users/{userId}/bank_accounts/{accountId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+
+    // Histórico de saldos bancários
+    match /users/{userId}/bank_balance_history/{historyId} {
+      allow read, write: if hasValidAccess(userId);
+    }
   }
 }`;
+
+// 20. Escutar contas bancárias manuais da subcoleção /users/{userId}/bank_accounts
+export function subscribeToUserBankAccounts(
+  userId: string,
+  onData: (accounts: BankAccount[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  try {
+    const { db } = getFirebaseInstances();
+    const colRef = collection(db, 'users', userId, 'bank_accounts');
+    return onSnapshot(colRef, (snapshot) => {
+      const list: BankAccount[] = [];
+      snapshot.forEach(d => {
+        const data = d.data();
+        list.push({
+          id: d.id,
+          name: data.name || 'Conta',
+          type: data.type || 'checking',
+          currentBalance: typeof data.currentBalance === 'number' ? data.currentBalance : parseFloat(data.currentBalance) || 0,
+          color: data.color || '#059669',
+          icon: data.icon || 'landmark',
+          isArchived: Boolean(data.isArchived),
+          linkToReserve: Boolean(data.linkToReserve),
+          lastUpdatedAt: data.lastUpdatedAt || Date.now(),
+          createdAt: data.createdAt || Date.now(),
+        });
+      });
+      // Ordena por data de criação
+      list.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      onData(list);
+    }, onError);
+  } catch (err: any) {
+    if (onError) onError(err);
+    return () => {};
+  }
+}
+
+// 21. Salvar ou atualizar conta bancária em /users/{userId}/bank_accounts/{accountId}
+export async function saveUserBankAccount(
+  userId: string,
+  account: BankAccount
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const docId = account.id;
+    const docRef = doc(db, 'users', userId, 'bank_accounts', docId);
+    const cleanData = JSON.parse(JSON.stringify({
+      ...account,
+      id: docId,
+      lastUpdatedAt: account.lastUpdatedAt || Date.now(),
+    }));
+    await setDoc(docRef, cleanData, { merge: true });
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao salvar conta bancária no Firestore:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 22. Excluir conta bancária em /users/{userId}/bank_accounts/{accountId}
+export async function deleteUserBankAccount(
+  userId: string,
+  accountId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const docRef = doc(db, 'users', userId, 'bank_accounts', accountId);
+    await deleteDoc(docRef);
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao excluir conta bancária:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 23. Escutar histórico de saldos bancários da subcoleção /users/{userId}/bank_balance_history
+export function subscribeToUserBankBalanceHistory(
+  userId: string,
+  onData: (history: BankBalanceHistoryEntry[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  try {
+    const { db } = getFirebaseInstances();
+    const colRef = collection(db, 'users', userId, 'bank_balance_history');
+    return onSnapshot(colRef, (snapshot) => {
+      const list: BankBalanceHistoryEntry[] = [];
+      snapshot.forEach(d => {
+        const data = d.data();
+        list.push({
+          id: d.id,
+          accountId: data.accountId,
+          accountName: data.accountName || 'Conta',
+          date: data.date || '',
+          timestamp: data.timestamp || Date.now(),
+          balance: typeof data.balance === 'number' ? data.balance : parseFloat(data.balance) || 0,
+          previousBalance: typeof data.previousBalance === 'number' ? data.previousBalance : parseFloat(data.previousBalance) || 0,
+          difference: typeof data.difference === 'number' ? data.difference : parseFloat(data.difference) || 0,
+          changeType: data.changeType || 'adjustment',
+          note: data.note || '',
+        });
+      });
+      // Ordena decrescente por data/timestamp
+      list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      onData(list);
+    }, onError);
+  } catch (err: any) {
+    if (onError) onError(err);
+    return () => {};
+  }
+}
+
+// 24. Gravar registro no histórico de saldos em /users/{userId}/bank_balance_history/{entryId}
+export async function saveUserBankBalanceHistoryEntry(
+  userId: string,
+  entry: BankBalanceHistoryEntry
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { db } = getFirebaseInstances();
+    const docRef = doc(db, 'users', userId, 'bank_balance_history', entry.id);
+    const cleanData = JSON.parse(JSON.stringify(entry));
+    await setDoc(docRef, cleanData, { merge: true });
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao salvar histórico de saldo no Firestore:', err);
+    return { success: false, error: err.message };
+  }
+}
+

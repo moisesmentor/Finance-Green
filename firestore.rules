@@ -61,5 +61,16 @@ service cloud.firestore {
     match /users/{userId}/bankConnections/{connId} {
       allow read, write: if hasValidAccess(userId);
     }
+
+    // Contas bancárias manuais e carteiras
+    match /users/{userId}/bank_accounts/{accountId} {
+      allow read, write: if hasValidAccess(userId);
+    }
+
+    // Histórico de saldos bancários
+    match /users/{userId}/bank_balance_history/{historyId} {
+      allow read, write: if hasValidAccess(userId);
+    }
   }
 }
+
