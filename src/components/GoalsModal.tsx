@@ -388,7 +388,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                  <div className="w-full bg-slate-200 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-teal-400 transition-all duration-700"
                       style={{ width: `${emergencyPercentage}%` }}
@@ -409,7 +409,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                       type="text"
                       value={newTargetStr}
                       onChange={e => setNewTargetStr(e.target.value.replace(/[^0-9,.]/g, ''))}
-                      className="px-2.5 py-1 text-xs font-mono-num font-bold rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900 flex-1"
+                      className="px-2.5 py-1 text-xs font-mono-num font-bold rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100 flex-1"
                       autoFocus
                     />
                     <button
@@ -452,7 +452,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                           reservePercentage === pct
                             ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-white/15'
                         }`}
                       >
                         {pct}%
@@ -462,7 +462,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                 </div>
 
                 {/* Calculation breakdown card */}
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="p-4 rounded-xl bg-slate-50 dark-subcard border border-slate-200/60 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
                       Receitas confirmadas deste mês ({getMonthLabel(currentPeriod.year, currentPeriod.month)}):
@@ -489,7 +489,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         className={`px-4 py-2.5 rounded-xl text-xs font-bold shadow-md transition-all active:scale-95 flex items-center gap-2 ${
                           suggestedAmount > 0
                             ? 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer shadow-emerald-600/20'
-                            : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
+                            : 'bg-slate-200 dark:bg-white/10 text-slate-400 cursor-not-allowed'
                         }`}
                       >
                         <ShieldCheck className="w-4 h-4" />
@@ -502,7 +502,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
 
               {/* 1.3 Form de Depósito / Saque Avulso (se ativado) */}
               {activeGoalId === emergencyGoal.id && (
-                <form onSubmit={handleSaveContribution} className="p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3.5 animate-in fade-in">
+                <form onSubmit={handleSaveContribution} className="p-4 bg-slate-50 dark-subcard rounded-xl border border-slate-200 dark:border-white/10 space-y-3.5 animate-in fade-in">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-emerald-600" />
@@ -527,7 +527,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         value={contributionAmountStr}
                         onChange={e => setContributionAmountStr(e.target.value.replace(/[^0-9,.]/g, ''))}
                         placeholder="0,00"
-                        className="w-full px-3 py-2 text-xs font-mono-num font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                        className="w-full px-3 py-2 text-xs font-mono-num font-bold rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100"
                         autoFocus
                       />
                     </div>
@@ -540,7 +540,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         value={contributionNote}
                         onChange={e => setContributionNote(e.target.value)}
                         placeholder={contributionType === 'deposit' ? 'Ex: Economia bônus, rendimentos...' : 'Ex: Reparo emergencial, conserto carro...'}
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100"
                       />
                     </div>
                   </div>
@@ -575,11 +575,11 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                 </div>
 
                 {!emergencyGoal.history || emergencyGoal.history.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 dark:bg-black/40 rounded-xl border border-slate-100 dark:border-white/10">
                     Nenhuma movimentação registrada na reserva ainda. Faça o primeiro aporte acima!
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+                  <div className="divide-y divide-slate-100 dark:divide-white/[0.06] bg-slate-50/50 dark:bg-black/40 rounded-xl border border-slate-100 dark:border-white/10 overflow-hidden">
                     {emergencyGoal.history.map(item => {
                       const isDeposit = item.type === 'deposit';
                       return (
@@ -639,7 +639,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
 
               {/* CREATE GOAL FORM */}
               {isCreating && (
-                <form onSubmit={handleCreateGoal} className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3.5 animate-in fade-in">
+                <form onSubmit={handleCreateGoal} className="p-4 bg-slate-50 dark-subcard rounded-xl border border-slate-200 dark:border-white/10 space-y-3.5 animate-in fade-in">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
                       <Target className="w-4 h-4 text-emerald-600" />
@@ -663,7 +663,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                       value={title}
                       onChange={e => setTitle(e.target.value)}
                       placeholder="Ex: Viagem de Férias, Troca de Carro, Entrada Imóvel..."
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100"
                       autoFocus
                     />
                   </div>
@@ -678,7 +678,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         value={targetAmountStr}
                         onChange={e => setTargetAmountStr(e.target.value.replace(/[^0-9,.]/g, ''))}
                         placeholder="10.000,00"
-                        className="w-full px-3 py-2 text-xs font-mono-num rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold"
+                        className="w-full px-3 py-2 text-xs font-mono-num rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100 font-bold"
                       />
                     </div>
 
@@ -691,7 +691,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         value={initialAmountStr}
                         onChange={e => setInitialAmountStr(e.target.value.replace(/[^0-9,.]/g, ''))}
                         placeholder="0,00"
-                        className="w-full px-3 py-2 text-xs font-mono-num rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                        className="w-full px-3 py-2 text-xs font-mono-num rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100"
                       />
                     </div>
                   </div>
@@ -705,7 +705,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         type="date"
                         value={deadline}
                         onChange={e => setDeadline(e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-800 dark:text-zinc-200"
                       />
                     </div>
 
@@ -733,7 +733,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsCreating(false)}
-                      className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
+                      className="px-3 py-1.5 text-xs text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg cursor-pointer"
                     >
                       Cancelar
                     </button>
@@ -749,7 +749,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
 
               {/* CONTRIBUTION FORM FOR OTHER GOALS */}
               {activeGoalId && activeGoalId !== emergencyGoal.id && (
-                <form onSubmit={handleSaveContribution} className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3.5 animate-in fade-in">
+                <form onSubmit={handleSaveContribution} className="p-4 bg-slate-50 dark-subcard rounded-xl border border-slate-200 dark:border-white/10 space-y-3.5 animate-in fade-in">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
                       <PiggyBank className="w-4 h-4 text-emerald-600" />
@@ -764,14 +764,14 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200 dark:bg-black/50 rounded-lg">
                     <button
                       type="button"
                       onClick={() => setContributionType('deposit')}
                       className={`py-1.5 text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 cursor-pointer ${
                         contributionType === 'deposit'
                           ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'text-slate-600 dark:text-slate-300'
+                          : 'text-slate-600 dark:text-zinc-300'
                       }`}
                     >
                       <ArrowDownLeft className="w-3.5 h-3.5" />
@@ -783,7 +783,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                       className={`py-1.5 text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 cursor-pointer ${
                         contributionType === 'withdraw'
                           ? 'bg-rose-600 text-white shadow-xs'
-                          : 'text-slate-600 dark:text-slate-300'
+                          : 'text-slate-600 dark:text-zinc-300'
                       }`}
                     >
                       <ArrowUpRight className="w-3.5 h-3.5" />
@@ -801,7 +801,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         value={contributionAmountStr}
                         onChange={e => setContributionAmountStr(e.target.value.replace(/[^0-9,.]/g, ''))}
                         placeholder="0,00"
-                        className="w-full px-3 py-2 text-xs font-mono-num rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold"
+                        className="w-full px-3 py-2 text-xs font-mono-num rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100 font-bold"
                         autoFocus
                       />
                     </div>
@@ -815,7 +815,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         value={contributionNote}
                         onChange={e => setContributionNote(e.target.value)}
                         placeholder="Ex: Aporte do mês..."
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100"
                       />
                     </div>
                   </div>
@@ -824,7 +824,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveGoalId(null)}
-                      className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
+                      className="px-3 py-1.5 text-xs text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg cursor-pointer"
                     >
                       Cancelar
                     </button>
@@ -842,7 +842,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
               <div className="space-y-4">
                 {otherGoals.length === 0 ? (
                   <div className="text-center py-10 text-slate-400">
-                    <Target className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                    <Target className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-zinc-600" />
                     <p className="text-sm font-medium">Você ainda não tem outros objetivos cadastrados.</p>
                     <p className="text-xs mt-1">Crie metas para viagens, compras planejadas ou novos investimentos!</p>
                   </div>
@@ -854,7 +854,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                     return (
                       <div
                         key={goal.id}
-                        className="bg-slate-50/80 dark:bg-slate-800/60 rounded-xl p-4 border border-slate-200/90 dark:border-slate-700/80 shadow-xs space-y-3"
+                        className="bg-slate-50/80 dark-subcard rounded-xl p-4 border border-slate-200/90 dark:border-white/10 shadow-xs space-y-3"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
@@ -910,7 +910,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                               {percentage}% ({formatCurrency(remaining)} restantes)
                             </span>
                           </div>
-                          <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                          <div className="w-full bg-slate-200 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
                             <div
                               className="h-full rounded-full transition-all duration-500"
                               style={{

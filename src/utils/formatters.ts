@@ -115,7 +115,7 @@ export function getDueDateStatus(dateStr: string): DueDateStatus {
     urgency: 'normal',
     diffDays,
     label: `Vence em ${diffDays} dias`,
-    badgeClass: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+    badgeClass: 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-zinc-300 border-slate-200 dark:border-white/10',
   };
 }
 

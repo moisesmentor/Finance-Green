@@ -223,8 +223,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               {tab.label}
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                 quickTab === tab.id 
-                  ? 'bg-white/20 dark:bg-slate-900/20 text-white dark:text-slate-900' 
-                  : 'bg-slate-200/80 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300'
+                  ? 'bg-white/20 dark:bg-black/30 text-white dark:text-zinc-900' 
+                  : 'bg-slate-200/80 dark:bg-white/10 text-slate-600 dark:text-zinc-300'
               }`}>
                 {tab.count}
               </span>
@@ -242,7 +242,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Buscar por descrição, categoria ou nota..."
-              className="w-full pl-9 pr-8 py-2 text-base sm:text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
+              className="w-full pl-9 pr-8 py-2 text-base sm:text-xs rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
             />
             {search && (
               <button
@@ -259,7 +259,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             <select
               value={categoryFilter}
               onChange={e => setCategoryFilter(e.target.value)}
-              className="w-1/2 px-2.5 py-2 text-base sm:text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors cursor-pointer"
+              className="w-1/2 px-2.5 py-2 text-base sm:text-xs rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors cursor-pointer"
             >
               <option value="all">Categorias: Todas</option>
               {activeCategories.map(cat => (
@@ -272,7 +272,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as any)}
-              className="w-1/2 px-2.5 py-2 text-base sm:text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors cursor-pointer"
+              className="w-1/2 px-2.5 py-2 text-base sm:text-xs rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors cursor-pointer"
             >
               <option value="date_desc">Mais novos</option>
               <option value="date_asc">Mais antigos</option>
@@ -284,7 +284,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
         {/* Filter status row */}
         {hasActiveFilters && (
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400 pt-2 border-t border-slate-100 dark:border-white/[0.08]">
             <span>
               Filtro ativo: <strong>{filteredTransactions.length}</strong> resultado(s)
             </span>
@@ -301,7 +301,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       {/* Transaction Rows */}
       {filteredTransactions.length === 0 ? (
         <div className="py-16 px-4 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto mb-3 shadow-inner">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-zinc-500 flex items-center justify-center mx-auto mb-3 shadow-inner">
             <Inbox className="w-6 h-6" />
           </div>
           <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">
@@ -320,7 +320,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           </button>
         </div>
       ) : (
-        <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+        <div className="divide-y divide-slate-100 dark:divide-white/[0.06]">
           {filteredTransactions.map(tx => {
             const cat = categoryMap.get(tx.categoryId) || {
               id: 'outros',
@@ -467,7 +467,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => onEdit(tx)}
-                      className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                      className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-all cursor-pointer"
                       title="Editar lançamento"
                     >
                       <Edit3 className="w-4 h-4" />
@@ -491,9 +491,9 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
       {/* Footer Subtotal */}
       {filteredTransactions.length > 0 && (
-        <div className="bg-slate-50/90 dark:bg-slate-800/80 px-5 py-3.5 border-t border-slate-200/80 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-colors">
+        <div className="bg-slate-50/90 dark-brushed-metal px-5 py-3.5 border-t border-slate-200/80 dark:border-white/[0.08] text-xs text-slate-600 dark:text-zinc-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-colors">
           <div>
-            Exibindo <strong>{filteredTransactions.length}</strong> de {transactions.length} lançamentos
+            Exibindo <strong className="text-slate-900 dark:text-zinc-200">{filteredTransactions.length}</strong> de {transactions.length} lançamentos
           </div>
           <div className="flex items-center gap-5 font-mono-num font-bold text-xs sm:text-sm">
             {filteredTotal.income > 0 && (

@@ -370,7 +370,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                       </div>
 
                       {/* Unified progress bar */}
-                      <div className="w-full bg-slate-200/80 dark:bg-slate-700/80 rounded-full h-1.5 overflow-hidden">
+                      <div className="w-full bg-slate-200/80 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
                             hasBudget && isOverBudget ? 'bg-rose-500' : ''
@@ -384,7 +384,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
 
                       {/* Budget comparison or action */}
                       {hasBudget ? (
-                        <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px]">
+                        <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-white/10 flex items-center justify-between text-[11px]">
                           <span className="text-slate-500 dark:text-slate-400">
                             Teto: <strong className="tabular-nums text-slate-700 dark:text-slate-300 font-bold">{formatCurrency(item.budgetLimit!)}</strong>
                           </span>
@@ -400,7 +400,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                           )}
                         </div>
                       ) : (
-                        <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px]">
+                        <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-white/10 flex items-center justify-between text-[11px]">
                           <span className="text-slate-400 dark:text-slate-500 italic">
                             Sem meta definida
                           </span>
@@ -500,9 +500,9 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                   </defs>
 
                   {/* Horizontal grid guide lines */}
-                  <line x1="0" y1="35" x2={areaChartData.width} y2="35" stroke="currentColor" strokeDasharray="3 3" className="text-slate-200 dark:text-slate-800" strokeWidth="1" />
-                  <line x1="0" y1="75" x2={areaChartData.width} y2="75" stroke="currentColor" strokeDasharray="3 3" className="text-slate-200 dark:text-slate-800" strokeWidth="1" />
-                  <line x1="0" y1="115" x2={areaChartData.width} y2="115" stroke="currentColor" strokeDasharray="3 3" className="text-slate-200 dark:text-slate-800" strokeWidth="1" />
+                  <line x1="0" y1="35" x2={areaChartData.width} y2="35" stroke="currentColor" strokeDasharray="3 3" className="text-slate-200 dark:text-zinc-800/80" strokeWidth="1" />
+                  <line x1="0" y1="75" x2={areaChartData.width} y2="75" stroke="currentColor" strokeDasharray="3 3" className="text-slate-200 dark:text-zinc-800/80" strokeWidth="1" />
+                  <line x1="0" y1="115" x2={areaChartData.width} y2="115" stroke="currentColor" strokeDasharray="3 3" className="text-slate-200 dark:text-zinc-800/80" strokeWidth="1" />
 
                   {/* Shaded Area */}
                   {areaChartData.areaD && (
@@ -545,7 +545,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
 
                 {/* Live Tooltip popup if day is hovered */}
                 {hoveredDay && hoveredDay.amount > 0 && (
-                  <div className="absolute top-2 left-1/2 -translate-x-1/2 pointer-events-none bg-slate-900 text-white text-[11px] px-3 py-1 rounded-lg font-mono-num shadow-lg border border-slate-700 flex items-center gap-1.5 z-20">
+                  <div className="absolute top-2 left-1/2 -translate-x-1/2 pointer-events-none bg-slate-900 dark:bg-[#121214] text-white text-[11px] px-3 py-1 rounded-lg font-mono-num shadow-lg border border-slate-700 dark:border-white/15 flex items-center gap-1.5 z-20">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                     Dia {hoveredDay.day}: {formatCurrency(hoveredDay.amount)}
                   </div>
@@ -563,7 +563,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
           ) : (
             /* SubView 2: Classic Capsule Bars */
             <div className="p-4 rounded-2xl bg-slate-50/60 dark:bg-black/40 border border-slate-100 dark:border-white/10 overflow-hidden">
-              <div className="h-44 w-full flex items-end gap-1 sm:gap-1.5 pt-4 pb-2 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
+              <div className="h-44 w-full flex items-end gap-1 sm:gap-1.5 pt-4 pb-2 border-b border-slate-200 dark:border-white/10 overflow-x-auto">
                 {dailySpending.days.map(d => {
                   const heightPercent = d.amount > 0 ? Math.max(8, (d.amount / dailySpending.maxAmount) * 100) : 0;
                   const isToday = new Date().getDate() === d.day && 
@@ -579,7 +579,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                     >
                       {/* Tooltip on hover */}
                       {d.amount > 0 && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-slate-900 text-white text-[10px] py-0.5 px-1.5 rounded-md font-mono-num whitespace-nowrap shadow-md">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-slate-900 dark:bg-[#121214] text-white text-[10px] py-0.5 px-1.5 rounded-md font-mono-num whitespace-nowrap shadow-md border border-transparent dark:border-white/15">
                           {formatCurrency(d.amount)}
                         </div>
                       )}
@@ -591,7 +591,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                             ? isToday
                               ? 'bg-emerald-600 ring-2 ring-emerald-400/50'
                               : 'bg-emerald-500/80 hover:bg-emerald-400'
-                            : 'bg-slate-200 dark:bg-slate-700 h-1 rounded-full'
+                            : 'bg-slate-200 dark:bg-zinc-800 h-1 rounded-full'
                         }`}
                         style={{ height: d.amount > 0 ? `${heightPercent}%` : '3px' }}
                       />

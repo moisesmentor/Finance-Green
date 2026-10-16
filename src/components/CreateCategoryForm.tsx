@@ -187,7 +187,7 @@ export const CreateCategoryForm: React.FC<CreateCategoryFormProps> = ({
               if (catError) setCatError('');
             }}
             placeholder="Ex: Cursos & Mentoria, Pets, Academia..."
-            className="w-full px-3 py-1.5 text-base sm:text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+            className="w-full px-3 py-1.5 text-base sm:text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
             autoFocus
           />
         </div>
@@ -198,14 +198,14 @@ export const CreateCategoryForm: React.FC<CreateCategoryFormProps> = ({
             <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
               Tipo
             </label>
-            <div className="grid grid-cols-2 gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="grid grid-cols-2 gap-1 bg-white dark:bg-black/40 p-0.5 rounded-lg border border-slate-200 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setNewCatType('expense')}
                 className={`py-1 text-[11px] font-semibold rounded cursor-pointer transition-all ${
                   newCatType === 'expense'
                     ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-zinc-200'
                 }`}
               >
                 Despesa
@@ -216,7 +216,7 @@ export const CreateCategoryForm: React.FC<CreateCategoryFormProps> = ({
                 className={`py-1 text-[11px] font-semibold rounded cursor-pointer transition-all ${
                   newCatType === 'income'
                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-zinc-200'
                 }`}
               >
                 Receita
@@ -241,7 +241,7 @@ export const CreateCategoryForm: React.FC<CreateCategoryFormProps> = ({
                   setBudgetLimitStr(clean);
                 }}
                 placeholder="Ex: 500"
-                className="w-full px-3 py-1.5 text-base sm:text-xs font-mono-num font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                className="w-full px-3 py-1.5 text-base sm:text-xs font-mono-num font-semibold rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
               />
             </div>
           </div>
@@ -263,7 +263,7 @@ export const CreateCategoryForm: React.FC<CreateCategoryFormProps> = ({
               onClick={() => setNewCatColor(c.hex)}
               style={{ backgroundColor: c.hex }}
               className={`w-6 h-6 rounded-full flex items-center justify-center transition-transform cursor-pointer ${
-                newCatColor === c.hex ? 'scale-125 ring-2 ring-offset-2 ring-emerald-500 dark:ring-offset-slate-900' : 'hover:scale-110 opacity-90'
+                newCatColor === c.hex ? 'scale-125 ring-2 ring-offset-2 ring-emerald-500 dark:ring-offset-black' : 'hover:scale-110 opacity-90'
               }`}
             >
               {newCatColor === c.hex && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
@@ -277,7 +277,7 @@ export const CreateCategoryForm: React.FC<CreateCategoryFormProps> = ({
         <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
           Ícone Representativo
         </label>
-        <div className="grid grid-cols-7 sm:grid-cols-10 gap-1.5 max-h-28 overflow-y-auto p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+        <div className="grid grid-cols-7 sm:grid-cols-10 gap-1.5 max-h-28 overflow-y-auto p-2 bg-white dark:bg-black/40 rounded-lg border border-slate-200 dark:border-white/10">
           {PRESET_ICONS.map(iconName => (
             <button
               key={iconName}
@@ -285,8 +285,8 @@ export const CreateCategoryForm: React.FC<CreateCategoryFormProps> = ({
               onClick={() => setNewCatIcon(iconName)}
               className={`p-1.5 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                 newCatIcon === iconName
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs scale-105'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs scale-105'
+                  : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-white/10'
               }`}
               title={iconName}
             >
