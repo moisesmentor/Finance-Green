@@ -61,8 +61,6 @@ export const ImportBankStatementModal: React.FC<ImportBankStatementModalProps> =
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
-
   // Mapa rápido de categorias
   const categoryMap = new Map<string, Category>();
   for (const c of categories) {
@@ -252,6 +250,8 @@ export const ImportBankStatementModal: React.FC<ImportBankStatementModalProps> =
     setSearch('');
     setFilterType('all');
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">

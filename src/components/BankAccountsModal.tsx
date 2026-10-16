@@ -34,8 +34,8 @@ import { POPULAR_BANKS_PRESETS } from '../utils/constants';
 interface BankAccountsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  accounts: BankAccount[];
-  history: BankBalanceHistoryEntry[];
+  accounts?: BankAccount[];
+  history?: BankBalanceHistoryEntry[];
   onSaveAccount: (account: BankAccount) => Promise<void>;
   onDeleteAccount: (accountId: string) => Promise<void>;
   onSaveHistoryEntry: (entry: BankBalanceHistoryEntry) => Promise<void>;
@@ -82,8 +82,8 @@ export const parseCurrencyMask = (val: string): number => {
 export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
   isOpen,
   onClose,
-  accounts,
-  history,
+  accounts = [],
+  history = [],
   onSaveAccount,
   onDeleteAccount,
   onSaveHistoryEntry,
@@ -118,36 +118,37 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
   // Confirmação para variação drástica de saldo (evita digitação com zeros a mais/menos)
   const [pendingDrasticBalance, setPendingDrasticBalance] = useState<number | null>(null);
 
-  if (!isOpen) return null;
+  // Active vs Archived accounts (defensive checks)
+  const safeAccounts = Array.isArray(accounts) ? accounts : [];
+  const safeHistory = Array.isArray(history) ? history : [];
 
-  // Active vs Archived accounts
-  const activeAccounts = accounts.filter(a => !a.isArchived);
-  const archivedAccounts = accounts.filter(a => a.isArchived);
+  const activeAccounts = safeAccounts.filter(a => !a.isArchived);
+  const archivedAccounts = safeAccounts.filter(a => a.isArchived);
   const displayedAccounts = activeTab === 'active' ? activeAccounts : archivedAccounts;
 
   // Total balance in active accounts
-  const totalBalance = activeAccounts.reduce((sum, a) => sum + (a.currentBalance || 0), 0);
+  const totalBalance = activeAccounts.reduce((sum, a) => sum + (Number(a.currentBalance) || 0), 0);
 
   // Latest overall update timestamp
   const latestUpdate = activeAccounts.length > 0 
-    ? Math.max(...activeAccounts.map(a => a.lastUpdatedAt || 0))
+    ? Math.max(...activeAccounts.map(a => Number(a.lastUpdatedAt) || 0))
     : 0;
 
-  // Breakdown by type
+  // Breakdown by type (always called in the exact same hook order)
   const typeBreakdown = useMemo(() => {
     const map = new Map<BankAccountType, number>();
     for (const a of activeAccounts) {
       const cur = map.get(a.type) || 0;
-      map.set(a.type, cur + (a.currentBalance || 0));
+      map.set(a.type, cur + (Number(a.currentBalance) || 0));
     }
     return Array.from(map.entries()).map(([type, total]) => ({
       type,
-      label: ACCOUNT_TYPE_LABELS[type],
+      label: ACCOUNT_TYPE_LABELS[type] || 'Outro',
       total,
     }));
   }, [activeAccounts]);
 
-  // Monthly balance history aggregation for the mini-chart (last 6 months)
+  // Monthly balance history aggregation for the mini-chart (last 6 months - hook always called)
   const monthlyChartData = useMemo(() => {
     const now = new Date();
     const result: { monthLabel: string; total: number; isCurrent: boolean }[] = [];
@@ -171,13 +172,13 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
         let monthTotal = 0;
 
         for (const acc of activeAccounts) {
-          const accHistory = history.filter(
+          const accHistory = safeHistory.filter(
             h => h.accountId === acc.id && h.date <= endOfMonthDate
           );
           if (accHistory.length > 0) {
-            monthTotal += accHistory[0].balance;
+            monthTotal += (Number(accHistory[0].balance) || 0);
           } else {
-            monthTotal += acc.currentBalance;
+            monthTotal += (Number(acc.currentBalance) || 0);
           }
         }
 
@@ -194,7 +195,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
       ...r,
       percentage: Math.max(15, Math.round((r.total / maxVal) * 100)),
     }));
-  }, [history, activeAccounts, totalBalance]);
+  }, [safeHistory, activeAccounts, totalBalance]);
 
   // Check if an account is outdated (> 30 days)
   const isAccountOutdated = (lastUpdated: number) => {
@@ -215,6 +216,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
   const renderAccountIcon = (account: BankAccount) => {
     const iconMap: Record<string, React.FC<{ className?: string }>> = {
       building: Building2,
+      landmark: Building2,
       wallet: Wallet,
       'credit-card': CreditCard,
       banknote: Banknote,
@@ -227,7 +229,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
     if (SelectedIcon) return <SelectedIcon className="w-5 h-5" />;
     if (account.type === 'cash') return <Banknote className="w-5 h-5" />;
     if (account.type === 'savings') return <PiggyBank className="w-5 h-5" />;
-    return <span className="font-extrabold text-xs tracking-tight">{account.name.substring(0, 3).toUpperCase()}</span>;
+    return <span className="font-extrabold text-xs tracking-tight">{(account.name || 'B').substring(0, 3).toUpperCase()}</span>;
   };
 
   // Open Form for Adding New Bank
@@ -246,9 +248,10 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
   // Open Form for Editing Existing Bank
   const handleOpenEditForm = (account: BankAccount) => {
     setEditingAccount(account);
-    setFormName(account.name);
-    setFormType(account.type);
-    setFormBalance(account.currentBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    setFormName(account.name || '');
+    setFormType(account.type || 'digital');
+    const balanceNum = typeof account.currentBalance === 'number' ? account.currentBalance : 0;
+    setFormBalance(balanceNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
     setFormColor(account.color || '#059669');
     setFormIcon(account.icon || (account.type === 'cash' ? 'banknote' : account.type === 'savings' ? 'piggy-bank' : 'building'));
     setFormLinkToReserve(Boolean(account.linkToReserve));
@@ -268,7 +271,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
     }
 
     // Check duplicate names (case-insensitive)
-    const isDuplicate = accounts.some(
+    const isDuplicate = safeAccounts.some(
       a => a.name.toLowerCase() === cleanName.toLowerCase() && a.id !== editingAccount?.id
     );
     if (isDuplicate) {
@@ -309,7 +312,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
 
       // If new account or balance changed, record history entry
       if (isNew || (editingAccount && editingAccount.currentBalance !== parsedBalance)) {
-        const prevBal = editingAccount ? editingAccount.currentBalance : 0;
+        const prevBal = editingAccount ? (editingAccount.currentBalance || 0) : 0;
         const diff = parsedBalance - prevBal;
         const entry: BankBalanceHistoryEntry = {
           id: `hist-${Date.now()}`,
@@ -337,7 +340,8 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
   // Open Update Balance Modal
   const handleOpenUpdateBalance = (account: BankAccount) => {
     setSelectedAccountForBalance(account);
-    setNewBalanceStr(account.currentBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    const balanceNum = typeof account.currentBalance === 'number' ? account.currentBalance : 0;
+    setNewBalanceStr(balanceNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
     setPendingDrasticBalance(null);
     setChangeType('adjustment');
     setCreateTxInStatement(false);
@@ -349,7 +353,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
   // Execução final da atualização de saldo
   const executeBalanceUpdate = async (targetBalance: number) => {
     if (!selectedAccountForBalance) return;
-    const prevBalance = selectedAccountForBalance.currentBalance;
+    const prevBalance = selectedAccountForBalance.currentBalance || 0;
     const difference = targetBalance - prevBalance;
 
     setIsSaving(true);
@@ -418,7 +422,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
       return;
     }
 
-    const prevBalance = selectedAccountForBalance.currentBalance;
+    const prevBalance = selectedAccountForBalance.currentBalance || 0;
     const diff = Math.abs(parsedNewBalance - prevBalance);
 
     // Heurística de variação drástica (para evitar zeros a mais ou a menos acidentais)
@@ -448,7 +452,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
 
   // Delete account with confirmation
   const handleDeleteAccount = async (account: BankAccount) => {
-    const confirmMsg = `Tem certeza que deseja excluir a conta "${account.name}"?\n\nO saldo de ${formatCurrency(account.currentBalance)} será removido.\n\n(Dica: se quiser apenas ocultar a conta sem perder o histórico, você pode clicar no botão "Arquivar").`;
+    const confirmMsg = `Tem certeza que deseja excluir a conta "${account.name}"?\n\nO saldo de ${formatCurrency(account.currentBalance || 0)} será removido.\n\n(Dica: se quiser apenas ocultar a conta sem perder o histórico, você pode clicar no botão "Arquivar").`;
     if (window.confirm(confirmMsg)) {
       await onDeleteAccount(account.id);
     }
@@ -464,11 +468,22 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
     else setFormIcon('building');
   };
 
+  // Early return ONLY here, after all React hooks are executed
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div 
+      className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+      onClick={e => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       
       {/* MODAL CONTAINER */}
-      <div className="bg-white dark:bg-[#121214] border border-slate-200/80 dark:border-white/10 rounded-[32px] w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div 
+        onClick={e => e.stopPropagation()}
+        className="bg-white dark:bg-[#161619] dark-brushed-metal-modal border border-slate-200/80 dark:border-white/10 rounded-[32px] w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+      >
         
         {/* =================================================================== */}
         {/* HEADER */}
@@ -653,15 +668,19 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                     <div>
                       {/* Top row: Avatar/Icon + Name + Action buttons */}
                       <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
+                        <div 
+                          className="flex items-center gap-3 cursor-pointer group/title"
+                          onClick={() => handleOpenEditForm(acc)}
+                          title="Clique para editar informações deste banco"
+                        >
                           <div 
-                            className="w-11 h-11 rounded-2xl text-white flex items-center justify-center font-extrabold text-xs shadow-xs shrink-0 transition-transform group-hover:scale-105"
+                            className="w-11 h-11 rounded-2xl text-white flex items-center justify-center font-extrabold text-xs shadow-xs shrink-0 transition-transform group-hover/title:scale-105"
                             style={{ backgroundColor: acc.color || '#059669' }}
                           >
                             {renderAccountIcon(acc)}
                           </div>
                           <div className="min-w-0">
-                            <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                            <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover/title:text-emerald-600 dark:group-hover/title:text-emerald-400 transition-colors">
                               {acc.name}
                             </h4>
                             <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
@@ -678,27 +697,27 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                         </div>
 
                         {/* Top quick actions */}
-                        <div className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 opacity-100 sm:opacity-80 sm:group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => handleOpenEditForm(acc)}
                             className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer transition-colors"
                             title="Editar conta (nome, tipo, cor, ícone)"
                           >
-                            <Edit2 className="w-3.5 h-3.5" />
+                            <Edit2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                           </button>
                           <button
                             onClick={() => handleToggleArchive(acc)}
                             className="p-1.5 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer transition-colors"
                             title={acc.isArchived ? "Desarquivar conta" : "Arquivar conta"}
                           >
-                            {acc.isArchived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                            {acc.isArchived ? <ArchiveRestore className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> : <Archive className="w-4 h-4 sm:w-3.5 sm:h-3.5" />}
                           </button>
                           <button
                             onClick={() => handleDeleteAccount(acc)}
                             className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer transition-colors"
                             title="Excluir conta"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -706,12 +725,12 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                       {/* Middle row: Saldo (CLICÁVEL PARA ATUALIZAR MANUALMENTE) */}
                       <div 
                         onClick={() => handleOpenUpdateBalance(acc)}
-                        className="my-3.5 p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20 border border-transparent hover:border-emerald-500/30 transition-all cursor-pointer group/saldo"
+                        className="my-3.5 p-3.5 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20 border border-transparent hover:border-emerald-500/30 transition-all cursor-pointer group/saldo"
                         title="Clique diretamente aqui para atualizar o saldo"
                       >
                         <div className="flex items-center justify-between text-[11px] mb-1">
-                          <span className="text-slate-400 dark:text-zinc-500 flex items-center gap-1">
-                            Saldo Atual <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">(toque para editar)</span>
+                          <span className="text-slate-500 dark:text-zinc-400 flex items-center gap-1 font-medium">
+                            Saldo Atual <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">(toque para editar)</span>
                           </span>
                           {isOutdated && (
                             <span className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1 text-[10px]">
@@ -721,8 +740,8 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                           )}
                         </div>
                         <div className="text-2xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight flex items-center justify-between">
-                          <span>{formatCurrency(acc.currentBalance)}</span>
-                          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 opacity-0 group-hover/saldo:opacity-100 transition-opacity">
+                          <span>{formatCurrency(acc.currentBalance || 0)}</span>
+                          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 opacity-70 group-hover/saldo:opacity-100 transition-opacity">
                             <Edit2 className="w-3.5 h-3.5" />
                           </span>
                         </div>
@@ -736,7 +755,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                       </span>
                       <button
                         onClick={() => handleOpenUpdateBalance(acc)}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <span>Atualizar saldo</span>
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -797,8 +816,16 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
       {/* SUBMODAL 1: ATUALIZAR SALDO */}
       {/* =================================================================== */}
       {isUpdateBalanceOpen && selectedAccountForBalance && (
-        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#18181b] border border-slate-200 dark:border-white/10 rounded-[28px] max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+        <div 
+          className="fixed inset-0 z-[60] bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={e => {
+            if (e.target === e.currentTarget) setIsUpdateBalanceOpen(false);
+          }}
+        >
+          <div 
+            onClick={e => e.stopPropagation()}
+            className="bg-white dark:bg-[#18181b] border border-slate-200 dark:border-white/10 rounded-[28px] max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150"
+          >
             
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -813,7 +840,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                     Atualizar Saldo: {selectedAccountForBalance.name}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-zinc-400">
-                    Saldo anterior: <strong>{formatCurrency(selectedAccountForBalance.currentBalance)}</strong>
+                    Saldo anterior: <strong>{formatCurrency(selectedAccountForBalance.currentBalance || 0)}</strong>
                   </p>
                 </div>
               </div>
@@ -855,7 +882,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                     <div>
                       <p className="font-bold text-xs">Atenção: Variação de saldo muito alta!</p>
                       <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-0.5 leading-relaxed">
-                        O novo saldo (<strong>{formatCurrency(pendingDrasticBalance)}</strong>) é muito diferente do saldo anterior (<strong>{formatCurrency(selectedAccountForBalance.currentBalance)}</strong>).
+                        O novo saldo (<strong>{formatCurrency(pendingDrasticBalance)}</strong>) é muito diferente do saldo anterior (<strong>{formatCurrency(selectedAccountForBalance.currentBalance || 0)}</strong>).
                         Verifique se não digitou dígitos a mais ou a menos por engano.
                       </p>
                     </div>
@@ -989,8 +1016,16 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
       {/* SUBMODAL 2: ADICIONAR / EDITAR BANCO */}
       {/* =================================================================== */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#18181b] border border-slate-200 dark:border-white/10 rounded-[28px] max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+        <div 
+          className="fixed inset-0 z-[60] bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={e => {
+            if (e.target === e.currentTarget) setIsFormOpen(false);
+          }}
+        >
+          <div 
+            onClick={e => e.stopPropagation()}
+            className="bg-white dark:bg-[#18181b] border border-slate-200 dark:border-white/10 rounded-[28px] max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto"
+          >
             
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
