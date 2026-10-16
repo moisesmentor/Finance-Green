@@ -180,6 +180,15 @@ export function getEffectivePlan(
   const now = Date.now();
 
   if (subscription.status === 'active' || subscription.status === 'trialing') {
+    // Se agendou downgrade de Pro para Basic, mantém Pro até currentPeriodEnd e depois passa a Basic
+    if (
+      rawPlan === 'pro' &&
+      subscription.pendingPlan === 'basic' &&
+      subscription.currentPeriodEnd &&
+      subscription.currentPeriodEnd <= now
+    ) {
+      return 'basic';
+    }
     return rawPlan;
   }
 

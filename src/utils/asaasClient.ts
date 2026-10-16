@@ -54,3 +54,52 @@ export async function createAsaasSubscriptionCheckout(params: {
 
   return data as CreateSubscriptionResponse;
 }
+
+export interface ChangePlanResponse {
+  success: boolean;
+  mode: 'upgrade' | 'downgrade';
+  plan: Exclude<PlanTier, 'free'>;
+  pendingPlan?: Exclude<PlanTier, 'free'> | null;
+  currentPeriodEnd?: number | null;
+  nextDueDate?: string | null;
+  message: string;
+}
+
+/**
+ * Chama a função serverless /api/asaas/change-plan para alterar entre Basic e Pro
+ * sem criar assinatura duplicada no Asaas.
+ */
+export async function changeAsaasSubscriptionPlan(params: {
+  targetPlan: Exclude<PlanTier, 'free'>;
+}): Promise<ChangePlanResponse> {
+  const { auth } = getFirebaseInstances();
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    throw new Error('Sua sessão expirou. Faça login novamente para continuar.');
+  }
+
+  const idToken = await currentUser.getIdToken();
+
+  const response = await fetch('/api/asaas/change-plan', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({
+      targetPlan: params.targetPlan,
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error || 'Não foi possível atualizar o plano da assinatura no momento.'
+    );
+  }
+
+  return data as ChangePlanResponse;
+}
+

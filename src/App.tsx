@@ -105,7 +105,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { LandingPage } from './components/LandingPage';
 import { LegalPages, LegalPageType } from './components/LegalPages';
 import { CheckoutSummaryModal } from './components/CheckoutSummaryModal';
-import { createAsaasSubscriptionCheckout } from './utils/asaasClient';
+import { createAsaasSubscriptionCheckout, changeAsaasSubscriptionPlan } from './utils/asaasClient';
 import { ToastProvider, useToast } from './components/Toast';
 
 const PENDING_PLAN_STORAGE_KEY = 'greenfinance_pending_checkout_plan';
@@ -948,6 +948,34 @@ function FinanceApp() {
     }
   };
 
+  // ETAPA 5: Handler de Upgrade (Basic -> Pro) e Downgrade (Pro -> Basic) sem duplicar assinatura
+  const handleChangeSubscriptionPlan = async (targetPlan: Exclude<PlanTier, 'free'>) => {
+    setCheckoutErrorMessage(null);
+    setIsCheckoutSubmitting(true);
+    try {
+      const result = await changeAsaasSubscriptionPlan({ targetPlan });
+      // Atualiza estado otimista imediatamente além do listener realtime do Firestore
+      setUserSubscription((prev) => ({
+        ...prev,
+        plan: result.plan,
+        pendingPlan: result.pendingPlan ?? null,
+        updatedAt: Date.now(),
+      }));
+      updatePendingCheckoutPlan(null);
+      setIsCheckoutSummaryOpen(false);
+      setIsCheckoutSubmitting(false);
+      showToast(result.message, 'success');
+      if (publicView !== 'app') {
+        navigatePublic('app');
+      }
+    } catch (err: any) {
+      setCheckoutErrorMessage(
+        err?.message || 'Não foi possível alterar o plano da assinatura no Asaas. Tente novamente.'
+      );
+      setIsCheckoutSubmitting(false);
+    }
+  };
+
   // 1. Páginas Legais (/termos, /privacidade, /excluir-conta) acessíveis imediatamente
   if (publicView === 'termos' || publicView === 'privacidade' || publicView === 'excluir-conta') {
     return (
@@ -1000,6 +1028,7 @@ function FinanceApp() {
             updatePendingCheckoutPlan(null);
           }}
           onProceedToPayment={handleProceedToPayment}
+          onChangePlan={handleChangeSubscriptionPlan}
           onGoToApp={() => {
             setIsCheckoutSummaryOpen(false);
             setCheckoutErrorMessage(null);
@@ -1301,6 +1330,7 @@ function FinanceApp() {
           updatePendingCheckoutPlan(null);
         }}
         onProceedToPayment={handleProceedToPayment}
+        onChangePlan={handleChangeSubscriptionPlan}
         onGoToApp={() => {
           setIsCheckoutSummaryOpen(false);
           setCheckoutErrorMessage(null);

@@ -26,6 +26,7 @@ interface CheckoutSummaryModalProps {
   errorMessage?: string | null;
   onClose: () => void;
   onProceedToPayment: (plan: Exclude<PlanTier, 'free'>, cpfCnpj: string) => void;
+  onChangePlan?: (targetPlan: Exclude<PlanTier, 'free'>) => void;
   onGoToApp: () => void;
 }
 
@@ -105,6 +106,7 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
   errorMessage = null,
   onClose,
   onProceedToPayment,
+  onChangePlan,
   onGoToApp,
 }) => {
   const [cpfCnpj, setCpfCnpj] = useState('');
@@ -114,13 +116,24 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
 
   const planInfo = PLAN_DETAILS[selectedPlan];
   const effectivePlan = getEffectivePlan(subscription, user?.email);
-  const isSamePlanActive = effectivePlan === selectedPlan;
+  const isSamePlanActive = effectivePlan === selectedPlan && !subscription?.pendingPlan;
   const isUpgradeFromBasic = effectivePlan === 'basic' && selectedPlan === 'pro';
   const isDowngradeFromPro = effectivePlan === 'pro' && selectedPlan === 'basic';
+  const hasActiveAsaasSubscription = Boolean(
+    subscription?.asaasSubscriptionId &&
+      (subscription.status === 'active' || subscription.status === 'trialing')
+  );
+  const isExistingSubscriptionChange =
+    hasActiveAsaasSubscription && (isUpgradeFromBasic || isDowngradeFromPro) && Boolean(onChangePlan);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
+
+    if (isExistingSubscriptionChange && onChangePlan) {
+      onChangePlan(selectedPlan);
+      return;
+    }
 
     const digits = cpfCnpj.replace(/\D/g, '');
     if (!validateCpfCnpjClient(digits)) {
@@ -214,13 +227,13 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
                 <div className="text-sm text-slate-800 dark:text-slate-100">
                   <p className="font-bold">
                     {isUpgradeFromBasic
-                      ? 'Mudança de plano: Basic → Pro (Upgrade)'
-                      : 'Mudança de plano: Pro → Basic (Downgrade)'}
+                      ? 'Mudança de plano: Basic → Pro (Upgrade imediato)'
+                      : 'Mudança de plano: Pro → Basic (Aplicada no próximo ciclo)'}
                   </p>
                   <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
                     {isUpgradeFromBasic
-                      ? 'Sua assinatura atual será atualizada para o plano Pro (R$ 29,90/mês) sem cobrança duplicada.'
-                      : 'Sua assinatura passará para o plano Basic (R$ 19,90/mês) a partir do próximo ciclo de cobrança.'}
+                      ? 'Os recursos do plano Pro serão liberados agora e sua assinatura mensal passará para R$ 29,90/mês sem cobrança duplicada.'
+                      : 'Você continuará com acesso completo ao plano Pro até o fim do período já pago, e a próxima renovação passará para R$ 19,90/mês.'}
                   </p>
                 </div>
               </div>
@@ -285,7 +298,7 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
             </div>
 
             {/* Campo de CPF / CNPJ exigido pelo Asaas (com fonte >= 16px no mobile) */}
-            {!isSamePlanActive && (
+            {!isSamePlanActive && !isExistingSubscriptionChange && (
               <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/70 dark:bg-[#18181c] p-4 space-y-2">
                 <label
                   htmlFor="checkout-cpf-cnpj"
@@ -361,11 +374,21 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
                   {isSubmitting ? (
                     <>
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Redirecionando para o Asaas...</span>
+                      <span>
+                        {isExistingSubscriptionChange
+                          ? 'Atualizando assinatura...'
+                          : 'Redirecionando para o Asaas...'}
+                      </span>
                     </>
                   ) : (
                     <>
-                      <span>Ir para o pagamento</span>
+                      <span>
+                        {isExistingSubscriptionChange
+                          ? isUpgradeFromBasic
+                            ? 'Confirmar Upgrade para Pro'
+                            : 'Agendar mudança para Basic no próximo ciclo'
+                          : 'Ir para o pagamento'}
+                      </span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}

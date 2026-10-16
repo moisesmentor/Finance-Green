@@ -694,8 +694,15 @@ service cloud.firestore {
           exists(subDocPath(userId))
           && hasValidPaidStatus(get(subDocPath(userId)).data)
           && (
-            get(subDocPath(userId)).data.plan == 'pro'
-            || get(subDocPath(userId)).data.isLifetime == true
+            get(subDocPath(userId)).data.isLifetime == true
+            || (
+              get(subDocPath(userId)).data.plan == 'pro'
+              && !(
+                get(subDocPath(userId)).data.pendingPlan == 'basic'
+                && get(subDocPath(userId)).data.currentPeriodEnd is number
+                && get(subDocPath(userId)).data.currentPeriodEnd <= request.time.toMillis()
+              )
+            )
           )
         )
       );
