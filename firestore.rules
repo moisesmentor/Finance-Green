@@ -62,14 +62,25 @@ service cloud.firestore {
       allow read, write: if hasValidAccess(userId);
     }
 
-    // Contas bancárias manuais e carteiras
+    // Contas bancárias manuais e carteiras: isoladas por usuário, com validação de tipos e limites
     match /users/{userId}/bank_accounts/{accountId} {
-      allow read, write: if hasValidAccess(userId);
+      allow read, delete: if hasValidAccess(userId);
+      allow create, update: if hasValidAccess(userId)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.currentBalance is number
+        && request.resource.data.currentBalance >= 0
+        && request.resource.data.currentBalance <= 1000000000;
     }
 
-    // Histórico de saldos bancários
+    // Histórico de saldos bancários: isolado por usuário, com validação de limites
     match /users/{userId}/bank_balance_history/{historyId} {
-      allow read, write: if hasValidAccess(userId);
+      allow read, delete: if hasValidAccess(userId);
+      allow create, update: if hasValidAccess(userId)
+        && request.resource.data.balance is number
+        && request.resource.data.balance >= 0
+        && request.resource.data.balance <= 1000000000;
     }
   }
 }

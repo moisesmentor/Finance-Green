@@ -18,7 +18,14 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Calendar,
-  History
+  History,
+  Banknote,
+  Coins,
+  Smartphone,
+  PiggyBank,
+  CircleDollarSign,
+  CreditCard,
+  Sparkles
 } from 'lucide-react';
 import { BankAccount, BankAccountType, BankBalanceHistoryEntry, Transaction } from '../types';
 import { formatCurrency, formatDateShort } from '../utils/formatters';
@@ -44,6 +51,34 @@ const ACCOUNT_TYPE_LABELS: Record<BankAccountType, string> = {
   other: 'Outro',
 };
 
+// Ícones pré-definidos para bancos e contas
+export const PRESET_ICONS = [
+  { id: 'building', label: 'Banco', Icon: Building2 },
+  { id: 'wallet', label: 'Carteira', Icon: Wallet },
+  { id: 'credit-card', label: 'Cartão', Icon: CreditCard },
+  { id: 'banknote', label: 'Dinheiro', Icon: Banknote },
+  { id: 'coins', label: 'Moedas', Icon: Coins },
+  { id: 'smartphone', label: 'Digital', Icon: Smartphone },
+  { id: 'piggy-bank', label: 'Poupança', Icon: PiggyBank },
+  { id: 'circle-dollar', label: 'Câmbio', Icon: CircleDollarSign },
+];
+
+// Máscara de moeda brasileira: converte dígitos em string formatada "0,00"
+export const formatCurrencyMask = (val: string): string => {
+  const digits = val.replace(/\D/g, '');
+  if (!digits) return '0,00';
+  const num = parseInt(digits, 10) / 100;
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+// Converte string com máscara BRL para número float
+export const parseCurrencyMask = (val: string): number => {
+  if (!val) return 0;
+  const digits = val.replace(/\D/g, '');
+  if (!digits) return 0;
+  return parseInt(digits, 10) / 100;
+};
+
 export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
   isOpen,
   onClose,
@@ -67,18 +102,21 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
   // Form State (New / Edit Bank)
   const [formName, setFormName] = useState('');
   const [formType, setFormType] = useState<BankAccountType>('digital');
-  const [formBalance, setFormBalance] = useState('');
+  const [formBalance, setFormBalance] = useState('0,00');
   const [formColor, setFormColor] = useState('#820AD1');
+  const [formIcon, setFormIcon] = useState<string>('building');
   const [formLinkToReserve, setFormLinkToReserve] = useState(false);
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   // Update Balance State
-  const [newBalanceStr, setNewBalanceStr] = useState('');
+  const [newBalanceStr, setNewBalanceStr] = useState('0,00');
   const [changeType, setChangeType] = useState<'adjustment' | 'deposit' | 'withdraw'>('adjustment');
   const [createTxInStatement, setCreateTxInStatement] = useState(false);
   const [balanceNote, setBalanceNote] = useState('');
   const [balanceError, setBalanceError] = useState('');
+  // Confirmação para variação drástica de saldo (evita digitação com zeros a mais/menos)
+  const [pendingDrasticBalance, setPendingDrasticBalance] = useState<number | null>(null);
 
   if (!isOpen) return null;
 
@@ -118,7 +156,6 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const year = d.getFullYear();
       const month = d.getMonth();
-      const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
       const monthShort = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
 
       if (i === 0) {
@@ -138,10 +175,8 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
             h => h.accountId === acc.id && h.date <= endOfMonthDate
           );
           if (accHistory.length > 0) {
-            // Latest entry for this account before or in this month
             monthTotal += accHistory[0].balance;
           } else {
-            // Fallback: estimate proportional or use initial
             monthTotal += acc.currentBalance;
           }
         }
@@ -176,13 +211,33 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
     return `Há ${diffDays} dias`;
   };
 
+  // Renderizador do ícone de um banco
+  const renderAccountIcon = (account: BankAccount) => {
+    const iconMap: Record<string, React.FC<{ className?: string }>> = {
+      building: Building2,
+      wallet: Wallet,
+      'credit-card': CreditCard,
+      banknote: Banknote,
+      coins: Coins,
+      smartphone: Smartphone,
+      'piggy-bank': PiggyBank,
+      'circle-dollar': CircleDollarSign,
+    };
+    const SelectedIcon = account.icon ? iconMap[account.icon] : null;
+    if (SelectedIcon) return <SelectedIcon className="w-5 h-5" />;
+    if (account.type === 'cash') return <Banknote className="w-5 h-5" />;
+    if (account.type === 'savings') return <PiggyBank className="w-5 h-5" />;
+    return <span className="font-extrabold text-xs tracking-tight">{account.name.substring(0, 3).toUpperCase()}</span>;
+  };
+
   // Open Form for Adding New Bank
   const handleOpenAddForm = () => {
     setEditingAccount(null);
     setFormName('');
     setFormType('digital');
-    setFormBalance('');
+    setFormBalance('0,00');
     setFormColor('#820AD1');
+    setFormIcon('building');
     setFormLinkToReserve(false);
     setFormError('');
     setIsFormOpen(true);
@@ -193,21 +248,22 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
     setEditingAccount(account);
     setFormName(account.name);
     setFormType(account.type);
-    setFormBalance(account.currentBalance.toString());
+    setFormBalance(account.currentBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
     setFormColor(account.color || '#059669');
+    setFormIcon(account.icon || (account.type === 'cash' ? 'banknote' : account.type === 'savings' ? 'piggy-bank' : 'building'));
     setFormLinkToReserve(Boolean(account.linkToReserve));
     setFormError('');
     setIsFormOpen(true);
   };
 
-  // Submit Bank Form
+  // Submit Bank Form (Create / Edit)
   const handleSaveBankForm = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
     const cleanName = formName.trim();
     if (!cleanName) {
-      setFormError('Informe o nome do banco ou carteira.');
+      setFormError('Informe o nome do banco ou instituição.');
       return;
     }
 
@@ -220,9 +276,14 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
       return;
     }
 
-    const parsedBalance = parseFloat(formBalance.replace(/\./g, '').replace(',', '.')) || 0;
+    const parsedBalance = parseCurrencyMask(formBalance);
     if (isNaN(parsedBalance) || parsedBalance < 0) {
       setFormError('Informe um saldo válido (maior ou igual a zero).');
+      return;
+    }
+
+    if (parsedBalance > 1000000000) {
+      setFormError('O saldo informado ultrapassa o limite permitido.');
       return;
     }
 
@@ -237,6 +298,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
         type: formType,
         currentBalance: parsedBalance,
         color: formColor,
+        icon: formIcon,
         isArchived: editingAccount?.isArchived || false,
         linkToReserve: formLinkToReserve,
         lastUpdatedAt: Date.now(),
@@ -276,6 +338,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
   const handleOpenUpdateBalance = (account: BankAccount) => {
     setSelectedAccountForBalance(account);
     setNewBalanceStr(account.currentBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    setPendingDrasticBalance(null);
     setChangeType('adjustment');
     setCreateTxInStatement(false);
     setBalanceNote('');
@@ -283,39 +346,30 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
     setIsUpdateBalanceOpen(true);
   };
 
-  // Submit Balance Update
-  const handleSaveBalanceUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Execução final da atualização de saldo
+  const executeBalanceUpdate = async (targetBalance: number) => {
     if (!selectedAccountForBalance) return;
-    setBalanceError('');
-
-    const parsedNewBalance = parseFloat(newBalanceStr.replace(/\./g, '').replace(',', '.'));
-    if (isNaN(parsedNewBalance) || parsedNewBalance < 0) {
-      setBalanceError('Informe um saldo numérico válido.');
-      return;
-    }
-
     const prevBalance = selectedAccountForBalance.currentBalance;
-    const difference = parsedNewBalance - prevBalance;
+    const difference = targetBalance - prevBalance;
 
     setIsSaving(true);
     try {
-      // 1. Update the BankAccount document
+      // 1. Atualizar o documento BankAccount
       const updatedAccount: BankAccount = {
         ...selectedAccountForBalance,
-        currentBalance: parsedNewBalance,
+        currentBalance: targetBalance,
         lastUpdatedAt: Date.now(),
       };
       await onSaveAccount(updatedAccount);
 
-      // 2. Record Balance History Entry
+      // 2. Registrar histórico de saldo
       const entry: BankBalanceHistoryEntry = {
         id: `hist-${Date.now()}`,
         accountId: selectedAccountForBalance.id,
         accountName: selectedAccountForBalance.name,
         date: new Date().toISOString().split('T')[0],
         timestamp: Date.now(),
-        balance: parsedNewBalance,
+        balance: targetBalance,
         previousBalance: prevBalance,
         difference,
         changeType,
@@ -323,7 +377,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
       };
       await onSaveHistoryEntry(entry);
 
-      // 3. Optional: Create Transaction in Statement if user EXPLICITLY checked the box
+      // 3. Opcional: Criar lançamento no Extrato se o usuário marcou expressamente
       if (createTxInStatement && onAddTransaction && difference !== 0 && changeType !== 'adjustment') {
         const isIncome = difference > 0;
         await onAddTransaction({
@@ -339,11 +393,47 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
       }
 
       setIsUpdateBalanceOpen(false);
+      setPendingDrasticBalance(null);
     } catch (err: any) {
       setBalanceError(err.message || 'Erro ao atualizar saldo.');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Submit Balance Update com checagem de valor drástico
+  const handleSaveBalanceUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAccountForBalance) return;
+    setBalanceError('');
+
+    const parsedNewBalance = parseCurrencyMask(newBalanceStr);
+    if (isNaN(parsedNewBalance) || parsedNewBalance < 0) {
+      setBalanceError('Informe um saldo numérico válido.');
+      return;
+    }
+
+    if (parsedNewBalance > 1000000000) {
+      setBalanceError('O saldo informado ultrapassa o limite permitido.');
+      return;
+    }
+
+    const prevBalance = selectedAccountForBalance.currentBalance;
+    const diff = Math.abs(parsedNewBalance - prevBalance);
+
+    // Heurística de variação drástica (para evitar zeros a mais ou a menos acidentais)
+    const isDrastic = 
+      (prevBalance === 0 && parsedNewBalance >= 5000) ||
+      (prevBalance > 0 && diff >= 5000 && (parsedNewBalance >= prevBalance * 3 || parsedNewBalance <= prevBalance * 0.15)) ||
+      (diff >= 50000);
+
+    // Se houver variação drástica e ainda não foi confirmada, exibir o aviso inline
+    if (isDrastic && pendingDrasticBalance !== parsedNewBalance) {
+      setPendingDrasticBalance(parsedNewBalance);
+      return;
+    }
+
+    await executeBalanceUpdate(parsedNewBalance);
   };
 
   // Archive / Unarchive account
@@ -358,7 +448,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
 
   // Delete account with confirmation
   const handleDeleteAccount = async (account: BankAccount) => {
-    const confirmMsg = `Deseja realmente excluir a conta "${account.name}"? O saldo não será mais contabilizado.`;
+    const confirmMsg = `Tem certeza que deseja excluir a conta "${account.name}"?\n\nO saldo de ${formatCurrency(account.currentBalance)} será removido.\n\n(Dica: se quiser apenas ocultar a conta sem perder o histórico, você pode clicar no botão "Arquivar").`;
     if (window.confirm(confirmMsg)) {
       await onDeleteAccount(account.id);
     }
@@ -369,6 +459,9 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
     setFormName(preset.name);
     setFormColor(preset.color);
     setFormType(preset.type);
+    if (preset.type === 'cash') setFormIcon('banknote');
+    else if (preset.type === 'savings') setFormIcon('piggy-bank');
+    else setFormIcon('building');
   };
 
   return (
@@ -400,13 +493,23 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/15 transition-all cursor-pointer"
-            title="Fechar (Esc)"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleOpenAddForm}
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Adicionar banco</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/15 transition-all cursor-pointer"
+              title="Fechar (Esc)"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* =================================================================== */}
@@ -529,10 +632,10 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
 
             <button
               onClick={handleOpenAddForm}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-xs hover:shadow transition-all cursor-pointer"
+              className="inline-flex sm:hidden items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Adicionar Banco</span>
+              <span>+ Adicionar banco</span>
             </button>
           </div>
 
@@ -541,7 +644,6 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {displayedAccounts.map(acc => {
                 const isOutdated = isAccountOutdated(acc.lastUpdatedAt);
-                const initials = acc.name.substring(0, 3).toUpperCase();
 
                 return (
                   <div 
@@ -549,14 +651,14 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                     className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/10 rounded-2xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-white/20 transition-all flex flex-col justify-between group"
                   >
                     <div>
-                      {/* Top row: Avatar + Name + Action buttons */}
+                      {/* Top row: Avatar/Icon + Name + Action buttons */}
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <div 
-                            className="w-11 h-11 rounded-2xl text-white flex items-center justify-center font-extrabold text-xs shadow-xs shrink-0"
+                            className="w-11 h-11 rounded-2xl text-white flex items-center justify-center font-extrabold text-xs shadow-xs shrink-0 transition-transform group-hover:scale-105"
                             style={{ backgroundColor: acc.color || '#059669' }}
                           >
-                            {acc.type === 'cash' ? '💵' : initials}
+                            {renderAccountIcon(acc)}
                           </div>
                           <div className="min-w-0">
                             <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
@@ -579,21 +681,21 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                         <div className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => handleOpenEditForm(acc)}
-                            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
-                            title="Editar conta"
+                            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer transition-colors"
+                            title="Editar conta (nome, tipo, cor, ícone)"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleToggleArchive(acc)}
-                            className="p-1.5 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
+                            className="p-1.5 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer transition-colors"
                             title={acc.isArchived ? "Desarquivar conta" : "Arquivar conta"}
                           >
                             {acc.isArchived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
                           </button>
                           <button
                             onClick={() => handleDeleteAccount(acc)}
-                            className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer"
+                            className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer transition-colors"
                             title="Excluir conta"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -601,10 +703,16 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Middle row: Saldo */}
-                      <div className="my-3.5 p-3 rounded-xl bg-slate-50 dark:bg-white/5">
+                      {/* Middle row: Saldo (CLICÁVEL PARA ATUALIZAR MANUALMENTE) */}
+                      <div 
+                        onClick={() => handleOpenUpdateBalance(acc)}
+                        className="my-3.5 p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20 border border-transparent hover:border-emerald-500/30 transition-all cursor-pointer group/saldo"
+                        title="Clique diretamente aqui para atualizar o saldo"
+                      >
                         <div className="flex items-center justify-between text-[11px] mb-1">
-                          <span className="text-slate-400 dark:text-zinc-500">Saldo Atual</span>
+                          <span className="text-slate-400 dark:text-zinc-500 flex items-center gap-1">
+                            Saldo Atual <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">(toque para editar)</span>
+                          </span>
                           {isOutdated && (
                             <span className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1 text-[10px]">
                               <AlertTriangle className="w-3 h-3" />
@@ -612,8 +720,11 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                             </span>
                           )}
                         </div>
-                        <div className="text-2xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight">
-                          {formatCurrency(acc.currentBalance)}
+                        <div className="text-2xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight flex items-center justify-between">
+                          <span>{formatCurrency(acc.currentBalance)}</span>
+                          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 opacity-0 group-hover/saldo:opacity-100 transition-opacity">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -634,6 +745,27 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                   </div>
                 );
               })}
+
+              {/* CARD TRACEJADO AO FINAL DA LISTA: + ADICIONAR BANCO */}
+              {activeTab === 'active' && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddForm}
+                  className="border-2 border-dashed border-slate-300 dark:border-white/10 hover:border-emerald-500 dark:hover:border-emerald-400 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 min-h-[190px] bg-slate-50/40 hover:bg-emerald-50/30 dark:bg-white/[0.02] dark:hover:bg-emerald-950/20 transition-all cursor-pointer group"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-white/5 shadow-xs border border-slate-200 dark:border-white/10 group-hover:bg-emerald-600 group-hover:border-emerald-600 group-hover:text-white text-slate-500 dark:text-zinc-400 flex items-center justify-center transition-all">
+                    <Plus className="w-6 h-6 transition-transform group-hover:scale-110" />
+                  </div>
+                  <div className="text-center">
+                    <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-zinc-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 block">
+                      + Adicionar banco
+                    </span>
+                    <span className="text-[11px] text-slate-400 dark:text-zinc-500 block mt-0.5">
+                      Inter, Itaú, C6, Mercado Pago ou Dinheiro
+                    </span>
+                  </div>
+                </button>
+              )}
             </div>
           ) : (
             <div className="text-center py-12 px-4 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-3xl bg-slate-50/50 dark:bg-white/5">
@@ -649,7 +781,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
               {activeTab === 'active' && (
                 <button
                   onClick={handleOpenAddForm}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer shadow-md shadow-emerald-600/20"
                 >
                   + Cadastrar Primeiro Banco
                 </button>
@@ -671,10 +803,10 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div 
-                  className="w-8 h-8 rounded-xl text-white flex items-center justify-center font-extrabold text-xs shrink-0"
+                  className="w-9 h-9 rounded-xl text-white flex items-center justify-center font-extrabold text-xs shrink-0"
                   style={{ backgroundColor: selectedAccountForBalance.color || '#059669' }}
                 >
-                  {selectedAccountForBalance.type === 'cash' ? '💵' : selectedAccountForBalance.name.substring(0, 2).toUpperCase()}
+                  {renderAccountIcon(selectedAccountForBalance)}
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
@@ -696,20 +828,58 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
             <form onSubmit={handleSaveBalanceUpdate} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
-                  Novo Saldo Atual (R$)
+                  Novo Saldo Atual (R$) *
                 </label>
-                <input
-                  type="text"
-                  value={newBalanceStr}
-                  onChange={e => setNewBalanceStr(e.target.value)}
-                  placeholder="0,00"
-                  required
-                  autoFocus
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 text-slate-900 dark:text-white font-extrabold text-lg tabular-nums focus:outline-emerald-500"
-                />
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 dark:text-zinc-500">
+                    R$
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={newBalanceStr}
+                    onChange={e => setNewBalanceStr(formatCurrencyMask(e.target.value))}
+                    placeholder="0,00"
+                    required
+                    autoFocus
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 text-slate-900 dark:text-white font-extrabold text-base sm:text-lg tabular-nums focus:outline-emerald-500"
+                  />
+                </div>
               </div>
 
-              {/* REQUISITO 3: O que motivou essa alteração? */}
+              {/* AVISO DE VARIAÇÃO DRÁSTICA ANTES DE SALVAR */}
+              {pendingDrasticBalance !== null && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-xs">Atenção: Variação de saldo muito alta!</p>
+                      <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-0.5 leading-relaxed">
+                        O novo saldo (<strong>{formatCurrency(pendingDrasticBalance)}</strong>) é muito diferente do saldo anterior (<strong>{formatCurrency(selectedAccountForBalance.currentBalance)}</strong>).
+                        Verifique se não digitou dígitos a mais ou a menos por engano.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-amber-500/20">
+                    <button
+                      type="button"
+                      onClick={() => setPendingDrasticBalance(null)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-xs font-semibold cursor-pointer text-slate-700 dark:text-zinc-200"
+                    >
+                      Revisar valor
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => executeBalanceUpdate(pendingDrasticBalance)}
+                      className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer"
+                    >
+                      Sim, o saldo é este
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Motivo da alteração */}
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/5 space-y-2.5">
                 <span className="text-xs font-bold text-slate-900 dark:text-white block">
                   Qual o motivo dessa alteração?
@@ -767,7 +937,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                         className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500"
                       />
                       <span>
-                        Registrar também como lançamento no Extrato Mensal de transações (desmarcado por padrão para sua segurança).
+                        Registrar também como lançamento no Extrato Mensal de transações (desmarcado por padrão).
                       </span>
                     </label>
                   </div>
@@ -782,8 +952,8 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                   type="text"
                   value={balanceNote}
                   onChange={e => setBalanceNote(e.target.value)}
-                  placeholder="Ex: Pagamento recebido, resgate de aplicação..."
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 text-xs text-slate-900 dark:text-white focus:outline-emerald-500"
+                  placeholder="Ex: Salário, resgate de aplicação, compras do mês..."
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 text-base sm:text-xs text-slate-900 dark:text-white focus:outline-emerald-500"
                 />
               </div>
 
@@ -865,9 +1035,9 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                   type="text"
                   value={formName}
                   onChange={e => setFormName(e.target.value)}
-                  placeholder="Ex: Nubank, Santander, Inter, C6, Dinheiro em Casa..."
+                  placeholder="Ex: Inter, Itaú, C6, Mercado Pago, Dinheiro em Casa..."
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-emerald-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 text-base sm:text-sm text-slate-900 dark:text-white focus:outline-emerald-500"
                 />
               </div>
 
@@ -878,8 +1048,13 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                   </label>
                   <select
                     value={formType}
-                    onChange={e => setFormType(e.target.value as BankAccountType)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 text-xs text-slate-900 dark:text-white focus:outline-emerald-500"
+                    onChange={e => {
+                      const newType = e.target.value as BankAccountType;
+                      setFormType(newType);
+                      if (newType === 'cash') setFormIcon('banknote');
+                      else if (newType === 'savings') setFormIcon('piggy-bank');
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 text-base sm:text-xs text-slate-900 dark:text-white focus:outline-emerald-500"
                   >
                     <option value="digital">Conta Digital</option>
                     <option value="checking">Conta Corrente</option>
@@ -894,21 +1069,54 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                   <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
                     Saldo {editingAccount ? 'Atual' : 'Inicial'} (R$) *
                   </label>
-                  <input
-                    type="text"
-                    value={formBalance}
-                    onChange={e => setFormBalance(e.target.value)}
-                    placeholder="0,00"
-                    required
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white tabular-nums focus:outline-emerald-500"
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 dark:text-zinc-500">
+                      R$
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={formBalance}
+                      onChange={e => setFormBalance(formatCurrencyMask(e.target.value))}
+                      placeholder="0,00"
+                      required
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 text-base sm:text-sm font-extrabold text-slate-900 dark:text-white tabular-nums focus:outline-emerald-500"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Seletor de cor */}
+              {/* SELETOR DE ÍCONE */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1.5">
-                  Cor de Identificação
+                  Ícone de Identificação
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {PRESET_ICONS.map(({ id, label, Icon }) => {
+                    const isSelected = formIcon === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setFormIcon(id)}
+                        className={`flex items-center gap-1.5 p-2 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
+                          isSelected
+                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 shadow-xs'
+                            : 'border-slate-200 dark:border-zinc-700 hover:border-slate-300 dark:hover:border-zinc-600 text-slate-600 dark:text-zinc-400 bg-slate-50/50 dark:bg-white/5'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate text-[11px]">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SELETOR DE COR */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1.5">
+                  Cor do Banco
                 </label>
                 <div className="flex items-center gap-2 flex-wrap">
                   {['#820AD1', '#CC0000', '#EC7000', '#FF7A00', '#CC092F', '#0066B3', '#001E62', '#242424', '#009EE3', '#059669'].map(c => (
@@ -930,7 +1138,7 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
                 </div>
               </div>
 
-              {/* REQUISITO 5: Consistência com o Patrimônio (Prevenção de contagem dupla) */}
+              {/* CONSISTÊNCIA COM O PATRIMÔNIO (Prevenção de contagem dupla) */}
               <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-1">
                 <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
