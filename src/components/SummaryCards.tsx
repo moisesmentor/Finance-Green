@@ -211,7 +211,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
   };
 
   return (
-    <section id="section-summary-cards" className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-6 items-stretch">
+    <section id="section-summary-cards" className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
       
       {/* =================================================================== */}
       {/* LEFT COLUMN (5 cols): Saldo Líquido Hero (top) + Vence em breve (bottom) */}

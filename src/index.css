@@ -151,3 +151,34 @@
     display: block !important;
   }
 }
+
+/* ========================================================================== */
+/* MONTHLY INCOME TICKER ANIMATION (SMOOTH HARDWARE-ACCELERATED MARQUEE)      */
+/* ========================================================================== */
+@keyframes ticker-scroll {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-ticker {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll var(--ticker-duration, 35s) linear infinite;
+  will-change: transform;
+}
+
+.animate-ticker:hover,
+.ticker-paused {
+  animation-play-state: paused !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ticker {
+    animation: none !important;
+  }
+}
+

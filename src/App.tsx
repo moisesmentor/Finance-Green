@@ -88,6 +88,7 @@ import { getDueDateStatus } from './utils/formatters';
 import { Wallet, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Header } from './components/Header';
 import { DueAlertsBanner } from './components/DueAlertsBanner';
+import { MonthlyIncomeTicker } from './components/MonthlyIncomeTicker';
 import { SummaryCards } from './components/SummaryCards';
 import { MonthlyCharts } from './components/MonthlyCharts';
 import { TransactionList } from './components/TransactionList';
@@ -1159,11 +1160,11 @@ function FinanceApp() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-x-hidden">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col gap-4 sm:gap-6 overflow-x-hidden">
         
         {/* Aviso discreto quando a assinatura estiver past_due (em atraso com tolerância ativa) */}
         {userSubscription.status === 'past_due' && (
-          <div className="mb-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-start sm:items-center gap-2.5 text-slate-800 dark:text-slate-200">
               <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5 sm:mt-0" />
               <span>
@@ -1200,6 +1201,13 @@ function FinanceApp() {
           transactions={transactions}
           onMarkAsPaid={handleToggleStatus}
           categories={allCategories}
+        />
+
+        {/* Faixa Horizontal de Receitas do Mês (Ticker Animado / Chips de Entradas) */}
+        <MonthlyIncomeTicker
+          transactions={monthTransactions}
+          onEdit={handleEditTransaction}
+          onAddNew={handleOpenNewTransaction}
         />
 
         {/* Key Metrics Cards & Integrated Charts Grid */}
