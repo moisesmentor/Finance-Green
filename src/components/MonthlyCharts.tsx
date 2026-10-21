@@ -161,7 +161,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
 
   if (totalExpense === 0) {
     return (
-      <div className="bg-white dark:bg-zinc-900 rounded-[28px] border border-slate-200/80 dark:border-white/10 shadow-xs p-6 sm:p-7 flex flex-col items-center justify-center text-center min-h-[220px]">
+      <div className="bg-white dark:bg-zinc-900 rounded-[28px] border border-slate-200/80 dark:border-white/10 shadow-xs p-5 sm:p-6 flex flex-col items-center justify-center text-center min-h-[220px]">
         <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400 mb-2">
           <PieChart className="w-5 h-5" />
         </div>
@@ -174,7 +174,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
   }
 
   return (
-    <div id="section-monthly-charts" className="bg-white dark:bg-zinc-900 rounded-[28px] border border-slate-200/80 dark:border-white/10 shadow-xs p-6 sm:p-7 flex flex-col justify-between flex-1 transition-all">
+    <div id="section-monthly-charts" className="bg-white dark:bg-zinc-900 rounded-[28px] border border-slate-200/80 dark:border-white/10 shadow-xs p-5 sm:p-6 flex flex-col justify-between flex-1 transition-all">
       
       {/* Header with Segmented Pills */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-white/5">

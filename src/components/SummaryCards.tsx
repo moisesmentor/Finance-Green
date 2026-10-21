@@ -221,7 +221,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
         {/* CARD 1: SALDO LÍQUIDO HERO CARD */}
         <div 
           id="card-summary-balance"
-          className="bg-gradient-to-br from-[#065f46] via-[#047857] to-[#059669] text-white rounded-[28px] p-6 sm:p-7 shadow-lg shadow-emerald-950/15 relative overflow-hidden flex flex-col justify-between flex-1 group"
+          className="bg-gradient-to-br from-[#065f46] via-[#047857] to-[#059669] text-white rounded-[28px] p-5 sm:p-6 shadow-lg shadow-emerald-950/15 relative overflow-hidden flex flex-col justify-between shrink-0 min-h-fit group"
         >
           {/* Subtle Ambient Glow */}
           <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
@@ -274,8 +274,8 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
           </div>
 
           {/* SVG Smooth Sparkline */}
-          <div className="my-4 sm:my-5 w-full">
-            <svg className="w-full h-14 overflow-visible" viewBox="0 0 320 60" fill="none">
+          <div className="my-3 sm:my-3.5 w-full">
+            <svg className="w-full h-11 sm:h-12 overflow-visible" viewBox="0 0 320 60" fill="none">
               <defs>
                 <linearGradient id="heroSparkGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#ffffff" stopOpacity="0.3" />
@@ -296,7 +296,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
           </div>
 
           {/* Realizado vs Previsto bottom breakdown */}
-          <div className="pt-3.5 border-t border-white/20 flex items-center justify-between text-xs sm:text-sm">
+          <div className="pt-3 border-t border-white/20 flex items-center justify-between text-xs sm:text-sm">
             <div>
               <span className="text-emerald-200/80 font-medium">Realizado: </span>
               <span className="font-extrabold tabular-nums text-white">
@@ -314,9 +314,9 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
           {/* ========================================================= */}
           {/* BLOCO: AS DUAS LINHAS INTEGRADAS DE SALDO EM BANCOS */}
           {/* ========================================================= */}
-          <div className="mt-3.5 bg-black/20 backdrop-blur-xs rounded-2xl p-3.5 space-y-2 border border-white/10">
+          <div className="mt-3 bg-black/25 backdrop-blur-xs rounded-2xl p-3 sm:p-3.5 space-y-2 border border-white/10">
             {/* Linha a: Em contas */}
-            <div className="flex items-center justify-between text-xs sm:text-sm">
+            <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -355,7 +355,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
             </div>
 
             {/* Linha b: Saldo projetado */}
-            <div className="flex items-center justify-between text-xs sm:text-sm pt-2 border-t border-white/10">
+            <div className="flex items-center justify-between gap-2 text-xs sm:text-sm pt-2 border-t border-white/10">
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-emerald-100 flex items-center gap-1.5">
                   <TrendingUp className="w-3.5 h-3.5 text-teal-300 shrink-0" />
@@ -400,7 +400,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
         {/* CARD 4: VENCE EM BREVE (PRÓXIMOS 7 DIAS) */}
         <div 
           id="card-summary-due-soon"
-          className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/10 rounded-[28px] p-6 sm:p-7 shadow-xs flex flex-col justify-between flex-1"
+          className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/10 rounded-[28px] p-5 sm:p-6 shadow-xs flex flex-col justify-between flex-1"
         >
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -484,7 +484,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
           {/* CARD 2: RECEITAS */}
           <div 
             id="card-summary-income"
-            className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/10 rounded-[28px] p-6 sm:p-7 shadow-xs flex flex-col justify-between transition-all hover:shadow-md"
+            className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/10 rounded-[28px] p-5 sm:p-6 shadow-xs flex flex-col justify-between transition-all hover:shadow-md"
           >
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -520,7 +520,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
           {/* CARD 3: GASTOS */}
           <div 
             id="card-summary-expenses"
-            className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/10 rounded-[28px] p-6 sm:p-7 shadow-xs flex flex-col justify-between transition-all hover:shadow-md"
+            className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/10 rounded-[28px] p-5 sm:p-6 shadow-xs flex flex-col justify-between transition-all hover:shadow-md"
           >
             <div>
               <div className="flex items-center justify-between mb-3">
