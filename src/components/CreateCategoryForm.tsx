@@ -44,7 +44,7 @@ export const PRESET_COLORS = [
   { name: 'Índigo', hex: '#4f46e5' },
   { name: 'Roxo', hex: '#7c3aed' },
   { name: 'Rosa', hex: '#db2777' },
-  { name: 'Vermelho', hex: '#e11d48' },
+  { name: 'Bronze', hex: '#b45309' },
   { name: 'Laranja', hex: '#ea580c' },
   { name: 'Âmbar', hex: '#d97706' },
   { name: 'Grafite', hex: '#475569' },

@@ -452,6 +452,8 @@ export function generateRecurringTransactions(
       status: isFirst ? baseData.status : 'pending',
       isRecurring: true,
       recurringFrequency: 'monthly',
+      recurrenceGroupId: groupId,
+      recurrenceStatus: 'active',
       installmentGroupId: groupId,
       installmentCurrent: i + 1,
       installmentTotal: monthsCount,

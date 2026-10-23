@@ -3,13 +3,15 @@ import {
   PieChart, 
   BarChart3, 
   AlertCircle, 
-  CheckCircle, 
+  CheckCircle2, 
   Calendar,
   CreditCard,
   ChevronRight,
+  ChevronDown,
   TrendingUp,
   Sparkles,
-  Layers
+  Layers,
+  AlertTriangle
 } from 'lucide-react';
 import { Transaction, CategoryBudget, CategorySpending, MonthPeriod, Category } from '../types';
 import { calculateCategorySpending } from '../utils/storage';
@@ -23,6 +25,8 @@ interface MonthlyChartsProps {
   period: MonthPeriod;
   onOpenBudgets: () => void;
   categories?: Category[];
+  onSelectCategory?: (categoryId: string) => void;
+  hideValues?: boolean;
 }
 
 export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
@@ -31,12 +35,15 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
   period,
   onOpenBudgets,
   categories,
+  onSelectCategory,
+  hideValues = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'categories' | 'daily' | 'payments'>('categories');
   const [chartSubView, setChartSubView] = useState<'area' | 'bars'>('area');
   const [hoveredDay, setHoveredDay] = useState<{ day: number; amount: number; count: number } | null>(null);
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [showDetailedCards, setShowDetailedCards] = useState(false);
+  const [isOtherExpanded, setIsOtherExpanded] = useState(false);
 
   // Category breakdown for expenses
   const categorySpending = useMemo(() => {
@@ -53,20 +60,110 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
     return budgets.reduce((acc, b) => acc + b.limit, 0);
   }, [budgets]);
 
-  const isBudgetExceeded = totalBudgetLimit > 0 && totalExpense > totalBudgetLimit;
+  // 1. Despesas ativas ordenadas por valor decrescente
+  const activeExpenseSpending = useMemo(() => {
+    return categorySpending
+      .filter(item => item.total > 0)
+      .sort((a, b) => b.total - a.total);
+  }, [categorySpending]);
 
-  // Donut chart calculations
+  // 2. Frase-resumo inteligente e humana (Regra aprovada na Fase 1)
+  const summaryPhrase = useMemo(() => {
+    if (totalExpense === 0 || activeExpenseSpending.length === 0) {
+      return 'Nenhuma despesa registrada neste período.';
+    }
+    if (activeExpenseSpending.length === 1) {
+      return `${activeExpenseSpending[0].category.name} representa 100% dos seus gastos deste mês.`;
+    }
+
+    const cat1 = activeExpenseSpending[0];
+    const cat2 = activeExpenseSpending[1];
+    const cat3 = activeExpenseSpending[2];
+
+    if (cat1.percentage >= 50) {
+      return `${cat1.category.name} concentra ${cat1.percentage.toFixed(0)}% dos seus gastos deste mês.`;
+    }
+    if (cat2 && cat1.percentage + cat2.percentage >= 50) {
+      return `${cat1.category.name} e ${cat2.category.name} concentram ${(cat1.percentage + cat2.percentage).toFixed(0)}% dos seus gastos deste mês.`;
+    }
+    if (cat3 && cat1.percentage + cat2.percentage + cat3.percentage >= 50) {
+      return `${cat1.category.name}, ${cat2.category.name} e ${cat3.category.name} concentram ${(cat1.percentage + cat2.percentage + cat3.percentage).toFixed(0)}% dos seus gastos deste mês.`;
+    }
+
+    return 'Seus gastos estão bem distribuídos entre as categorias neste mês.';
+  }, [totalExpense, activeExpenseSpending]);
+
+  // 3. Agrupamento: Top 5 maiores categorias + "Outras (N)" para fatias < 3% ou além do 5º lugar
+  const { displayCategories, otherCategories, hasOther } = useMemo(() => {
+    if (activeExpenseSpending.length <= 5) {
+      const smallSlices = activeExpenseSpending.filter(item => item.percentage < 3);
+      if (smallSlices.length === 0 || activeExpenseSpending.length <= 3) {
+        return {
+          displayCategories: activeExpenseSpending,
+          otherCategories: [],
+          hasOther: false,
+        };
+      }
+    }
+
+    const top: CategorySpending[] = [];
+    const others: CategorySpending[] = [];
+
+    activeExpenseSpending.forEach((item, index) => {
+      if (index < 5 && item.percentage >= 3) {
+        top.push(item);
+      } else {
+        others.push(item);
+      }
+    });
+
+    if (others.length === 0) {
+      return {
+        displayCategories: top,
+        otherCategories: [],
+        hasOther: false,
+      };
+    }
+
+    const otherTotal = others.reduce((sum, item) => sum + item.total, 0);
+    const otherPercentage = totalExpense > 0 ? (otherTotal / totalExpense) * 100 : 0;
+
+    const otherItem: CategorySpending & { subItems?: CategorySpending[] } = {
+      category: {
+        id: '__other__',
+        name: `Outras (${others.length})`,
+        icon: 'MoreHorizontal',
+        color: '#64748b',
+        type: 'expense',
+      },
+      total: otherTotal,
+      percentage: otherPercentage,
+      transactionCount: others.reduce((sum, item) => sum + item.transactionCount, 0),
+      subItems: others,
+    };
+
+    return {
+      displayCategories: [...top, otherItem],
+      otherCategories: others,
+      hasOther: true,
+    };
+  }, [activeExpenseSpending, totalExpense]);
+
+  // 4. Rosca com fatias arredondadas e pequenos vãos
   const donutSegments = useMemo(() => {
-    if (totalExpense === 0) return [];
+    if (totalExpense === 0 || displayCategories.length === 0) return [];
     const radius = 38;
-    const circumference = 2 * Math.PI * radius; // ~238.76
+    const circumference = 2 * Math.PI * radius; // ~238.761
     let accumulatedAngle = 0;
+    const gapAngle = displayCategories.length > 1 ? 1.5 : 0;
 
-    return categorySpending.map(item => {
+    return displayCategories.map(item => {
       const fraction = item.total / totalExpense;
-      const strokeDasharray = `${fraction * circumference} ${circumference}`;
+      const rawLength = fraction * circumference;
+      const dashLength = Math.max(0.5, rawLength - gapAngle);
+      const strokeDasharray = `${dashLength} ${circumference}`;
       const strokeDashoffset = -accumulatedAngle;
-      accumulatedAngle += fraction * circumference;
+      accumulatedAngle += rawLength;
 
       return {
         ...item,
@@ -75,9 +172,17 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
         color: item.category.color,
       };
     });
-  }, [categorySpending, totalExpense]);
+  }, [displayCategories, totalExpense]);
 
-  // Daily spending aggregation
+  // Item ativo em hover para exibir no centro da rosca
+  const activeHoveredItem = useMemo(() => {
+    if (!hoveredCategory) return null;
+    return displayCategories.find(c => c.category.id === hoveredCategory) ||
+      otherCategories.find(c => c.category.id === hoveredCategory) ||
+      null;
+  }, [hoveredCategory, displayCategories, otherCategories]);
+
+  // Agregação de evolução diária
   const dailySpending = useMemo(() => {
     const daysInMonth = new Date(period.year, period.month + 1, 0).getDate();
     const daysArray = Array.from({ length: daysInMonth }, (_, i) => ({
@@ -103,7 +208,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
     return { days: daysArray, maxAmount, daysInMonth };
   }, [transactions, period]);
 
-  // Bézier Area Chart points and path generator
+  // Bézier Area Chart
   const areaChartData = useMemo(() => {
     const { days, maxAmount, daysInMonth } = dailySpending;
     const width = 600;
@@ -121,7 +226,6 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
 
     if (points.length === 0) return { pathD: '', areaD: '', points: [] };
 
-    // Build smooth cubic Bézier curve
     let pathD = `M ${points[0].x},${points[0].y}`;
     for (let i = 1; i < points.length; i++) {
       const prev = points[i - 1];
@@ -137,7 +241,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
     return { pathD, areaD, points, width, height };
   }, [dailySpending]);
 
-  // Payment methods breakdown
+  // Formas de pagamento
   const paymentBreakdown = useMemo(() => {
     const map: Record<string, number> = {};
     for (const t of transactions) {
@@ -159,82 +263,146 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
       .sort((a, b) => b.amount - a.amount);
   }, [transactions, totalExpense]);
 
+  // Cálculos do teto orçamentário para o rodapé
+  const percentageUsed = totalBudgetLimit > 0 ? (totalExpense / totalBudgetLimit) * 100 : 0;
+  const isBudgetExceeded = totalBudgetLimit > 0 && totalExpense > totalBudgetLimit;
+  const isWarningBudget = totalBudgetLimit > 0 && !isBudgetExceeded && percentageUsed >= 85;
+  const remainingBudget = Math.max(0, totalBudgetLimit - totalExpense);
+
+  const handleCategoryClick = (catId: string) => {
+    if (catId === '__other__') {
+      setIsOtherExpanded(prev => !prev);
+      return;
+    }
+    if (onSelectCategory) {
+      onSelectCategory(catId);
+    } else {
+      const el = document.getElementById('section-transaction-list');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Caso especial: Mês sem despesas
   if (totalExpense === 0) {
     return (
-      <div className="bg-white dark:bg-zinc-900 rounded-[28px] border border-slate-200/80 dark:border-white/10 shadow-xs p-5 sm:p-6 flex flex-col items-center justify-center text-center min-h-[220px]">
-        <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400 mb-2">
-          <PieChart className="w-5 h-5" />
+      <div 
+        id="section-monthly-charts"
+        className="bg-white/95 dark:bg-black/90 backdrop-blur-md rounded-3xl border border-slate-200/80 dark:border-white/[0.08] shadow-xs p-6 sm:p-8 flex flex-col items-center justify-center text-center min-h-[260px] transition-all"
+      >
+        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/[0.08] text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center mb-3 shadow-xs">
+          <PieChart className="w-6 h-6 stroke-[2]" />
         </div>
-        <h4 className="text-sm font-bold text-slate-800 dark:text-zinc-200">Nenhuma despesa no período</h4>
-        <p className="text-xs text-slate-400 dark:text-zinc-500 mt-1 max-w-xs">
-          Cadastre novos lançamentos para visualizar a distribuição por categorias e evolução diária.
+        <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+          Nenhuma despesa no período
+        </h4>
+        <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 max-w-sm">
+          Cadastre novos lançamentos para visualizar a distribuição por categorias, evolução diária e formas de pagamento.
         </p>
       </div>
     );
   }
 
   return (
-    <div id="section-monthly-charts" className="bg-white dark:bg-zinc-900 rounded-[28px] border border-slate-200/80 dark:border-white/10 shadow-xs p-5 sm:p-6 flex flex-col justify-between flex-1 transition-all">
+    <div 
+      id="section-monthly-charts" 
+      className="bg-white/95 dark:bg-black/90 backdrop-blur-md rounded-3xl border border-slate-200/80 dark:border-white/[0.08] shadow-xs dark:shadow-2xl dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] p-5 sm:p-7 flex flex-col justify-between flex-1 transition-all"
+      role="region"
+      aria-label="Distribuição de Despesas e Análise Mensal"
+    >
       
-      {/* Header with Segmented Pills */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-white/5">
-        <div>
-          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            {activeTab === 'categories' ? 'Distribuição de Despesas' : activeTab === 'daily' ? 'Evolução Diária' : 'Formas de Pagamento'}
-          </h3>
-          <p className="text-xs text-slate-400 dark:text-zinc-500">
-            {activeTab === 'categories' ? `${categorySpending.length} categorias` : activeTab === 'daily' ? 'Ritmo diário de gastos' : 'Meios de pagamento utilizados'}
-          </p>
+      {/* Header com Segmented Control e Frase-Resumo Humana */}
+      <div className="space-y-3 pb-5 border-b border-slate-200/60 dark:border-white/[0.08]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
+                {activeTab === 'categories' ? 'Distribuição de Despesas' : activeTab === 'daily' ? 'Evolução Diária' : 'Formas de Pagamento'}
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+              {activeTab === 'categories' 
+                ? `${activeExpenseSpending.length} ${activeExpenseSpending.length === 1 ? 'categoria ativa' : 'categorias com movimentações'}` 
+                : activeTab === 'daily' 
+                  ? 'Ritmo e picos de gastos ao longo do mês' 
+                  : 'Meios de pagamento utilizados'}
+            </p>
+          </div>
+
+          {/* Abas Seguras com Foco Acessível */}
+          <div className="inline-flex p-1 rounded-2xl bg-slate-100/90 dark:bg-white/[0.06] border border-slate-200/60 dark:border-white/5 text-xs font-semibold self-start sm:self-auto overflow-x-auto no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setActiveTab('categories')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap min-h-[36px] ${
+                activeTab === 'categories'
+                  ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Por Categoria
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('daily')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap min-h-[36px] ${
+                activeTab === 'daily'
+                  ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Evolução Diária
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('payments')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap min-h-[36px] ${
+                activeTab === 'payments'
+                  ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Formas de pagamento
+            </button>
+          </div>
         </div>
 
-        {/* Tab Buttons Segmented Control */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-zinc-800 rounded-full border border-slate-200/60 dark:border-white/5 text-xs font-semibold self-start sm:self-auto overflow-x-auto no-scrollbar">
-          <button
-            onClick={() => setActiveTab('categories')}
-            className={`px-3 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'categories'
-                ? 'bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-xs font-bold'
-                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            Por Categoria
-          </button>
-          <button
-            onClick={() => setActiveTab('daily')}
-            className={`px-3 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'daily'
-                ? 'bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-xs font-bold'
-                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            Evolução Diária
-          </button>
-          <button
-            onClick={() => setActiveTab('payments')}
-            className={`px-3 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'payments'
-                ? 'bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-xs font-bold'
-                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            Pagamento
-          </button>
-        </div>
+        {/* Frase-Resumo Humana (Apenas na aba de categorias) */}
+        {activeTab === 'categories' && (
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/[0.08] border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300 animate-in fade-in duration-200">
+            <span className="text-emerald-500 text-sm shrink-0">💡</span>
+            <span className="font-medium leading-relaxed">
+              {summaryPhrase}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* TAB 1: Categories Breakdown (Executive Donut + Category Legend & Progressive Detail) */}
+      {/* ABA 1: Distribuição de Despesas (Rosca Refinada + Legenda Agrupada + Frase) */}
       {activeTab === 'categories' && (
-        <div className="pt-4 flex flex-col justify-between flex-1 space-y-4">
+        <div className="pt-5 flex flex-col justify-between flex-1 space-y-6">
           
-          {/* Executive Donut + Category Legend Side-by-Side (as in mockup) */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 my-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8 my-auto">
             
-            {/* Donut Graphic */}
-            <div className="relative w-44 h-44 shrink-0 flex items-center justify-center">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" className="text-slate-100 dark:text-zinc-800" strokeWidth="14" />
+            {/* Rosca com Anel Refinado e Centro Dinâmico */}
+            <div className="relative w-52 h-52 shrink-0 flex items-center justify-center">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+                {/* Background Ring */}
+                <circle 
+                  cx="50" 
+                  cy="50" 
+                  r="38" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  className="text-slate-100 dark:text-white/5" 
+                  strokeWidth="10" 
+                />
+                
+                {/* Segmentos Dinâmicos com Pontas Arredondadas */}
                 {donutSegments.map(segment => {
                   const isHovered = hoveredCategory === segment.category.id;
+                  const isDimmed = Boolean(hoveredCategory && !isHovered);
+
                   return (
                     <circle
                       key={segment.category.id}
@@ -243,64 +411,196 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                       r="38"
                       fill="none"
                       stroke={segment.color}
-                      strokeWidth={isHovered ? 16 : 14}
+                      strokeWidth={isHovered ? 12 : 10}
+                      strokeLinecap="round"
                       strokeDasharray={segment.strokeDasharray}
                       strokeDashoffset={segment.strokeDashoffset}
-                      className="transition-all duration-300 cursor-pointer"
+                      className={`transition-all duration-300 cursor-pointer ${
+                        isDimmed ? 'opacity-35' : 'opacity-100'
+                      }`}
                       onMouseEnter={() => setHoveredCategory(segment.category.id)}
                       onMouseLeave={() => setHoveredCategory(null)}
+                      onClick={() => handleCategoryClick(segment.category.id)}
                     />
                   );
                 })}
               </svg>
 
-              {/* Center Cutout Display */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-2">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-zinc-500">
-                  {hoveredCategory 
-                    ? categorySpending.find(c => c.category.id === hoveredCategory)?.category.name 
-                    : 'DESPESAS'}
+              {/* Centro Responsivo do Anel */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-3">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-zinc-500 truncate max-w-[130px]">
+                  {activeHoveredItem ? activeHoveredItem.category.name : 'TOTAL GASTO'}
                 </span>
-                <span className="text-base sm:text-lg font-extrabold tabular-nums text-slate-900 dark:text-white">
-                  {hoveredCategory
-                    ? formatCurrency(categorySpending.find(c => c.category.id === hoveredCategory)?.total || 0)
-                    : formatCurrency(totalExpense)}
+                
+                <span className="text-lg sm:text-xl md:text-2xl font-black font-mono-num text-slate-900 dark:text-white tracking-tight truncate max-w-[140px] px-1">
+                  {hideValues 
+                    ? '••••••' 
+                    : activeHoveredItem 
+                      ? formatCurrency(activeHoveredItem.total) 
+                      : formatCurrency(totalExpense)}
                 </span>
-                {hoveredCategory && (
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                    {(categorySpending.find(c => c.category.id === hoveredCategory)?.percentage || 0).toFixed(1)}% do total
-                  </span>
-                )}
+
+                <span className={`text-[11px] font-bold mt-0.5 truncate max-w-[130px] ${
+                  activeHoveredItem 
+                    ? 'text-emerald-600 dark:text-emerald-400' 
+                    : 'text-slate-500 dark:text-zinc-400'
+                }`}>
+                  {activeHoveredItem 
+                    ? `${activeHoveredItem.percentage.toFixed(1)}% das despesas` 
+                    : '100% das saídas'}
+                </span>
               </div>
             </div>
 
-            {/* Category Legend List */}
-            <div className="w-full space-y-1.5">
-              {categorySpending.slice(0, 6).map(item => {
+            {/* Legenda com as 5 Maiores + "Outras (N)" com Barra Fina */}
+            <div className="w-full flex-1 space-y-2">
+              {displayCategories.map(item => {
                 const isHovered = hoveredCategory === item.category.id;
+                const isOther = item.category.id === '__other__';
+                const subItems = (item as any).subItems as CategorySpending[] | undefined;
+
+                if (isOther) {
+                  return (
+                    <div 
+                      key="__other__" 
+                      className="border border-slate-200/60 dark:border-white/10 rounded-2xl overflow-hidden transition-all bg-slate-50/50 dark:bg-white/[0.02]"
+                    >
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isOtherExpanded}
+                        aria-label={`Outras categorias agrupadas: ${formatCurrency(item.total)}, ${item.percentage.toFixed(1)}% do total`}
+                        onClick={() => setIsOtherExpanded(prev => !prev)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setIsOtherExpanded(prev => !prev);
+                          }
+                        }}
+                        onMouseEnter={() => setHoveredCategory(item.category.id)}
+                        onMouseLeave={() => setHoveredCategory(null)}
+                        className={`p-2.5 sm:p-3 flex items-center justify-between cursor-pointer transition-colors min-h-[44px] ${
+                          isHovered ? 'bg-slate-100/80 dark:bg-white/[0.06]' : 'hover:bg-slate-100/50 dark:hover:bg-white/[0.03]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span 
+                            className="w-2.5 h-2.5 rounded-full shrink-0" 
+                            style={{ backgroundColor: item.category.color }} 
+                          />
+                          <span className="text-slate-800 dark:text-zinc-200 text-xs sm:text-sm font-semibold truncate">
+                            {item.category.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 transition-transform">
+                            {isOtherExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0 font-mono-num text-xs sm:text-sm">
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {hideValues ? '••••••' : formatCurrency(item.total)}
+                          </span>
+                          <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 w-11 text-right">
+                            {item.percentage.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Subitens expandidos de Outras */}
+                      {isOtherExpanded && subItems && (
+                        <div className="px-4 pb-3 pt-1 space-y-2 border-t border-slate-200/60 dark:border-white/5 text-xs animate-in fade-in duration-200">
+                          {subItems.map(sub => (
+                            <div
+                              key={sub.category.id}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => handleCategoryClick(sub.category.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleCategoryClick(sub.category.id);
+                                }
+                              }}
+                              className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                              title={`Filtrar extrato por ${sub.category.name}`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span 
+                                  className="w-2 h-2 rounded-full shrink-0" 
+                                  style={{ backgroundColor: sub.category.color }} 
+                                />
+                                <span className="text-slate-600 dark:text-zinc-300 truncate">
+                                  {sub.category.name}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 font-mono-num">
+                                <span className="text-slate-900 dark:text-white font-semibold">
+                                  {hideValues ? '••••••' : formatCurrency(sub.total)}
+                                </span>
+                                <span className="text-slate-400 text-[10px]">
+                                  ({sub.percentage.toFixed(1)}%)
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Linha de Categoria Normal (Top 5)
                 return (
                   <div
                     key={item.category.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${item.category.name}: ${formatCurrency(item.total)}, ${item.percentage.toFixed(1)}% do total`}
                     onMouseEnter={() => setHoveredCategory(item.category.id)}
                     onMouseLeave={() => setHoveredCategory(null)}
-                    className={`flex items-center justify-between text-xs sm:text-sm px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                    onClick={() => handleCategoryClick(item.category.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleCategoryClick(item.category.id);
+                      }
+                    }}
+                    className={`group p-2 sm:p-2.5 rounded-2xl transition-all cursor-pointer min-h-[44px] flex flex-col justify-center border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
                       isHovered 
-                        ? 'bg-slate-100 dark:bg-white/10 font-bold' 
-                        : 'hover:bg-slate-50 dark:hover:bg-white/5'
+                        ? 'bg-slate-100/80 dark:bg-white/[0.08] border-slate-200/80 dark:border-white/15 shadow-xs' 
+                        : 'hover:bg-slate-50 dark:hover:bg-white/[0.04]'
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0 pr-2">
-                      <span 
-                        className="w-2.5 h-2.5 rounded-full shrink-0" 
-                        style={{ backgroundColor: item.category.color }} 
-                      />
-                      <span className="text-slate-700 dark:text-zinc-300 truncate font-medium">
-                        {item.category.name}
-                      </span>
+                    <div className="flex items-center justify-between text-xs sm:text-sm font-semibold">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span 
+                          className="w-2.5 h-2.5 rounded-full shrink-0" 
+                          style={{ backgroundColor: item.category.color }} 
+                        />
+                        <span className="text-slate-800 dark:text-zinc-200 truncate font-medium">
+                          {item.category.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0 font-mono-num">
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {hideValues ? '••••••' : formatCurrency(item.total)}
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 w-11 text-right">
+                          {item.percentage.toFixed(1)}%
+                        </span>
+                      </div>
                     </div>
-                    <span className="font-bold tabular-nums text-slate-900 dark:text-white shrink-0">
-                      {formatCurrency(item.total)}
-                    </span>
+
+                    {/* Barra Fina Proporcional à Fatia */}
+                    <div className="w-full bg-slate-100 dark:bg-white/5 h-1 rounded-full mt-1.5 overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-300" 
+                        style={{ 
+                          width: `${Math.min(100, Math.max(3, item.percentage))}%`, 
+                          backgroundColor: item.category.color 
+                        }} 
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -308,19 +608,20 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
 
           </div>
 
-          {/* Toggle for Detailed Category Cards with Progress Bars */}
-          <div className="pt-1">
+          {/* Toggle para Tetos Detalhados por Categoria */}
+          <div className="pt-2">
             <button
+              type="button"
               onClick={() => setShowDetailedCards(!showDetailedCards)}
-              className="text-xs text-slate-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-xs text-slate-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors py-1"
             >
               <span>{showDetailedCards ? 'Ocultar tetos detalhados' : 'Ver progresso de tetos por categoria'}</span>
-              <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showDetailedCards ? 'rotate-90' : ''}`} />
+              <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${showDetailedCards ? 'rotate-90' : ''}`} />
             </button>
 
             {showDetailedCards && (
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-200">
-                {categorySpending.map(item => {
+                {activeExpenseSpending.map(item => {
                   const hasBudget = Boolean(item.budgetLimit && item.budgetLimit > 0);
                   const isOverBudget = Boolean(hasBudget && item.budgetPercentage && item.budgetPercentage > 100);
                   const isHovered = hoveredCategory === item.category.id;
@@ -330,7 +631,8 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                       key={item.category.id}
                       onMouseEnter={() => setHoveredCategory(item.category.id)}
                       onMouseLeave={() => setHoveredCategory(null)}
-                      className={`p-3.5 rounded-2xl border transition-all ${
+                      onClick={() => handleCategoryClick(item.category.id)}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
                         isHovered
                           ? 'border-emerald-500/50 bg-white dark:bg-black/60 shadow-sm'
                           : 'border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-black/40 hover:bg-slate-50 dark:hover:bg-white/[0.04]'
@@ -355,11 +657,11 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
 
                         <div className="text-right shrink-0">
                           <div className="text-xs sm:text-sm font-extrabold tabular-nums text-slate-900 dark:text-white">
-                            {formatCurrency(item.total)}
+                            {hideValues ? '••••••' : formatCurrency(item.total)}
                           </div>
                           {hasBudget ? (
                             <div className={`text-[10px] font-semibold ${isOverBudget ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
-                              {item.budgetPercentage?.toFixed(0)}% da meta
+                              {item.budgetPercentage?.toFixed(0)}% do teto
                             </div>
                           ) : (
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
@@ -369,7 +671,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                         </div>
                       </div>
 
-                      {/* Unified progress bar */}
+                      {/* Barra de progresso com cor da categoria (e vermelho se estourar) */}
                       <div className="w-full bg-slate-200/80 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
@@ -382,7 +684,6 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                         />
                       </div>
 
-                      {/* Budget comparison or action */}
                       {hasBudget ? (
                         <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-white/10 flex items-center justify-between text-[11px]">
                           <span className="text-slate-500 dark:text-slate-400">
@@ -412,7 +713,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                             }}
                             className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-semibold cursor-pointer"
                           >
-                            Definir meta
+                            Definir teto
                           </button>
                         </div>
                       )}
@@ -423,27 +724,80 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
             )}
           </div>
 
-          {/* Footer with Budget Summary and Action */}
-          <div className="pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
-            <span>
-              Teto total: <strong className="text-slate-800 dark:text-zinc-200 tabular-nums">{formatCurrency(totalBudgetLimit)}</strong>
-              {totalBudgetLimit > 0 && (
-                <span className={`ml-2 font-bold ${isBudgetExceeded ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                  {isBudgetExceeded ? `+${((totalExpense / totalBudgetLimit - 1) * 100).toFixed(0)}% acima` : `${formatCurrency(totalBudgetLimit - totalExpense)} disponível`}
+          {/* Rodapé do Teto com 3 Estados Claros (Texto + Ícone + Cor) */}
+          <div className="pt-5 border-t border-slate-200/60 dark:border-white/[0.08] space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-500 dark:text-zinc-400">Teto do mês:</span>
+                <strong className="text-sm font-mono-num text-slate-900 dark:text-white">
+                  {totalBudgetLimit > 0 ? (hideValues ? '••••••' : formatCurrency(totalBudgetLimit)) : 'Não definido'}
+                </strong>
+              </div>
+
+              {/* Status do Teto com Ícone e Texto Claro */}
+              {totalBudgetLimit > 0 ? (
+                isBudgetExceeded ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/25">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{hideValues ? '••••••' : formatCurrency(totalExpense - totalBudgetLimit)} acima do teto (+{(percentageUsed - 100).toFixed(0)}%)</span>
+                  </div>
+                ) : isWarningBudget ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/25">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Atenção: {percentageUsed.toFixed(0)}% do teto atingido ({hideValues ? '••••••' : formatCurrency(remainingBudget)} livres)</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                    <span>{hideValues ? '••••••' : formatCurrency(remainingBudget)} ainda livres ({percentageUsed.toFixed(0)}% utilizado)</span>
+                  </div>
+                )
+              ) : (
+                <span className="text-slate-400 dark:text-zinc-500 italic">
+                  Defina um teto para acompanhar seus gastos
                 </span>
               )}
-            </span>
-            <button
-              onClick={onOpenBudgets}
-              className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
-            >
-              Gerenciar tetos
-            </button>
+            </div>
+
+            {/* Barra Fina de Progresso do Teto */}
+            {totalBudgetLimit > 0 && (
+              <div className="w-full bg-slate-200/70 dark:bg-white/10 h-2 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    isBudgetExceeded 
+                      ? 'bg-rose-500' 
+                      : isWarningBudget 
+                        ? 'bg-amber-500' 
+                        : 'bg-emerald-500'
+                  }`} 
+                  style={{ width: `${Math.min(100, percentageUsed)}%` }} 
+                />
+              </div>
+            )}
+
+            {/* Links Rápidos do Rodapé */}
+            <div className="flex items-center justify-between text-xs pt-1">
+              <button 
+                type="button"
+                onClick={() => setShowDetailedCards(prev => !prev)}
+                className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
+              >
+                {showDetailedCards ? 'Ocultar detalhes de tetos' : 'Ver progresso de tetos por categoria →'}
+              </button>
+              <button 
+                type="button"
+                onClick={onOpenBudgets}
+                className="text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-white font-medium cursor-pointer"
+              >
+                Gerenciar tetos
+              </button>
+            </div>
           </div>
+
         </div>
       )}
 
-      {/* TAB 2: Daily Evolution (Smoothed Bézier Area Chart + Bars Mode) */}
+      {/* ABA 2: Evolução Diária (Curva Suave Bézier + Modo Barras) */}
       {activeTab === 'daily' && (
         <div className="pt-4 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -451,6 +805,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
               <span>Ritmo e picos de despesas ao longo do mês</span>
               <div className="inline-flex rounded-lg bg-slate-100 dark:bg-black/50 p-0.5 border border-slate-200 dark:border-white/10">
                 <button
+                  type="button"
                   onClick={() => setChartSubView('area')}
                   className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                     chartSubView === 'area'
@@ -461,6 +816,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                   Curva Suave
                 </button>
                 <button
+                  type="button"
                   onClick={() => setChartSubView('bars')}
                   className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                     chartSubView === 'bars'
@@ -475,14 +831,14 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
 
             {hoveredDay && hoveredDay.amount > 0 ? (
               <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono-num bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
-                Dia {hoveredDay.day}: {formatCurrency(hoveredDay.amount)} ({hoveredDay.count} compras)
+                Dia {hoveredDay.day}: {hideValues ? '••••••' : formatCurrency(hoveredDay.amount)} ({hoveredDay.count} compras)
               </span>
             ) : (
               <span className="text-[11px] text-slate-400">Toque ou passe o cursor sobre os pontos</span>
             )}
           </div>
 
-          {/* SubView 1: Smooth Bézier Area Chart */}
+          {/* Curva Suave Bézier */}
           {chartSubView === 'area' ? (
             <div className="p-4 rounded-2xl bg-slate-50/60 dark:bg-black/40 border border-slate-100 dark:border-white/10 relative overflow-hidden">
               <div className="h-44 w-full relative">
@@ -490,6 +846,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                   className="w-full h-full overflow-visible" 
                   viewBox={`0 0 ${areaChartData.width} ${areaChartData.height}`}
                   preserveAspectRatio="none"
+                  aria-hidden="true"
                 >
                   <defs>
                     <linearGradient id="bezierAreaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -499,17 +856,14 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                     </linearGradient>
                   </defs>
 
-                  {/* Horizontal grid guide lines */}
                   <line x1="0" y1="35" x2={areaChartData.width} y2="35" stroke="currentColor" strokeDasharray="3 3" className="text-slate-200 dark:text-zinc-800/80" strokeWidth="1" />
                   <line x1="0" y1="75" x2={areaChartData.width} y2="75" stroke="currentColor" strokeDasharray="3 3" className="text-slate-200 dark:text-zinc-800/80" strokeWidth="1" />
                   <line x1="0" y1="115" x2={areaChartData.width} y2="115" stroke="currentColor" strokeDasharray="3 3" className="text-slate-200 dark:text-zinc-800/80" strokeWidth="1" />
 
-                  {/* Shaded Area */}
                   {areaChartData.areaD && (
                     <path d={areaChartData.areaD} fill="url(#bezierAreaGrad)" />
                   )}
 
-                  {/* Bézier Stroke Line */}
                   {areaChartData.pathD && (
                     <path 
                       d={areaChartData.pathD} 
@@ -521,7 +875,6 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                     />
                   )}
 
-                  {/* Interactive Points on curve */}
                   {areaChartData.points.map(pt => {
                     if (pt.amount === 0) return null;
                     const isHovered = hoveredDay?.day === pt.day;
@@ -543,11 +896,10 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                   })}
                 </svg>
 
-                {/* Live Tooltip popup if day is hovered */}
                 {hoveredDay && hoveredDay.amount > 0 && (
                   <div className="absolute top-2 left-1/2 -translate-x-1/2 pointer-events-none bg-slate-900 dark:bg-[#121214] text-white text-[11px] px-3 py-1 rounded-lg font-mono-num shadow-lg border border-slate-700 dark:border-white/15 flex items-center gap-1.5 z-20">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    Dia {hoveredDay.day}: {formatCurrency(hoveredDay.amount)}
+                    Dia {hoveredDay.day}: {hideValues ? '••••••' : formatCurrency(hoveredDay.amount)}
                   </div>
                 )}
               </div>
@@ -561,7 +913,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
               </div>
             </div>
           ) : (
-            /* SubView 2: Classic Capsule Bars */
+            /* Modo Barras */
             <div className="p-4 rounded-2xl bg-slate-50/60 dark:bg-black/40 border border-slate-100 dark:border-white/10 overflow-hidden">
               <div className="h-44 w-full flex items-end gap-1 sm:gap-1.5 pt-4 pb-2 border-b border-slate-200 dark:border-white/10 overflow-x-auto">
                 {dailySpending.days.map(d => {
@@ -577,14 +929,12 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                       onMouseLeave={() => setHoveredDay(null)}
                       className="flex-1 min-w-[12px] sm:min-w-[16px] flex flex-col items-center justify-end h-full group cursor-pointer relative"
                     >
-                      {/* Tooltip on hover */}
                       {d.amount > 0 && (
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-slate-900 dark:bg-[#121214] text-white text-[10px] py-0.5 px-1.5 rounded-md font-mono-num whitespace-nowrap shadow-md border border-transparent dark:border-white/15">
-                          {formatCurrency(d.amount)}
+                          {hideValues ? '••••••' : formatCurrency(d.amount)}
                         </div>
                       )}
 
-                      {/* Capsule Bar */}
                       <div
                         className={`w-full rounded-t-sm transition-all duration-200 ${
                           d.amount > 0
@@ -596,7 +946,6 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
                         style={{ height: d.amount > 0 ? `${heightPercent}%` : '3px' }}
                       />
 
-                      {/* Day label */}
                       <span className={`text-[9px] sm:text-[10px] mt-1.5 font-mono-num font-semibold ${
                         isToday ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
                       }`}>
@@ -618,7 +967,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
         </div>
       )}
 
-      {/* TAB 3: Payment Methods */}
+      {/* ABA 3: Formas de Pagamento */}
       {activeTab === 'payments' && (
         <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {paymentBreakdown.map(pm => (
@@ -641,7 +990,7 @@ export const MonthlyCharts: React.FC<MonthlyChartsProps> = ({
               </div>
 
               <div className="text-right font-mono-num font-extrabold text-sm text-slate-900 dark:text-white">
-                {formatCurrency(pm.amount)}
+                {hideValues ? '••••••' : formatCurrency(pm.amount)}
               </div>
             </div>
           ))}

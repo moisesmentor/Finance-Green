@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, 
   Filter, 
@@ -19,39 +19,62 @@ import {
   X,
   AlertTriangle,
   AlertCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  CalendarOff
 } from 'lucide-react';
 import { Transaction, FilterOptions, Category } from '../types';
 import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
 import { formatCurrency, formatDateReadable, getDueDateStatus } from '../utils/formatters';
 import { CategoryIcon } from './CategoryIcon';
+import { RecurrenceScopeModal } from './RecurrenceScopeModal';
+import { findSeriesTransactions, RecurrenceSeriesInfo } from '../utils/recurrence';
 
 interface TransactionListProps {
   transactions: Transaction[];
+  allTransactions?: Transaction[];
   onEdit: (transaction: Transaction) => void;
   onDelete: (id: string) => void;
   onDeleteGroup?: (groupId: string) => void;
+  onDeleteRecurrenceScope?: (
+    scope: 'single' | 'future' | 'all',
+    affected: Transaction[],
+    seriesInfo: RecurrenceSeriesInfo,
+    reason?: string,
+    cutMonth?: string
+  ) => Promise<void> | void;
   onToggleStatus: (id: string) => void;
   onMarkAsPaid?: (id: string, paymentDate?: string) => void;
   onAddNew: () => void;
   onOpenImportStatement?: () => void;
   categories?: Category[];
+  selectedCategoryFilter?: string;
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({
   transactions,
+  allTransactions,
   onEdit,
   onDelete,
   onDeleteGroup,
+  onDeleteRecurrenceScope,
   onToggleStatus,
   onMarkAsPaid,
   onAddNew,
   onOpenImportStatement,
   categories,
+  selectedCategoryFilter,
 }) => {
   const [search, setSearch] = useState('');
-  const [quickTab, setQuickTab] = useState<'all' | 'expense' | 'income' | 'pending' | 'paid' | 'received' | 'installments'>('all');
+  const [quickTab, setQuickTab] = useState<'all' | 'expense' | 'income' | 'recurring' | 'pending' | 'paid' | 'received' | 'installments'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+
+  // Sincroniza filtro externo de categoria vindo do clique na rosca/legenda
+  useEffect(() => {
+    if (selectedCategoryFilter && selectedCategoryFilter !== 'all') {
+      setCategoryFilter(selectedCategoryFilter);
+      setQuickTab('all');
+    }
+  }, [selectedCategoryFilter]);
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
 
   // Modal rápido de confirmação de pagamento com data
@@ -86,6 +109,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     let paid = 0;
     let received = 0;
     let installments = 0;
+    let recurring = 0;
 
     for (const t of transactions) {
       if (t.type === 'expense') {
@@ -98,9 +122,10 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       }
       if (t.status === 'pending') pending++;
       if (t.installmentTotal && t.installmentTotal > 1) installments++;
+      if (t.isRecurring || t.recurrenceGroupId) recurring++;
     }
 
-    return { all: transactions.length, expense, income, pending, paid, received, installments };
+    return { all: transactions.length, expense, income, recurring, pending, paid, received, installments };
   }, [transactions]);
 
   // Filtered & Sorted transactions
@@ -110,6 +135,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         // Quick tab filter
         if (quickTab === 'expense' && tx.type !== 'expense') return false;
         if (quickTab === 'income' && tx.type !== 'income') return false;
+        if (quickTab === 'recurring' && !tx.isRecurring && !tx.recurrenceGroupId) return false;
         if (quickTab === 'pending' && tx.status !== 'pending') return false;
         if (quickTab === 'paid' && (tx.type !== 'expense' || tx.status !== 'paid')) return false;
         if (quickTab === 'received' && (tx.type !== 'income' || tx.status !== 'paid')) return false;
@@ -163,17 +189,51 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     setSortBy('date_desc');
   };
 
+  // Estado do Modal de Gerenciamento / Exclusão de Recorrência (3 opções)
+  const [recurrenceModalOpen, setRecurrenceModalOpen] = useState(false);
+  const [selectedSeriesInfo, setSelectedSeriesInfo] = useState<RecurrenceSeriesInfo | null>(null);
+  const [recurrenceModalMode, setRecurrenceModalMode] = useState<'delete' | 'end'>('delete');
+
   const handleDeleteItem = (tx: Transaction) => {
-    if (tx.installmentGroupId && tx.installmentTotal && onDeleteGroup) {
-      const choice = window.confirm(
-        `Esta transação faz parte de um parcelamento (${tx.installmentCurrent}/${tx.installmentTotal}).\n\nClique em OK para excluir TODAS as parcelas deste grupo, ou Cancelar para excluir somente este mês.`
-      );
-      if (choice) {
-        onDeleteGroup(tx.installmentGroupId);
-        return;
-      }
+    const series = findSeriesTransactions(tx, allTransactions || transactions);
+    if (series.isSeries) {
+      setSelectedSeriesInfo(series);
+      setRecurrenceModalMode('delete');
+      setRecurrenceModalOpen(true);
+      return;
     }
     onDelete(tx.id);
+  };
+
+  const handleOpenEndRecurrence = (tx: Transaction) => {
+    const series = findSeriesTransactions(tx, allTransactions || transactions);
+    setSelectedSeriesInfo(series);
+    setRecurrenceModalMode('end');
+    setRecurrenceModalOpen(true);
+  };
+
+  const handleConfirmRecurrenceScope = async (
+    scope: 'single' | 'future' | 'all',
+    affected: Transaction[],
+    reason?: string,
+    cutMonth?: string
+  ) => {
+    if (!selectedSeriesInfo) return;
+    if (onDeleteRecurrenceScope) {
+      await onDeleteRecurrenceScope(scope, affected, selectedSeriesInfo, reason, cutMonth);
+    } else {
+      if (scope === 'single') {
+        onDelete(selectedSeriesInfo.targetTx.id);
+      } else if (scope === 'all' && selectedSeriesInfo.targetTx.installmentGroupId && onDeleteGroup) {
+        onDeleteGroup(selectedSeriesInfo.targetTx.installmentGroupId);
+      } else {
+        for (const t of affected) {
+          onDelete(t.id);
+        }
+      }
+    }
+    setRecurrenceModalOpen(false);
+    setSelectedSeriesInfo(null);
   };
 
   const handleOpenPaymentPrompt = (tx: Transaction) => {
@@ -198,7 +258,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   const hasActiveFilters = search || quickTab !== 'all' || categoryFilter !== 'all' || sortBy !== 'date_desc';
 
   return (
-    <div className="bg-white dark-brushed-metal rounded-2xl border border-slate-200/80 dark:border-white/[0.08] shadow-xs dark:shadow-2xl overflow-hidden transition-all duration-300">
+    <div id="section-transaction-list" className="bg-white dark-brushed-metal rounded-2xl border border-slate-200/80 dark:border-white/[0.08] shadow-xs dark:shadow-2xl overflow-hidden transition-all duration-300">
       
       {/* Header & Filter Controls */}
       <div className="p-5 border-b border-slate-100 dark:border-white/10 space-y-4">
@@ -244,6 +304,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             { id: 'all', label: 'Todas', count: counts.all },
             { id: 'expense', label: 'Despesas', count: counts.expense },
             { id: 'income', label: 'Receitas', count: counts.income },
+            { id: 'recurring', label: 'Fixas', count: counts.recurring },
             { id: 'pending', label: 'Pendentes', count: counts.pending },
             { id: 'paid', label: 'Pagas', count: counts.paid },
             { id: 'received', label: 'Recebidas', count: counts.received },
@@ -428,14 +489,29 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                         </span>
                       )}
 
-                      {/* Recurrent Badge */}
+                      {/* Recurrent Badge - Clicável para gerenciar / cancelar */}
                       {tx.isRecurring && (
-                        <span 
-                          className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-black/50 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10"
-                          title="Gasto mensal fixo / recorrente"
+                        <button 
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEndRecurrence(tx);
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 transition-all cursor-pointer"
+                          title="Modo Fixo ativo. Clique para gerenciar ou cancelar a recorrência"
                         >
-                          <Repeat className="w-2.5 h-2.5 text-slate-500" />
-                          Fixo
+                          <Repeat className="w-2.5 h-2.5 text-emerald-500" />
+                          <span>Fixo</span>
+                        </button>
+                      )}
+
+                      {/* Selo discreto Encerrada */}
+                      {tx.recurrenceStatus === 'ended' && (
+                        <span 
+                          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-500/15 text-zinc-600 dark:text-zinc-400 border border-zinc-500/30"
+                          title={`Recorrência encerrada${tx.recurrenceEndedAt ? ` a partir de ${tx.recurrenceEndedAt}` : ''}${tx.recurrenceReason ? `: ${tx.recurrenceReason}` : ''}`}
+                        >
+                          Encerrada
                         </span>
                       )}
                     </div>
@@ -530,6 +606,18 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                         aria-label={isIncome ? 'Marcar receita como recebida' : 'Marcar conta como paga'}
                       >
                         <Check className="w-4 h-4 stroke-[2.5]" />
+                      </button>
+                    )}
+                    {/* Quick Action: Encerrar Recorrência */}
+                    {(tx.isRecurring || tx.recurrenceGroupId || (tx.installmentTotal && tx.installmentTotal > 1)) && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEndRecurrence(tx)}
+                        className="p-1.5 min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-all cursor-pointer"
+                        title="Encerrar recorrência deste cliente / contrato"
+                        aria-label="Encerrar recorrência"
+                      >
+                        <CalendarOff className="w-4 h-4" />
                       </button>
                     )}
                     <button
@@ -656,6 +744,19 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal de Exclusão / Encerramento de Recorrência (3 opções) */}
+      <RecurrenceScopeModal
+        isOpen={recurrenceModalOpen}
+        onClose={() => {
+          setRecurrenceModalOpen(false);
+          setSelectedSeriesInfo(null);
+        }}
+        seriesInfo={selectedSeriesInfo}
+        allTransactions={allTransactions || transactions}
+        onConfirm={handleConfirmRecurrenceScope}
+        mode={recurrenceModalMode}
+      />
 
     </div>
   );

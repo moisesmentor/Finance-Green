@@ -31,6 +31,10 @@ export interface Transaction {
   status: 'paid' | 'pending';
   isRecurring?: boolean;
   recurringFrequency?: 'monthly' | 'yearly';
+  recurrenceGroupId?: string;
+  recurrenceStatus?: 'active' | 'ended';
+  recurrenceEndedAt?: string; // YYYY-MM
+  recurrenceReason?: string;
   installmentGroupId?: string;
   installmentCurrent?: number;
   installmentTotal?: number;

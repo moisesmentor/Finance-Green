@@ -42,54 +42,54 @@ export const CATEGORIES: Category[] = [
     id: 'saude',
     name: 'Saúde & Farmácia',
     icon: 'HeartPulse',
-    color: '#e11d48', // rose-600
-    bgLight: 'bg-rose-50 text-rose-700 border-rose-200',
-    textColor: 'text-rose-700',
+    color: '#0d9488', // teal-600 (sem vermelho para não conflitar com teto)
+    bgLight: 'bg-teal-50 text-teal-700 border-teal-200',
+    textColor: 'text-teal-700',
     type: 'expense',
   },
   {
     id: 'lazer',
     name: 'Lazer & Restaurantes',
     icon: 'Coffee',
-    color: '#9333ea', // purple-600
-    bgLight: 'bg-purple-50 text-purple-700 border-purple-200',
-    textColor: 'text-purple-700',
+    color: '#8b5cf6', // violet-500
+    bgLight: 'bg-violet-50 text-violet-700 border-violet-200',
+    textColor: 'text-violet-700',
     type: 'expense',
   },
   {
     id: 'educacao',
     name: 'Educação & Cursos',
     icon: 'GraduationCap',
-    color: '#2563eb', // blue-600
-    bgLight: 'bg-blue-50 text-blue-700 border-blue-200',
-    textColor: 'text-blue-700',
+    color: '#6366f1', // indigo-500 (distinto do azul sky)
+    bgLight: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    textColor: 'text-indigo-700',
     type: 'expense',
   },
   {
     id: 'compras',
     name: 'Compras & Vestuário',
     icon: 'ShoppingBag',
-    color: '#db2777', // pink-600
-    bgLight: 'bg-pink-50 text-pink-700 border-pink-200',
-    textColor: 'text-pink-700',
+    color: '#d946ef', // fuchsia-500 (sem tons avermelhados)
+    bgLight: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+    textColor: 'text-fuchsia-700',
     type: 'expense',
   },
   {
     id: 'servicos',
     name: 'Serviços & Assinaturas',
     icon: 'Tv',
-    color: '#4f46e5', // indigo-600
-    bgLight: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    textColor: 'text-indigo-700',
+    color: '#06b6d4', // cyan-500
+    bgLight: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    textColor: 'text-cyan-700',
     type: 'expense',
   },
   {
     id: 'pets',
     name: 'Pets',
     icon: 'PawPrint',
-    color: '#0d9488', // teal-600
-    bgLight: 'bg-teal-50 text-teal-700 border-teal-200',
-    textColor: 'text-teal-700',
+    color: '#84cc16', // lime-500
+    bgLight: 'bg-lime-50 text-lime-700 border-lime-200',
+    textColor: 'text-lime-700',
     type: 'expense',
   },
   {

@@ -95,6 +95,14 @@ export const MonthlyIncomeTicker: React.FC<MonthlyIncomeTickerProps> = ({
             <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 truncate max-w-[120px] sm:max-w-[150px]">
               {tx.description}
             </span>
+            {(tx.isRecurring || tx.recurrenceGroupId) && (
+              <span 
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+                title="Receita em Modo Fixo (recorrente)"
+              >
+                Fixo
+              </span>
+            )}
             <span 
               className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${
                 isPaid

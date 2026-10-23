@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Check, Calendar, Tag, CreditCard, FileText, Repeat, Layers, Calculator, Plus } from 'lucide-react';
+import { X, Check, Calendar, Tag, CreditCard, FileText, Repeat, Layers, Calculator, Plus, CalendarOff, AlertTriangle } from 'lucide-react';
 import { Transaction, TransactionType, PaymentMethod, MonthPeriod, Category } from '../types';
 import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
 import { formatCurrency, parseCurrencyInput } from '../utils/formatters';
@@ -13,12 +13,14 @@ interface TransactionModalProps {
     transaction: Omit<Transaction, 'id' | 'createdAt'>,
     id?: string,
     installmentsCount?: number,
-    recurringMonths?: number
+    recurringMonths?: number,
+    editScope?: 'single' | 'future' | 'all'
   ) => void;
   initialData?: Transaction | null;
   currentPeriod: MonthPeriod;
   customCategories?: Category[];
   onSaveCustomCategory?: (category: Category) => Promise<void> | void;
+  onEndRecurrence?: (transaction: Transaction) => void;
 }
 
 export const TransactionModal: React.FC<TransactionModalProps> = ({
@@ -29,6 +31,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   currentPeriod,
   customCategories,
   onSaveCustomCategory,
+  onEndRecurrence,
 }) => {
   const [type, setType] = useState<TransactionType>('expense');
   const [description, setDescription] = useState('');
@@ -45,6 +48,16 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   // Recurrence states
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringMonths, setRecurringMonths] = useState(6);
+  const [editScope, setEditScope] = useState<'single' | 'future' | 'all'>('future');
+  const [uncheckAction, setUncheckAction] = useState<'cancel_future' | 'make_single'>('cancel_future');
+
+  const isOriginallyRecurring = useMemo(() => {
+    return Boolean(
+      initialData?.isRecurring ||
+      initialData?.recurrenceGroupId ||
+      (initialData?.installmentGroupId && initialData.installmentGroupId.startsWith('rec-'))
+    );
+  }, [initialData]);
 
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
@@ -78,7 +91,14 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setStatus(initialData.status);
       setIsInstallment(!!initialData.installmentTotal && initialData.installmentTotal > 1);
       setInstallmentsCount(initialData.installmentTotal || 2);
-      setIsRecurring(!!initialData.isRecurring);
+      const wasRec = Boolean(
+        initialData.isRecurring ||
+        initialData.recurrenceGroupId ||
+        (initialData.installmentGroupId && initialData.installmentGroupId.startsWith('rec-'))
+      );
+      setIsRecurring(wasRec);
+      setEditScope('future');
+      setUncheckAction('cancel_future');
       setRecurringMonths(6);
       setNotes(initialData.notes || '');
     } else {
@@ -143,6 +163,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       return;
     }
 
+    // Se era uma série fixa e o usuário desmarcou o modo fixo e selecionou 'cancel_future':
+    if (initialData && isOriginallyRecurring && !isRecurring && uncheckAction === 'cancel_future') {
+      onClose();
+      if (onEndRecurrence) {
+        onEndRecurrence(initialData);
+      }
+      return;
+    }
+
     onSave(
       {
         description: description.trim(),
@@ -154,11 +183,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         status,
         isRecurring,
         recurringFrequency: isRecurring ? 'monthly' : undefined,
+        recurrenceGroupId: isRecurring ? initialData?.recurrenceGroupId : undefined,
         notes: notes.trim() || undefined,
       },
       initialData?.id,
       !initialData && isInstallment ? installmentsCount : undefined,
-      !initialData && isRecurring ? recurringMonths : undefined
+      (!initialData && isRecurring) || (initialData && !isOriginallyRecurring && isRecurring) ? recurringMonths : undefined,
+      initialData && isOriginallyRecurring ? editScope : undefined
     );
 
     onClose();
@@ -461,26 +492,194 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
           )}
 
-          {/* RECORRÊNCIA (Lançamento Fixo para Despesas e Receitas) */}
-          {!initialData && !isInstallment && (
-            <div className="p-3.5 bg-slate-50 dark-subcard rounded-xl border border-slate-200/80 dark:border-white/10 space-y-2.5">
-              <label className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-200 font-semibold cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isRecurring}
-                  onChange={e => setIsRecurring(e.target.checked)}
-                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 dark:border-white/20 cursor-pointer"
-                />
-                <span className="flex items-center gap-1.5">
-                  <Repeat className="w-3.5 h-3.5 text-emerald-500" />
-                  {type === 'expense' 
-                    ? 'Despesa Fixa / Recorrente (repetir valor todo mês)' 
-                    : 'Receita Fixa / Recorrente (salário, pro-labore, contrato)'}
-                </span>
-              </label>
+          {/* SEÇÃO DE RECORRÊNCIA / MODO FIXO */}
+          {!isInstallment && (
+            <div className="p-3.5 bg-slate-50 dark-subcard rounded-xl border border-slate-200/80 dark:border-white/10 space-y-3">
+              
+              {/* Header com Toggle do Modo Fixo */}
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-200 font-semibold cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isRecurring}
+                    onChange={e => setIsRecurring(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 dark:border-white/20 cursor-pointer"
+                  />
+                  <span className="flex items-center gap-1.5">
+                    <Repeat className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>
+                      {type === 'expense' 
+                        ? 'Despesa Fixa / Recorrente (repetir todo mês)' 
+                        : 'Receita Fixa / Recorrente (salário, pro-labore, contrato)'}
+                    </span>
+                  </span>
+                </label>
 
-              {isRecurring && (
-                <div className="space-y-2 pt-1 animate-in fade-in">
+                {isOriginallyRecurring && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                    Modo Fixo Ativo
+                  </span>
+                )}
+              </div>
+
+              {/* Cenário A: Editando lançamento que já era fixo e continua com checkbox marcado */}
+              {initialData && isOriginallyRecurring && isRecurring && (
+                <div className="space-y-3 pt-2 border-t border-slate-200/60 dark:border-white/10 animate-in fade-in">
+                  
+                  {/* Botão de Cancelar Recorrência em destaque */}
+                  {onEndRecurrence && (
+                    <div className="p-3 rounded-xl bg-rose-500/10 dark:bg-rose-500/[0.08] border border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div>
+                        <div className="text-xs font-bold text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
+                          <CalendarOff className="w-3.5 h-3.5 text-rose-500" />
+                          <span>Deseja cancelar a recorrência deste cliente?</span>
+                        </div>
+                        <p className="text-[11px] text-rose-700/80 dark:text-rose-400/80 mt-0.5">
+                          Encerre o contrato a partir deste mês. O histórico passado já recebido é preservado 100%.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onEndRecurrence(initialData);
+                        }}
+                        className="px-3.5 py-2 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-500 text-white transition-all shrink-0 min-h-[38px] flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                      >
+                        <CalendarOff className="w-3.5 h-3.5" />
+                        <span>Cancelar Recorrência</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Escolha do escopo das alterações de valor/nome/categoria */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                      Escopo das alterações (valor, descrição ou categoria):
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      <label 
+                        onClick={() => setEditScope('single')}
+                        className={`flex flex-col justify-center p-2.5 rounded-xl border cursor-pointer transition-all ${
+                          editScope === 'single'
+                            ? 'border-slate-800 dark:border-white bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white font-bold'
+                            : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-zinc-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="editScope"
+                            value="single"
+                            checked={editScope === 'single'}
+                            onChange={() => setEditScope('single')}
+                            className="w-3.5 h-3.5 text-emerald-600"
+                          />
+                          <span>Somente este</span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1 pl-5">
+                          Ajuste pontual neste mês
+                        </span>
+                      </label>
+
+                      <label 
+                        onClick={() => setEditScope('future')}
+                        className={`flex flex-col justify-center p-2.5 rounded-xl border cursor-pointer transition-all ${
+                          editScope === 'future'
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-bold'
+                            : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-zinc-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="editScope"
+                            value="future"
+                            checked={editScope === 'future'}
+                            onChange={() => setEditScope('future')}
+                            className="w-3.5 h-3.5 text-emerald-600"
+                          />
+                          <span>Este e os próximos</span>
+                        </div>
+                        <span className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-1 pl-5">
+                          Reajuste do contrato
+                        </span>
+                      </label>
+
+                      <label 
+                        onClick={() => setEditScope('all')}
+                        className={`flex flex-col justify-center p-2.5 rounded-xl border cursor-pointer transition-all ${
+                          editScope === 'all'
+                            ? 'border-indigo-500 bg-indigo-500/10 text-indigo-800 dark:text-indigo-300 font-bold'
+                            : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-zinc-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="editScope"
+                            value="all"
+                            checked={editScope === 'all'}
+                            onChange={() => setEditScope('all')}
+                            className="w-3.5 h-3.5 text-indigo-600"
+                          />
+                          <span>Toda a série</span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1 pl-5">
+                          Inclusive anteriores
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* Cenário B: Usuário DESMARCOU o checkbox de fixo de um item que era fixo */}
+              {initialData && isOriginallyRecurring && !isRecurring && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 space-y-2 animate-in fade-in">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-rose-700 dark:text-rose-300">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Você desmarcou o Modo Fixo desta {type === 'income' ? 'receita' : 'despesa'}</span>
+                  </div>
+                  <p className="text-[11px] text-rose-600 dark:text-rose-300/90">
+                    Como deseja proceder ao salvar?
+                  </p>
+                  <div className="space-y-1.5 text-xs text-slate-700 dark:text-zinc-300">
+                    <label className="flex items-start gap-2 cursor-pointer font-medium">
+                      <input
+                        type="radio"
+                        name="uncheckAction"
+                        value="cancel_future"
+                        checked={uncheckAction === 'cancel_future'}
+                        onChange={() => setUncheckAction('cancel_future')}
+                        className="mt-0.5 text-rose-600"
+                      />
+                      <span>
+                        <strong>Cancelar recorrência:</strong> encerrar o contrato deste cliente e excluir lançamentos futuros (preservando o histórico passado).
+                      </span>
+                    </label>
+
+                    <label className="flex items-start gap-2 cursor-pointer font-medium">
+                      <input
+                        type="radio"
+                        name="uncheckAction"
+                        value="make_single"
+                        checked={uncheckAction === 'make_single'}
+                        onChange={() => setUncheckAction('make_single')}
+                        className="mt-0.5 text-rose-600"
+                      />
+                      <span>
+                        <strong>Tornar apenas este mês avulso:</strong> desvincular apenas este mês específico sem alterar os demais.
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Cenário C: Criação de novo lançamento ou ativação de fixo em item avulso */}
+              {isRecurring && (!initialData || !isOriginallyRecurring) && (
+                <div className="space-y-2 pt-2 border-t border-slate-200/60 dark:border-white/10 animate-in fade-in">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <label className="text-xs text-slate-600 dark:text-slate-400 font-medium">
                       Repetir por quantos meses:
@@ -495,13 +694,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       <option value={4}>4 meses</option>
                       <option value={5}>5 meses</option>
                       <option value={6}>6 meses (semestre)</option>
-                      <option value={7}>7 meses</option>
-                      <option value={8}>8 meses</option>
-                      <option value={9}>9 meses</option>
-                      <option value={10}>10 meses</option>
-                      <option value={11}>11 meses</option>
                       <option value={12}>12 meses (1 ano)</option>
-                      <option value={18}>18 meses (1 ano e meio)</option>
                       <option value={24}>24 meses (2 anos)</option>
                       <option value={36}>36 meses (3 anos)</option>
                       <option value={48}>48 meses (4 anos)</option>
@@ -509,10 +702,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </select>
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
-                    💡 Cada mês receberá um lançamento individual no extrato numerado (ex: 1/{recurringMonths}, 2/{recurringMonths}...) no valor de {formatCurrency(parsedAmount)}.
+                    💡 Serão criados lançamentos recorrentes automáticos para os próximos {recurringMonths} meses no valor de {formatCurrency(parsedAmount)}.
                   </p>
                 </div>
               )}
+
             </div>
           )}
 

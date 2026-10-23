@@ -333,6 +333,59 @@ export async function deleteUserInstallmentGroup(
   }
 }
 
+// 5b. Excluir múltiplos lançamentos por IDs (Batch atômico)
+export async function deleteUserTransactionsBatch(
+  userId: string,
+  transactionIds: string[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!transactionIds.length) return { success: true };
+    const { db } = getFirebaseInstances();
+    
+    // Process in batches of 400 (Firestore batch limit is 500)
+    const chunkSize = 400;
+    for (let i = 0; i < transactionIds.length; i += chunkSize) {
+      const chunk = transactionIds.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      for (const id of chunk) {
+        batch.delete(doc(db, 'users', userId, 'transactions', id));
+      }
+      await batch.commit();
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao excluir lote de transações por ID:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 5c. Atualizar múltiplos lançamentos (Batch atômico)
+export async function updateUserTransactionsBatch(
+  userId: string,
+  updates: { id: string; data: Partial<Transaction> }[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!updates.length) return { success: true };
+    const { db } = getFirebaseInstances();
+    
+    const chunkSize = 400;
+    for (let i = 0; i < updates.length; i += chunkSize) {
+      const chunk = updates.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      for (const item of chunk) {
+        const txRef = doc(db, 'users', userId, 'transactions', item.id);
+        const cleanData = JSON.parse(JSON.stringify(item.data));
+        batch.set(txRef, cleanData, { merge: true });
+      }
+      await batch.commit();
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao atualizar lote de transações:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 // 6. Escutar orçamentos da subcoleção /users/{userId}/budgets
 export function subscribeToUserBudgets(
   userId: string,

@@ -54,7 +54,9 @@ import {
   saveUserTransaction, 
   batchSaveUserTransactions, 
   deleteUserTransaction, 
-  deleteUserInstallmentGroup, 
+  deleteUserInstallmentGroup,
+  deleteUserTransactionsBatch,
+  updateUserTransactionsBatch,
   subscribeToUserBudgets, 
   saveUserBudgets, 
   subscribeToUserGoals, 
@@ -73,6 +75,8 @@ import {
   saveUserBankBalanceHistoryEntry,
   subscribeToUserSubscription
 } from './utils/firebase';
+import { findSeriesTransactions, logRecurrenceAudit, RecurrenceSeriesInfo } from './utils/recurrence';
+import { RecurrenceScopeModal } from './components/RecurrenceScopeModal';
 import {
   AppFeatureKey,
   DEFAULT_FREE_SUBSCRIPTION,
@@ -231,6 +235,16 @@ function FinanceApp() {
   // Modals state
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [modalRecurrenceTarget, setModalRecurrenceTarget] = useState<{
+    tx: Transaction;
+    mode: 'delete' | 'end';
+  } | null>(null);
+
+  const modalRecurrenceSeries = useMemo(() => {
+    if (!modalRecurrenceTarget) return null;
+    return findSeriesTransactions(modalRecurrenceTarget.tx, transactions);
+  }, [modalRecurrenceTarget, transactions]);
+
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
@@ -242,6 +256,17 @@ function FinanceApp() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isBankAccountsModalOpen, setIsBankAccountsModalOpen] = useState(false);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+
+  // Filtro de categoria ativado pelo clique no card de Distribuição de Despesas
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
+
+  const handleSelectCategoryFromCharts = (categoryId: string) => {
+    setSelectedCategoryFilter(categoryId);
+    const element = document.getElementById('section-transaction-list');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   // Bank Accounts State (isolados por UID do usuário logado)
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(() => loadStoredBankAccounts(null));
@@ -519,7 +544,8 @@ function FinanceApp() {
     data: Omit<Transaction, 'id' | 'createdAt'>,
     id?: string,
     installmentsCount?: number,
-    recurringMonths?: number
+    recurringMonths?: number,
+    editScope?: 'single' | 'future' | 'all'
   ) => {
     if (!currentUser?.uid) return;
 
@@ -531,6 +557,59 @@ function FinanceApp() {
         id,
         createdAt: existing?.createdAt || Date.now(),
       };
+
+      if ((editScope === 'future' || editScope === 'all') && existing) {
+        // Encontra todos os meses da série para atualizar em lote
+        const series = findSeriesTransactions(existing, transactions);
+        const targetTxs = editScope === 'future' ? series.future : series.all.filter(t => t.id !== id);
+
+        if (targetTxs.length > 0) {
+          const updates = targetTxs.map(f => ({
+            id: f.id,
+            data: {
+              description: f.installmentTotal && f.installmentCurrent
+                ? `${data.description.replace(/\s*[\(\[]\s*\d+\s*(?:\/|de)\s*\d+\s*[\)\]]/gi, '')} (${f.installmentCurrent}/${f.installmentTotal})`
+                : data.description,
+              amount: data.amount,
+              categoryId: data.categoryId,
+              paymentMethod: data.paymentMethod,
+              isRecurring: data.isRecurring,
+              recurringFrequency: data.recurringFrequency,
+            },
+          }));
+
+          setTransactions(prev =>
+            prev.map(t => {
+              if (t.id === id) return updatedTx;
+              const match = targetTxs.find(f => f.id === t.id);
+              if (match) {
+                const desc = match.installmentTotal && match.installmentCurrent
+                  ? `${data.description.replace(/\s*[\(\[]\s*\d+\s*(?:\/|de)\s*\d+\s*[\)\]]/gi, '')} (${match.installmentCurrent}/${match.installmentTotal})`
+                  : data.description;
+                return {
+                  ...t,
+                  description: desc,
+                  amount: data.amount,
+                  categoryId: data.categoryId,
+                  paymentMethod: data.paymentMethod,
+                  isRecurring: data.isRecurring,
+                  recurringFrequency: data.recurringFrequency,
+                };
+              }
+              return t;
+            })
+          );
+
+          await saveUserTransaction(currentUser.uid, updatedTx);
+          await updateUserTransactionsBatch(currentUser.uid, updates);
+          const countMsg = editScope === 'future'
+            ? `Lançamento e mais ${targetTxs.length} meses futuros atualizados com sucesso!`
+            : `Lançamento e toda a série (${series.all.length} meses) atualizados com sucesso!`;
+          showToast(countMsg);
+          return;
+        }
+      }
+
       setTransactions(prev => prev.map(t => (t.id === id ? updatedTx : t)));
       await saveUserTransaction(currentUser.uid, updatedTx);
       showToast('Transação atualizada com sucesso!');
@@ -579,6 +658,108 @@ function FinanceApp() {
     await deleteUserInstallmentGroup(currentUser.uid, groupId, transactions);
     setTransactions(prev => prev.filter(t => t.installmentGroupId !== groupId));
     showToast('Todas as parcelas foram excluídas', 'info');
+  };
+
+  const handleDeleteRecurrenceScope = async (
+    scope: 'single' | 'future' | 'all',
+    affectedTransactions: Transaction[],
+    seriesInfo: RecurrenceSeriesInfo,
+    reason?: string,
+    cutMonth?: string
+  ) => {
+    if (!currentUser?.uid || affectedTransactions.length === 0) return;
+
+    const idsToDelete = affectedTransactions.map(t => t.id);
+    const backupDeleted = [...affectedTransactions];
+
+    // Atualização otimista na interface local
+    setTransactions(prev => prev.filter(t => !idsToDelete.includes(t.id)));
+
+    // Registro no log local de auditoria
+    const totalAmount = affectedTransactions.reduce((acc, t) => acc + t.amount, 0);
+    logRecurrenceAudit({
+      seriesName: seriesInfo.seriesName,
+      scope,
+      deletedCount: idsToDelete.length,
+      deletedIds: idsToDelete,
+      totalAmount,
+      reason,
+    });
+
+    // Exclusão atômica no Firestore via writeBatch
+    await deleteUserTransactionsBatch(currentUser.uid, idsToDelete);
+
+    // Se for 'future' e houver lançamentos que permaneceram na série, marca-os como encerrados
+    let previousPastStates: { id: string; prevStatus?: 'active' | 'ended'; prevEndedAt?: string; prevReason?: string }[] = [];
+    if (scope === 'future') {
+      const keptTransactions = seriesInfo.all.filter(t => !idsToDelete.includes(t.id));
+      if (keptTransactions.length > 0) {
+        const targetMonthYear = cutMonth || seriesInfo.targetTx.date.slice(0, 7);
+        previousPastStates = keptTransactions.map(p => ({
+          id: p.id,
+          prevStatus: p.recurrenceStatus,
+          prevEndedAt: p.recurrenceEndedAt,
+          prevReason: p.recurrenceReason,
+        }));
+
+        const keptUpdates = keptTransactions.map(p => ({
+          id: p.id,
+          data: {
+            recurrenceStatus: 'ended' as const,
+            recurrenceEndedAt: targetMonthYear,
+            ...(reason ? { recurrenceReason: reason } : {}),
+          },
+        }));
+
+        setTransactions(prev =>
+          prev.map(t => {
+            if (keptTransactions.some(p => p.id === t.id)) {
+              return {
+                ...t,
+                recurrenceStatus: 'ended',
+                recurrenceEndedAt: targetMonthYear,
+                ...(reason ? { recurrenceReason: reason } : {}),
+              };
+            }
+            return t;
+          })
+        );
+
+        await updateUserTransactionsBatch(currentUser.uid, keptUpdates);
+      }
+    }
+
+    // Mensagem de sucesso com ação de desfazer
+    const toastMessage =
+      scope === 'future'
+        ? `Recorrência de "${seriesInfo.seriesName}" encerrada (${affectedTransactions.length} futuros removidos${reason ? ` • Motivo: ${reason}` : ''})`
+        : scope === 'all'
+          ? `Toda a série de "${seriesInfo.seriesName}" foi excluída (${affectedTransactions.length} lançamentos)`
+          : `Lançamento do mês de "${seriesInfo.seriesName}" excluído`;
+
+    showToast(toastMessage, 'info', {
+      label: 'Desfazer',
+      onClick: async () => {
+        // Restaura lançamentos excluídos
+        setTransactions(prev => [...backupDeleted, ...prev]);
+        await batchSaveUserTransactions(currentUser.uid, backupDeleted);
+
+        // Reverte encerramento dos passados se houve
+        if (previousPastStates.length > 0) {
+          const revertUpdates = previousPastStates.map(item => ({
+            id: item.id,
+            data: {
+              recurrenceStatus: item.prevStatus,
+              recurrenceEndedAt: item.prevEndedAt,
+              recurrenceReason: item.prevReason,
+            },
+          }));
+          await updateUserTransactionsBatch(currentUser.uid, revertUpdates);
+        }
+
+        showToast('Ação desfeita! Lançamentos restaurados.', 'info');
+      },
+    });
   };
 
   const handleToggleStatus = async (id: string) => {
@@ -1229,20 +1410,24 @@ function FinanceApp() {
             period={period}
             onOpenBudgets={handleOpenBudgetsModal}
             categories={allCategories}
+            onSelectCategory={handleSelectCategoryFromCharts}
           />
         </SummaryCards>
 
         {/* Extrato & Transaction List */}
         <TransactionList
           transactions={monthTransactions}
+          allTransactions={transactions}
           onEdit={handleEditTransaction}
           onDelete={handleDeleteTransaction}
           onDeleteGroup={handleDeleteInstallmentGroup}
+          onDeleteRecurrenceScope={handleDeleteRecurrenceScope}
           onToggleStatus={handleToggleStatus}
           onMarkAsPaid={handleMarkAsPaid}
           onAddNew={handleOpenNewTransaction}
           onOpenImportStatement={handleOpenImportStatementModal}
           categories={allCategories}
+          selectedCategoryFilter={selectedCategoryFilter}
         />
 
       </main>
@@ -1309,6 +1494,22 @@ function FinanceApp() {
         currentPeriod={period}
         customCategories={customCategories}
         onSaveCustomCategory={handleSaveCustomCategory}
+        onEndRecurrence={(tx) => setModalRecurrenceTarget({ tx, mode: 'end' })}
+      />
+
+      {/* Modal de Encerramento de Recorrência (quando chamado de dentro do TransactionModal) */}
+      <RecurrenceScopeModal
+        isOpen={Boolean(modalRecurrenceTarget)}
+        onClose={() => setModalRecurrenceTarget(null)}
+        seriesInfo={modalRecurrenceSeries}
+        allTransactions={transactions}
+        onConfirm={async (scope, affected, reason, cutMonth) => {
+          if (modalRecurrenceSeries) {
+            await handleDeleteRecurrenceScope(scope, affected, modalRecurrenceSeries, reason, cutMonth);
+          }
+          setModalRecurrenceTarget(null);
+        }}
+        mode={modalRecurrenceTarget?.mode || 'end'}
       />
 
       <BudgetModal
