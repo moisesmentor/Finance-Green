@@ -83,13 +83,27 @@ export interface FilterOptions {
   sortBy: 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc';
 }
 
+export interface ReserveLocation {
+  id: string;
+  name: string;
+  amount: number;
+  bankAccountId?: string;
+  updatedAt?: number;
+}
+
 export interface GoalContribution {
   id: string;
   amount: number;
   date: string;
-  type: 'deposit' | 'withdraw';
+  type: 'deposit' | 'withdraw' | 'adjustment';
   note?: string;
   createdAt: number;
+  diffAmount?: number;
+  previousAmount?: number;
+  newAmount?: number;
+  location?: string;
+  locations?: ReserveLocation[];
+  bankAccountId?: string;
 }
 
 export interface FinancialGoal {
@@ -107,6 +121,9 @@ export interface FinancialGoal {
   autoReserveMode?: 'percentage' | 'fixed';
   autoReserveFixedAmount?: number;
   lastConfirmedMonth?: string; // e.g. "2026-10"
+  location?: string;
+  locations?: ReserveLocation[];
+  lastBalanceUpdateAt?: number;
 }
 
 export type InvestmentCategoryType = 

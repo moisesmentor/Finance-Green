@@ -1530,6 +1530,7 @@ function FinanceApp() {
         initialTab={goalsInitialTab}
         monthlyIncome={summary.totalIncome}
         currentPeriod={period}
+        bankAccounts={bankAccounts}
       />
 
       <InvestmentsModal

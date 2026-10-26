@@ -18,10 +18,24 @@ import {
   Sliders,
   AlertCircle,
   History,
-  Check
+  Check,
+  Building2,
+  Landmark,
+  Edit3,
+  RotateCcw,
+  Info,
+  AlertTriangle,
+  Scale
 } from 'lucide-react';
-import { FinancialGoal, GoalContribution, MonthPeriod } from '../types';
+import { FinancialGoal, GoalContribution, MonthPeriod, BankAccount, ReserveLocation } from '../types';
 import { formatCurrency, formatDateShort, getMonthLabel } from '../utils/formatters';
+
+interface TempLocationRow {
+  id: string;
+  name: string;
+  amountStr: string;
+  bankAccountId?: string;
+}
 
 interface GoalsModalProps {
   isOpen: boolean;
@@ -31,6 +45,7 @@ interface GoalsModalProps {
   initialTab?: 'reserve' | 'goals';
   monthlyIncome?: number;
   currentPeriod?: MonthPeriod;
+  bankAccounts?: BankAccount[];
 }
 
 export const GoalsModal: React.FC<GoalsModalProps> = ({
@@ -41,6 +56,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
   initialTab = 'reserve',
   monthlyIncome = 0,
   currentPeriod = { year: new Date().getFullYear(), month: new Date().getMonth() },
+  bankAccounts = [],
 }) => {
   const [activeTab, setActiveTab] = useState<'reserve' | 'goals'>(initialTab);
   const [isCreating, setIsCreating] = useState(false);
@@ -64,11 +80,18 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
   const [newTargetStr, setNewTargetStr] = useState('');
   const [customPercentStr, setCustomPercentStr] = useState('');
 
+  // Emergency Fund Balance Adjustment Modal State (Item 2 - Option B: Multiple Locations)
+  const [isAdjustingBalance, setIsAdjustingBalance] = useState(false);
+  const [tempLocations, setTempLocations] = useState<TempLocationRow[]>([]);
+  const [adjustmentNote, setAdjustmentNote] = useState('');
+  const [confirmLargeDiff, setConfirmLargeDiff] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab);
       setIsCreating(false);
       setActiveGoalId(null);
+      setIsAdjustingBalance(false);
       setError('');
     }
   }, [isOpen, initialTab]);
@@ -259,6 +282,164 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
     setError('');
   };
 
+  // Helper to parse currency inputs
+  const parseAmount = (val: string) => {
+    if (!val) return 0;
+    const clean = val.replace(/\./g, '').replace(',', '.');
+    const num = parseFloat(clean);
+    return isNaN(num) ? 0 : Math.max(0, num);
+  };
+
+  // Open adjustment modal (Option B: Multiple locations)
+  const handleOpenAdjustBalance = () => {
+    if (emergencyGoal.locations && emergencyGoal.locations.length > 0) {
+      setTempLocations(
+        emergencyGoal.locations.map(loc => ({
+          id: loc.id,
+          name: loc.name,
+          amountStr: loc.amount > 0 ? loc.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
+          bankAccountId: loc.bankAccountId,
+        }))
+      );
+    } else if (emergencyGoal.location || emergencyGoal.currentAmount > 0) {
+      setTempLocations([
+        {
+          id: `loc-${Date.now()}`,
+          name: emergencyGoal.location || 'Conta Principal',
+          amountStr: emergencyGoal.currentAmount > 0 ? emergencyGoal.currentAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
+        }
+      ]);
+    } else {
+      setTempLocations([
+        {
+          id: `loc-${Date.now()}`,
+          name: '',
+          amountStr: '',
+        }
+      ]);
+    }
+    setAdjustmentNote('');
+    setConfirmLargeDiff(false);
+    setError('');
+    setIsAdjustingBalance(true);
+  };
+
+  // Row management for adjustment modal
+  const handleAddLocationRow = () => {
+    setTempLocations(prev => [
+      ...prev,
+      { id: `loc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`, name: '', amountStr: '' }
+    ]);
+  };
+
+  const handleRemoveLocationRow = (id: string) => {
+    if (tempLocations.length <= 1) {
+      setTempLocations([{ id: `loc-${Date.now()}`, name: '', amountStr: '' }]);
+      return;
+    }
+    setTempLocations(prev => prev.filter(row => row.id !== id));
+  };
+
+  const handleUpdateRowName = (id: string, name: string, bankAccountId?: string) => {
+    setTempLocations(prev => prev.map(row => row.id === id ? { ...row, name, bankAccountId } : row));
+  };
+
+  const handleUpdateRowAmount = (id: string, amountStr: string) => {
+    setTempLocations(prev => prev.map(row => row.id === id ? { ...row, amountStr } : row));
+  };
+
+  // Calculations for adjustment
+  const newCalculatedTotal = tempLocations.reduce((sum, row) => sum + parseAmount(row.amountStr), 0);
+  const oldTotal = emergencyGoal.currentAmount || 0;
+  const diffAmount = Math.round((newCalculatedTotal - oldTotal) * 100) / 100;
+  const isLargeDiff = oldTotal > 0 && Math.abs(diffAmount) > (oldTotal * 0.5);
+
+  const suggestedBankNames = Array.from(
+    new Set([
+      ...(bankAccounts?.map(b => b.name).filter(Boolean) || []),
+      'Nubank',
+      'Inter',
+      'Itaú',
+      'Santander',
+      'Poupança Caixa',
+      'C6 Bank',
+      'Dinheiro em espécie',
+    ])
+  ).slice(0, 8);
+
+  // Save manual balance adjustment
+  const handleSaveAdjustment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLargeDiff && !confirmLargeDiff) {
+      setError('Por favor, confirme a alteração expressiva no saldo antes de salvar.');
+      return;
+    }
+
+    const validRows = tempLocations.filter(row => row.name.trim() || parseAmount(row.amountStr) > 0);
+    const finalLocations: ReserveLocation[] = validRows.map(row => ({
+      id: row.id || `loc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      name: row.name.trim() || 'Reserva',
+      amount: Math.round(parseAmount(row.amountStr) * 100) / 100,
+      bankAccountId: row.bankAccountId,
+      updatedAt: Date.now(),
+    }));
+
+    const locationSummary = finalLocations.map(l => `${l.name} (${formatCurrency(l.amount)})`).join(' • ');
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const newContrib: GoalContribution = {
+      id: `contrib-adj-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      amount: Math.abs(diffAmount),
+      diffAmount,
+      previousAmount: oldTotal,
+      newAmount: Math.round(newCalculatedTotal * 100) / 100,
+      location: locationSummary || undefined,
+      locations: finalLocations,
+      date: todayStr,
+      type: 'adjustment',
+      note: adjustmentNote.trim() || (diffAmount >= 0 ? 'Ajuste de saldo (+)' : 'Ajuste de saldo (-)'),
+      createdAt: Date.now(),
+    };
+
+    const updated: FinancialGoal = {
+      ...emergencyGoal,
+      currentAmount: Math.round(newCalculatedTotal * 100) / 100,
+      locations: finalLocations,
+      location: locationSummary || undefined,
+      lastBalanceUpdateAt: Date.now(),
+      history: [newContrib, ...(emergencyGoal.history || [])],
+    };
+
+    updateGoalsWithEmergency(updated);
+    setIsAdjustingBalance(false);
+    setError('');
+  };
+
+  // Undo latest adjustment
+  const handleUndoLatestAdjustment = (adjItem: GoalContribution) => {
+    if (window.confirm(`Deseja realmente desfazer este ajuste e restaurar o saldo anterior de ${formatCurrency(adjItem.previousAmount ?? 0)}?`)) {
+      const restoredAmount = adjItem.previousAmount ?? 0;
+      const updatedHistory = (emergencyGoal.history || []).filter(h => h.id !== adjItem.id);
+      const priorAdj = updatedHistory.find(h => h.type === 'adjustment' && h.locations && h.locations.length > 0);
+
+      const updated: FinancialGoal = {
+        ...emergencyGoal,
+        currentAmount: Math.round(restoredAmount * 100) / 100,
+        locations: priorAdj?.locations || undefined,
+        location: priorAdj?.location || undefined,
+        lastBalanceUpdateAt: Date.now(),
+        history: updatedHistory,
+      };
+
+      updateGoalsWithEmergency(updated);
+    }
+  };
+
+  // 30 days outdated check
+  const isOutdated = emergencyGoal.lastBalanceUpdateAt
+    ? (Date.now() - emergencyGoal.lastBalanceUpdateAt) > (30 * 24 * 60 * 60 * 1000)
+    : false;
+
   const emergencyPercentage = Math.min(100, Math.round((emergencyGoal.currentAmount / emergencyGoal.targetAmount) * 100));
   const emergencyRemaining = Math.max(0, emergencyGoal.targetAmount - emergencyGoal.currentAmount);
 
@@ -341,8 +522,19 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                       </span>
                       <span className="text-xs text-slate-400 font-semibold">• Segurança Financeira</span>
                     </div>
-                    <div className="text-3xl sm:text-4xl font-black font-mono-num text-emerald-600 dark:text-emerald-400 tracking-tight">
-                      {formatCurrency(emergencyGoal.currentAmount)}
+                    <div className="flex items-baseline gap-2.5 flex-wrap">
+                      <div className="text-3xl sm:text-4xl font-black font-mono-num text-emerald-600 dark:text-emerald-400 tracking-tight">
+                        {formatCurrency(emergencyGoal.currentAmount)}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleOpenAdjustBalance}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer min-h-[32px]"
+                        title="Atualizar saldo guardado e locais"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Atualizar saldo</span>
+                      </button>
                     </div>
                   </div>
 
@@ -352,7 +544,7 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         setActiveGoalId(emergencyGoal.id);
                         setContributionType('deposit');
                       }}
-                      className="px-3.5 py-2 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 shadow-xs dark:shadow-[0_0_20px_-3px_rgba(16,185,129,0.45)] transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+                      className="px-3.5 py-2 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 shadow-xs dark:shadow-[0_0_20px_-3px_rgba(16,185,129,0.45)] transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 min-h-[40px]"
                     >
                       <ArrowDownLeft className="w-4 h-4" />
                       + Aporte
@@ -362,13 +554,48 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                         setActiveGoalId(emergencyGoal.id);
                         setContributionType('withdraw');
                       }}
-                      className="px-3.5 py-2 text-xs font-bold rounded-xl text-slate-700 dark:text-slate-200 bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/15 transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+                      className="px-3.5 py-2 text-xs font-bold rounded-xl text-slate-700 dark:text-slate-200 bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/15 transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 min-h-[40px]"
                     >
                       <ArrowUpRight className="w-4 h-4 text-rose-500" />
                       Resgatar
                     </button>
                   </div>
                 </div>
+
+                {/* Location breakdown chips (Option B) */}
+                {emergencyGoal.locations && emergencyGoal.locations.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-emerald-500/15 dark:border-white/10 text-xs">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
+                      <Building2 className="w-3.5 h-3.5 text-emerald-500" />
+                      Guardado em:
+                    </span>
+                    {emergencyGoal.locations.map(loc => (
+                      <span
+                        key={loc.id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 shadow-xs"
+                      >
+                        <span>{loc.name}:</span>
+                        <span className="font-mono-num text-emerald-600 dark:text-emerald-400 font-extrabold">
+                          {formatCurrency(loc.amount)}
+                        </span>
+                      </span>
+                    ))}
+                    {emergencyGoal.lastBalanceUpdateAt && (
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-auto flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Atualizado em {formatDateShort(new Date(emergencyGoal.lastBalanceUpdateAt).toISOString().split('T')[0])}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* 30-day Inactivity Alert */}
+                {isOutdated && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-medium">
+                    <Info className="w-4 h-4 shrink-0 text-amber-500" />
+                    <span>Seu saldo da reserva não é conferido há mais de 30 dias. Verifique se os valores nos bancos continuam os mesmos.</span>
+                  </div>
+                )}
 
                 {/* Progress Bar & Goal Target */}
                 <div>
@@ -580,30 +807,93 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-100 dark:divide-white/[0.06] bg-slate-50/50 dark:bg-black/40 rounded-xl border border-slate-100 dark:border-white/10 overflow-hidden">
-                    {emergencyGoal.history.map(item => {
+                    {emergencyGoal.history.map((item, index) => {
+                      const isAdjustment = item.type === 'adjustment';
                       const isDeposit = item.type === 'deposit';
+                      const isPositiveDiff = (item.diffAmount ?? 0) >= 0;
+
                       return (
                         <div key={item.id} className="p-3 flex items-center justify-between gap-3 text-xs">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                              isDeposit ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                              isAdjustment
+                                ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400'
+                                : isDeposit 
+                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
+                                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
                             }`}>
-                              {isDeposit ? <ArrowDownLeft className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                              {isAdjustment ? (
+                                <Scale className="w-3.5 h-3.5" />
+                              ) : isDeposit ? (
+                                <ArrowDownLeft className="w-3.5 h-3.5" />
+                              ) : (
+                                <ArrowUpRight className="w-3.5 h-3.5" />
+                              )}
                             </div>
                             <div className="min-w-0">
-                              <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">
-                                {item.note || (isDeposit ? 'Aporte na Reserva' : 'Resgate da Reserva')}
-                              </span>
-                              <span className="text-[10px] text-slate-400">
-                                {formatDateShort(item.date)}
-                              </span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                                  {item.note || (isAdjustment ? 'Ajuste de Saldo' : isDeposit ? 'Aporte na Reserva' : 'Resgate da Reserva')}
+                                </span>
+                                {isAdjustment && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30">
+                                    Ajuste
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 flex-wrap">
+                                <span>{formatDateShort(item.date)}</span>
+                                {item.location && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="truncate max-w-[260px] text-slate-500 dark:text-slate-400" title={item.location}>
+                                      {item.location}
+                                    </span>
+                                  </>
+                                )}
+                                {item.newAmount !== undefined && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="font-mono-num text-slate-500 dark:text-slate-400">
+                                      Saldo: {formatCurrency(item.newAmount)}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
 
-                          <div className={`font-mono-num font-extrabold text-sm shrink-0 ${
-                            isDeposit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                          }`}>
-                            {isDeposit ? '+ ' : '- '} {formatCurrency(item.amount)}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className={`font-mono-num font-extrabold text-sm ${
+                              isAdjustment
+                                ? isPositiveDiff
+                                  ? 'text-emerald-600 dark:text-emerald-400' 
+                                  : 'text-amber-600 dark:text-amber-400'
+                                : isDeposit 
+                                  ? 'text-emerald-600 dark:text-emerald-400' 
+                                  : 'text-rose-600 dark:text-rose-400'
+                            }`}>
+                              {isAdjustment ? (
+                                isPositiveDiff
+                                  ? `+ ${formatCurrency(Math.abs(item.diffAmount ?? item.amount))}` 
+                                  : `- ${formatCurrency(Math.abs(item.diffAmount ?? item.amount))}`
+                              ) : (
+                                `${isDeposit ? '+ ' : '- '}${formatCurrency(item.amount)}`
+                              )}
+                            </div>
+
+                            {/* Desfazer action button for the latest adjustment */}
+                            {isAdjustment && index === 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleUndoLatestAdjustment(item)}
+                                className="px-2 py-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
+                                title="Desfazer este ajuste e restaurar o saldo anterior"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                <span>Desfazer</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -931,6 +1221,215 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
 
         </div>
       </div>
+
+      {/* ================================================================= */}
+      {/* MODAL SECUNDÁRIO: ATUALIZAR SALDO GUARDADO (OPÇÃO B - MULTI-LOCAIS) */}
+      {/* ================================================================= */}
+      {isAdjustingBalance && (
+        <div className="fixed inset-0 z-60 overflow-y-auto bg-slate-900/80 dark:bg-black/90 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div 
+            className="bg-white dark-brushed-metal-modal rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100 flex flex-col max-h-[92vh]"
+            role="dialog"
+            aria-modal="true"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    Atualizar Saldo Guardado na Reserva
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Distribua o valor por banco/local ou defina um total consolidado
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAdjustingBalance(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSaveAdjustment} className="p-5 overflow-y-auto space-y-4 flex-1">
+              {/* Comparison Card */}
+              <div className="grid grid-cols-3 gap-2 p-3 bg-slate-50 dark-subcard rounded-xl border border-slate-200/80 dark:border-white/10 text-center">
+                <div>
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Saldo Atual</div>
+                  <div className="text-xs sm:text-sm font-mono-num font-bold text-slate-700 dark:text-slate-300">
+                    {formatCurrency(oldTotal)}
+                  </div>
+                </div>
+                <div className="border-x border-slate-200 dark:border-white/10 px-1">
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Novo Saldo</div>
+                  <div className="text-xs sm:text-sm font-mono-num font-extrabold text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(newCalculatedTotal)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Diferença</div>
+                  <div className={`text-xs sm:text-sm font-mono-num font-extrabold ${
+                    diffAmount > 0 
+                      ? 'text-emerald-600 dark:text-emerald-400' 
+                      : diffAmount < 0 
+                        ? 'text-amber-600 dark:text-amber-400' 
+                        : 'text-slate-500'
+                  }`}>
+                    {diffAmount === 0 
+                      ? 'R$ 0,00' 
+                      : diffAmount > 0 
+                        ? `+ ${formatCurrency(diffAmount)}` 
+                        : `- ${formatCurrency(Math.abs(diffAmount))}`}
+                  </div>
+                </div>
+              </div>
+
+              {/* Location rows */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Landmark className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    Onde o dinheiro está guardado (Locais & Saldos):
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    {tempLocations.length} {tempLocations.length === 1 ? 'local' : 'locais'}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {tempLocations.map((row) => (
+                    <div 
+                      key={row.id}
+                      className="p-3 bg-slate-50/70 dark:bg-black/40 rounded-xl border border-slate-200/70 dark:border-white/10 space-y-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={row.name}
+                            onChange={e => handleUpdateRowName(row.id, e.target.value)}
+                            placeholder="Nome do local (ex: Nubank, Poupança Caixa, Dinheiro...)"
+                            className="w-full px-3 py-2 text-base sm:text-xs font-semibold rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 min-h-[44px] sm:min-h-0"
+                          />
+                        </div>
+                        <div className="w-36 sm:w-40 shrink-0">
+                          <input
+                            type="text"
+                            value={row.amountStr}
+                            onChange={e => handleUpdateRowAmount(row.id, e.target.value.replace(/[^0-9,.]/g, ''))}
+                            placeholder="0,00"
+                            className="w-full px-3 py-2 text-base sm:text-xs font-mono-num font-bold rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100 text-right min-h-[44px] sm:min-h-0"
+                          />
+                        </div>
+                        {tempLocations.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveLocationRow(row.id)}
+                            className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer shrink-0 min-h-[44px] sm:min-h-0 flex items-center justify-center"
+                            title="Remover este local"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Bank Quick Suggestion Chips (shown for row if empty) */}
+                      {!row.name.trim() && suggestedBankNames.length > 0 && (
+                        <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                          <span className="text-[10px] text-slate-400">Sugestões:</span>
+                          {suggestedBankNames.slice(0, 5).map(bankName => (
+                            <button
+                              key={bankName}
+                              type="button"
+                              onClick={() => handleUpdateRowName(row.id, bankName)}
+                              className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-300 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-300 transition-colors cursor-pointer"
+                            >
+                              {bankName}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddLocationRow}
+                  className="w-full py-2 px-3 rounded-xl border border-dashed border-slate-300 dark:border-white/20 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px]"
+                >
+                  <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  + Adicionar outro local ou banco
+                </button>
+              </div>
+
+              {/* Observation Note */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Motivo / Observação do ajuste (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={adjustmentNote}
+                  onChange={e => setAdjustmentNote(e.target.value)}
+                  placeholder="Ex: Rendimentos do mês, usei R$ 300 para o conserto do carro..."
+                  className="w-full px-3 py-2 text-base sm:text-xs rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100 min-h-[44px] sm:min-h-0"
+                />
+              </div>
+
+              {/* Large Diff Confirmation Checkbox */}
+              {isLargeDiff && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2">
+                  <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300 font-medium">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <span>
+                      Atenção: A diferença é superior a 50% do saldo atual ({formatCurrency(oldTotal)} &rarr; {formatCurrency(newCalculatedTotal)}).
+                    </span>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer pt-1">
+                    <input
+                      type="checkbox"
+                      checked={confirmLargeDiff}
+                      onChange={e => setConfirmLargeDiff(e.target.checked)}
+                      className="w-4 h-4 text-emerald-600 rounded cursor-pointer"
+                    />
+                    <span>Confirmo que o novo valor de {formatCurrency(newCalculatedTotal)} está correto.</span>
+                  </label>
+                </div>
+              )}
+
+              {/* Footer actions */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsAdjustingBalance(false)}
+                  className="px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl transition-colors cursor-pointer min-h-[44px]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLargeDiff && !confirmLargeDiff}
+                  className={`px-5 py-2.5 text-xs font-extrabold rounded-xl text-white shadow-xs transition-all flex items-center gap-2 min-h-[44px] ${
+                    isLargeDiff && !confirmLargeDiff
+                      ? 'bg-slate-300 dark:bg-white/10 text-slate-500 cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-500 cursor-pointer shadow-emerald-600/20 active:scale-95'
+                  }`}
+                >
+                  <Check className="w-4 h-4" />
+                  Salvar Novo Saldo ({formatCurrency(newCalculatedTotal)})
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
