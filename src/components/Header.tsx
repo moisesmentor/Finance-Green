@@ -20,7 +20,8 @@ import {
   Building2,
   FileSpreadsheet,
   Crown,
-  CreditCard
+  CreditCard,
+  Smartphone
 } from 'lucide-react';
 import { MonthPeriod, PlanTier, SubscriptionStatus, ThemeMode, UserProfile } from '../types';
 import { getMonthLabel, isCurrentMonth } from '../utils/formatters';
@@ -51,6 +52,9 @@ interface HeaderProps {
   user: UserProfile | null;
   onLogout: () => void;
   urgentAlertsCount?: number;
+  canInstall?: boolean;
+  isIOS?: boolean;
+  onTriggerInstall?: () => void;
 }
 
 
@@ -78,6 +82,9 @@ export const Header: React.FC<HeaderProps> = ({
   user,
   onLogout,
   urgentAlertsCount = 0,
+  canInstall = false,
+  isIOS = false,
+  onTriggerInstall,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>(null);
@@ -407,6 +414,26 @@ export const Header: React.FC<HeaderProps> = ({
                     >
                       <Cloud className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
                       <span>Configurações em Nuvem</span>
+                    </button>
+                  )}
+
+                  {/* PWA Install Button */}
+                  {canInstall && onTriggerInstall && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onTriggerInstall();
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 transition-colors cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Smartphone className="w-4 h-4 shrink-0" />
+                        <span>{isIOS ? 'Instalar no iPhone' : 'Instalar Aplicativo'}</span>
+                      </div>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        PWA
+                      </span>
                     </button>
                   )}
 

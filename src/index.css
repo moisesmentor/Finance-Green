@@ -15,6 +15,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background-color 300ms ease, color 300ms ease;
+    overscroll-behavior-y: contain;
   }
 
   #root {
@@ -181,4 +182,23 @@
     animation: none !important;
   }
 }
+
+/* ========================================================================== */
+/* PWA STANDALONE & SAFE AREA UTILITIES                                       */
+/* ========================================================================== */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
 

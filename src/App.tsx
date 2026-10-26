@@ -111,6 +111,11 @@ import { LandingPage } from './components/LandingPage';
 import { LegalPages, LegalPageType } from './components/LegalPages';
 import { CheckoutSummaryModal } from './components/CheckoutSummaryModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
+import { usePWA } from './utils/usePWA';
+import { clearPwaCachesOnLogout } from './utils/pwa';
+import { IOSInstallGuideModal } from './components/IOSInstallGuideModal';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { PWAUpdateToast } from './components/PWAUpdateToast';
 import {
   createAsaasSubscriptionCheckout,
   changeAsaasSubscriptionPlan,
@@ -166,6 +171,26 @@ function FinanceApp() {
   const [isCheckoutSummaryOpen, setIsCheckoutSummaryOpen] = useState(false);
   const [isCheckoutSubmitting, setIsCheckoutSubmitting] = useState(false);
   const [checkoutErrorMessage, setCheckoutErrorMessage] = useState<string | null>(null);
+
+  // PWA (Progressive Web App) Lifecycle & Installation
+  const {
+    canInstall,
+    isIOS,
+    isSecondaryIOS,
+    showBanner: showPwaBanner,
+    updateAvailable: isPwaUpdateAvailable,
+    triggerInstall: triggerPwaInstall,
+    dismissBanner: dismissPwaBanner,
+    applyUpdate: applyPwaUpdate,
+  } = usePWA();
+  const [isIOSGuideOpen, setIsIOSGuideOpen] = useState(false);
+
+  const handleTriggerPwaInstall = async () => {
+    const outcome = await triggerPwaInstall();
+    if (outcome === 'show_ios_guide') {
+      setIsIOSGuideOpen(true);
+    }
+  };
 
   const updatePendingCheckoutPlan = (plan: Exclude<PlanTier, 'free'> | null) => {
     setPendingCheckoutPlan(plan);
@@ -522,9 +547,10 @@ function FinanceApp() {
     }).length;
   }, [transactions]);
 
-  // Logout seguro do usuário
+  // Logout seguro do usuário (com limpeza de sessão e caches PWA)
   const handleLogout = async () => {
     try {
+      await clearPwaCachesOnLogout();
       await logoutUser();
       showToast('Sessão encerrada com sucesso', 'info');
       setUserSubscription(DEFAULT_FREE_SUBSCRIPTION);
@@ -1338,6 +1364,9 @@ function FinanceApp() {
         user={currentUser}
         onLogout={handleLogout}
         urgentAlertsCount={urgentAlertsCount}
+        canInstall={canInstall}
+        isIOS={isIOS}
+        onTriggerInstall={handleTriggerPwaInstall}
       />
 
       {/* Main Content Area */}
@@ -1647,6 +1676,27 @@ function FinanceApp() {
         onRequestRefund={handleRequestRefund}
         onDeleteAccount={handleDeleteAccount}
         onOpenLandingPlans={() => navigatePublic('assinatura')}
+      />
+
+      {/* PWA Update Notification Toast */}
+      {isPwaUpdateAvailable && (
+        <PWAUpdateToast onUpdate={applyPwaUpdate} />
+      )}
+
+      {/* PWA Install Banner (Android / Mobile) */}
+      {showPwaBanner && publicView === 'app' && !isCheckoutSummaryOpen && !isSubscriptionModalOpen && (
+        <PWAInstallBanner
+          onInstall={handleTriggerPwaInstall}
+          onDismiss={dismissPwaBanner}
+          isIOS={isIOS}
+        />
+      )}
+
+      {/* iOS Step-by-Step Installation Guide Modal */}
+      <IOSInstallGuideModal
+        isOpen={isIOSGuideOpen}
+        onClose={() => setIsIOSGuideOpen(false)}
+        isSecondaryBrowser={isSecondaryIOS}
       />
 
     </div>
