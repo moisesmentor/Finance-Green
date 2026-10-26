@@ -21,7 +21,7 @@ import {
   Check,
   Building2,
   Landmark,
-  Edit3,
+  Pencil,
   RotateCcw,
   Info,
   AlertTriangle,
@@ -522,17 +522,17 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                       </span>
                       <span className="text-xs text-slate-400 font-semibold">• Segurança Financeira</span>
                     </div>
-                    <div className="flex items-baseline gap-2.5 flex-wrap">
+                    <div className="flex items-center gap-2.5 flex-wrap">
                       <div className="text-3xl sm:text-4xl font-black font-mono-num text-emerald-600 dark:text-emerald-400 tracking-tight">
                         {formatCurrency(emergencyGoal.currentAmount)}
                       </div>
                       <button
                         type="button"
                         onClick={handleOpenAdjustBalance}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer min-h-[32px]"
-                        title="Atualizar saldo guardado e locais"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:border-emerald-500/50 transition-all cursor-pointer shadow-xs active:scale-95 min-h-[34px]"
+                        title="Atualizar saldo guardado e locais da reserva"
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
+                        <Pencil className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         <span>Atualizar saldo</span>
                       </button>
                     </div>
@@ -608,8 +608,9 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
                       <strong className="font-mono-num text-slate-900 dark:text-white">{formatCurrency(emergencyGoal.targetAmount)}</strong>
                       <button
                         onClick={() => { setIsEditingTarget(true); setNewTargetStr(emergencyGoal.targetAmount.toString()); }}
-                        className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-bold ml-1 cursor-pointer"
+                        className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-bold ml-1 cursor-pointer inline-flex items-center gap-1"
                       >
+                        <Pencil className="w-3 h-3" />
                         Ajustar
                       </button>
                     </div>
@@ -1226,11 +1227,15 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
       {/* MODAL SECUNDÁRIO: ATUALIZAR SALDO GUARDADO (OPÇÃO B - MULTI-LOCAIS) */}
       {/* ================================================================= */}
       {isAdjustingBalance && (
-        <div className="fixed inset-0 z-60 overflow-y-auto bg-slate-900/80 dark:bg-black/90 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div 
+          className="fixed inset-0 z-60 overflow-y-auto bg-slate-900/80 dark:bg-black/90 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
+          onClick={() => setIsAdjustingBalance(false)}
+        >
           <div 
             className="bg-white dark-brushed-metal-modal rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100 flex flex-col max-h-[92vh]"
             role="dialog"
             aria-modal="true"
+            onClick={e => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/10 shrink-0">
