@@ -5,6 +5,7 @@ import { CATEGORIES } from '../utils/constants';
 import { CategoryIcon } from './CategoryIcon';
 import { formatCurrency, parseCurrencyInput } from '../utils/formatters';
 import { CreateCategoryForm } from './CreateCategoryForm';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface BudgetModalProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
   categories,
   onSaveCustomCategory,
 }) => {
+  useLockBodyScroll(isOpen);
+
   const [budgetValues, setBudgetValues] = useState<Record<string, string>>({});
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 

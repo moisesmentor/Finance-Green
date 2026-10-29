@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { X, Download, Upload, RotateCcw, Trash2, CheckCircle2, AlertTriangle, FileJson } from 'lucide-react';
 import { Transaction, CategoryBudget, FinancialGoal, InvestmentAsset, Category } from '../types';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface ExportImportModalProps {
   isOpen: boolean;
@@ -37,6 +38,8 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  useLockBodyScroll(isOpen);
 
   if (!isOpen) return null;
 

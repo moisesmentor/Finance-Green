@@ -17,6 +17,7 @@ import { Transaction, AnnualSummary } from '../types';
 import { calculateAnnualSummary, exportTransactionsToCSV } from '../utils/storage';
 import { formatCurrency } from '../utils/formatters';
 import { MONTH_NAMES } from '../utils/constants';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface AnnualReportModalProps {
   isOpen: boolean;
@@ -37,6 +38,8 @@ export const AnnualReportModal: React.FC<AnnualReportModalProps> = ({
   const annualSummary: AnnualSummary = useMemo(() => {
     return calculateAnnualSummary(transactions, selectedYear);
   }, [transactions, selectedYear]);
+
+  useLockBodyScroll(isOpen);
 
   if (!isOpen) return null;
 

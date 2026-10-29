@@ -27,6 +27,7 @@ import {
   requestDeletePluggyItem 
 } from '../utils/pluggyClient';
 import { formatDateReadable } from '../utils/formatters';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface ConnectedBanksModalProps {
   isOpen: boolean;
@@ -56,6 +57,8 @@ export const ConnectedBanksModal: React.FC<ConnectedBanksModalProps> = ({
   const [showManualSection, setShowManualSection] = useState(false);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
+
+  useLockBodyScroll(isOpen);
 
   if (!isOpen) return null;
 

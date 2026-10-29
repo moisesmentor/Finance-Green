@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { PlanTier, ThemeMode, UserProfile, UserSubscription } from '../types';
 import { ADMIN_EMAILS, PLAN_DETAILS, getEffectivePlan } from '../utils/permissions';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -81,6 +82,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   const [activeAction, setActiveAction] = useState<'cancel' | 'refund' | 'delete' | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useLockBodyScroll(isOpen);
 
   if (!isOpen) return null;
 

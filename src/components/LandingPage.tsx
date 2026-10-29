@@ -142,7 +142,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [isCookieModalOpen, setIsCookieModalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 dark:bg-[#060606] text-slate-900 dark:text-slate-100 selection:bg-emerald-500/20 selection:text-emerald-400 transition-colors duration-300">
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-[#060606] text-slate-900 dark:text-slate-100 selection:bg-emerald-500/20 selection:text-emerald-400 transition-colors duration-300">
       
       {/* =================================================================== */}
       {/* 2. CABEÇALHO FIXO E ENXUTO                                          */}

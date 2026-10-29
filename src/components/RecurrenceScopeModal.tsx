@@ -11,6 +11,7 @@ import {
 import { Transaction } from '../types';
 import { RecurrenceSeriesInfo, exportTransactionsBackup } from '../utils/recurrence';
 import { formatCurrency, formatDateReadable } from '../utils/formatters';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface RecurrenceScopeModalProps {
   isOpen: boolean;
@@ -52,6 +53,8 @@ export function RecurrenceScopeModal({
       setCancellationReason('');
     }
   }, [isOpen, mode]);
+
+  useLockBodyScroll(isOpen);
 
   if (!isOpen || !seriesInfo) return null;
 

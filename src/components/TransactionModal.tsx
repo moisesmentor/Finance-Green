@@ -5,6 +5,7 @@ import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
 import { formatCurrency, parseCurrencyInput } from '../utils/formatters';
 import { CategoryIcon } from './CategoryIcon';
 import { CreateCategoryForm } from './CreateCategoryForm';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -33,6 +34,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   onSaveCustomCategory,
   onEndRecurrence,
 }) => {
+  useLockBodyScroll(isOpen);
+
   const [type, setType] = useState<TransactionType>('expense');
   const [description, setDescription] = useState('');
   const [amountStr, setAmountStr] = useState('');

@@ -1336,7 +1336,7 @@ function FinanceApp() {
   }
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 dark:bg-[#060606] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-emerald-100 selection:text-emerald-900 transition-colors duration-300">
+    <div className="min-h-screen w-full max-w-full bg-slate-50 dark:bg-[#060606] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-emerald-100 selection:text-emerald-900 transition-colors duration-300">
       
       {/* Top Header */}
       <Header
@@ -1370,7 +1370,7 @@ function FinanceApp() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col gap-4 sm:gap-6 overflow-x-hidden">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col gap-4 sm:gap-6">
         
         {/* Aviso discreto quando a assinatura estiver past_due (em atraso com tolerância ativa) */}
         {userSubscription.status === 'past_due' && (

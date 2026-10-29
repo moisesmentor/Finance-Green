@@ -30,6 +30,7 @@ import {
 import { BankAccount, BankAccountType, BankBalanceHistoryEntry, Transaction } from '../types';
 import { formatCurrency, formatDateShort } from '../utils/formatters';
 import { POPULAR_BANKS_PRESETS } from '../utils/constants';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface BankAccountsModalProps {
   isOpen: boolean;
@@ -467,6 +468,8 @@ export const BankAccountsModal: React.FC<BankAccountsModalProps> = ({
     else if (preset.type === 'savings') setFormIcon('piggy-bank');
     else setFormIcon('building');
   };
+
+  useLockBodyScroll(isOpen);
 
   // Early return ONLY here, after all React hooks are executed
   if (!isOpen) return null;

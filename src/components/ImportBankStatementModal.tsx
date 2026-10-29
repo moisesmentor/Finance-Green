@@ -26,6 +26,7 @@ import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
 import { formatCurrency, formatDateReadable } from '../utils/formatters';
 import { CategoryIcon } from './CategoryIcon';
 import { parseBankFile } from '../utils/bankParsers';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface ImportBankStatementModalProps {
   isOpen: boolean;
@@ -250,6 +251,8 @@ export const ImportBankStatementModal: React.FC<ImportBankStatementModalProps> =
     setSearch('');
     setFilterType('all');
   };
+
+  useLockBodyScroll(isOpen);
 
   if (!isOpen) return null;
 

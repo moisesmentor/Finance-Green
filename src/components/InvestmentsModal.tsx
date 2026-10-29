@@ -21,6 +21,7 @@ import {
 import { InvestmentAsset, InvestmentCategoryType, InvestmentEntry, BankAccount } from '../types';
 import { formatCurrency, formatDateShort } from '../utils/formatters';
 import { AnimatedCounter } from './AnimatedCounter';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface InvestmentsModalProps {
   isOpen: boolean;
@@ -86,6 +87,8 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [expandedCat, setExpandedCat] = useState<InvestmentCategoryType | null>(null);
+
+  useLockBodyScroll(isOpen);
 
   if (!isOpen) return null;
 

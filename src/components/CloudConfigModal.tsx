@@ -21,6 +21,7 @@ import {
   pullFromSupabase, 
   getSupabaseTableSchemaSQL 
 } from '../utils/cloudSync';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface CloudConfigModalProps {
   isOpen: boolean;
@@ -49,6 +50,8 @@ export const CloudConfigModal: React.FC<CloudConfigModalProps> = ({
   const [isSyncing, setIsSyncing] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [copiedSQL, setCopiedSQL] = useState(false);
+
+  useLockBodyScroll(isOpen);
 
   if (!isOpen) return null;
 

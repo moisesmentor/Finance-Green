@@ -22,7 +22,7 @@ export const LegalPages: React.FC<LegalPagesProps> = ({
   onNavigateAuth,
 }) => {
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 dark:bg-[#060606] text-slate-900 dark:text-slate-100 transition-colors duration-300 flex flex-col">
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-[#060606] text-slate-900 dark:text-slate-100 transition-colors duration-300 flex flex-col">
       
       {/* Top Header */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/85 dark:bg-[#060606]/85 border-b border-slate-200/80 dark:border-white/[0.08]">

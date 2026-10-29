@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { FinancialGoal, GoalContribution, MonthPeriod, BankAccount, ReserveLocation } from '../types';
 import { formatCurrency, formatDateShort, getMonthLabel } from '../utils/formatters';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface TempLocationRow {
   id: string;
@@ -85,6 +86,9 @@ export const GoalsModal: React.FC<GoalsModalProps> = ({
   const [tempLocations, setTempLocations] = useState<TempLocationRow[]>([]);
   const [adjustmentNote, setAdjustmentNote] = useState('');
   const [confirmLargeDiff, setConfirmLargeDiff] = useState(false);
+
+  useLockBodyScroll(isOpen);
+  useLockBodyScroll(isAdjustingBalance);
 
   useEffect(() => {
     if (isOpen) {

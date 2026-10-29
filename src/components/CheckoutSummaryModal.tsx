@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { PlanTier, ThemeMode, UserProfile, UserSubscription } from '../types';
 import { PLAN_DETAILS, getEffectivePlan } from '../utils/permissions';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface CheckoutSummaryModalProps {
   isOpen: boolean;
@@ -111,6 +112,8 @@ export const CheckoutSummaryModal: React.FC<CheckoutSummaryModalProps> = ({
 }) => {
   const [cpfCnpj, setCpfCnpj] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+
+  useLockBodyScroll(isOpen);
 
   if (!isOpen || !selectedPlan) return null;
 

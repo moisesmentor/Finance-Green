@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Share, PlusSquare, Check, Copy, AlertCircle, Smartphone } from 'lucide-react';
+import { useLockBodyScroll } from '../utils/useLockBodyScroll';
 
 interface IOSInstallGuideModalProps {
   isOpen: boolean;
@@ -13,6 +14,8 @@ export const IOSInstallGuideModal: React.FC<IOSInstallGuideModalProps> = ({
   isSecondaryBrowser = false,
 }) => {
   const [copied, setCopied] = useState(false);
+
+  useLockBodyScroll(isOpen);
 
   if (!isOpen) return null;
 
