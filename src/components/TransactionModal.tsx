@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Check, Calendar, Tag, CreditCard, FileText, Repeat, Layers, Calculator, Plus, CalendarOff, AlertTriangle } from 'lucide-react';
 import { Transaction, TransactionType, PaymentMethod, MonthPeriod, Category } from '../types';
 import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
-import { formatCurrency, parseCurrencyInput } from '../utils/formatters';
+import { formatCurrency, parseCurrencyInput, getMonthLabel } from '../utils/formatters';
+import { addMonthsToDateString } from '../utils/storage';
+import { isCurrentMonthSaoPaulo, getSaoPauloTodayString } from '../utils/brazilDate';
 import { CategoryIcon } from './CategoryIcon';
 import { CreateCategoryForm } from './CreateCategoryForm';
 import { useLockBodyScroll } from '../utils/useLockBodyScroll';
@@ -73,15 +75,42 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     return [...CATEGORIES, ...(customCategories || [])];
   }, [customCategories]);
 
-  // Default date in YYYY-MM-DD for current month
+  // Default date in YYYY-MM-DD for current month (fuso horário oficial do Brasil)
   const getDefaultDate = (period: MonthPeriod) => {
-    const today = new Date();
-    if (today.getFullYear() === period.year && today.getMonth() === period.month) {
-      return today.toISOString().split('T')[0];
+    if (isCurrentMonthSaoPaulo(period.year, period.month)) {
+      return getSaoPauloTodayString();
     }
     const month = String(period.month + 1).padStart(2, '0');
     return `${period.year}-${month}-01`;
   };
+
+  // Resumo dinâmico para criação de séries recorrentes
+  const recurrenceSummary = useMemo(() => {
+    if (!date || !recurringMonths || recurringMonths <= 1) return null;
+    const parts = date.split('-').map(Number);
+    if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1])) return null;
+
+    const startYear = parts[0];
+    const startMonth = parts[1] - 1;
+    const startLabel = getMonthLabel(startYear, startMonth);
+
+    const endDateStr = addMonthsToDateString(date, recurringMonths - 1);
+    const endParts = endDateStr.split('-').map(Number);
+    const endYear = endParts[0];
+    const endMonth = endParts[1] - 1;
+    const endLabel = getMonthLabel(endYear, endMonth);
+
+    const validAmount = parsedAmount > 0 ? parsedAmount : 0;
+    const totalAmount = validAmount * recurringMonths;
+
+    return {
+      startLabel,
+      endLabel,
+      totalAmount,
+      count: recurringMonths,
+      unitAmount: validAmount,
+    };
+  }, [date, recurringMonths, parsedAmount]);
 
   useEffect(() => {
     if (initialData) {
@@ -682,31 +711,64 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
               {/* Cenário C: Criação de novo lançamento ou ativação de fixo em item avulso */}
               {isRecurring && (!initialData || !isOriginallyRecurring) && (
-                <div className="space-y-2 pt-2 border-t border-slate-200/60 dark:border-white/10 animate-in fade-in">
+                <div className="space-y-2.5 pt-2 border-t border-slate-200/60 dark:border-white/10 animate-in fade-in">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <label className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                      Repetir por quantos meses:
+                    <label className="text-xs text-slate-700 dark:text-slate-300 font-semibold">
+                      Duração da recorrência:
                     </label>
                     <select
+                      id="select-recurrence-months"
                       value={recurringMonths}
                       onChange={e => setRecurringMonths(parseInt(e.target.value, 10))}
-                      className="px-3 py-1.5 text-base sm:text-xs font-semibold rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-800 dark:text-zinc-200 cursor-pointer"
+                      className="px-3 py-1.5 text-base sm:text-xs font-semibold rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0b0c0e] text-slate-800 dark:text-zinc-200 cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     >
-                      <option value={2}>2 meses</option>
-                      <option value={3}>3 meses</option>
-                      <option value={4}>4 meses</option>
-                      <option value={5}>5 meses</option>
-                      <option value={6}>6 meses (semestre)</option>
-                      <option value={12}>12 meses (1 ano)</option>
-                      <option value={24}>24 meses (2 anos)</option>
-                      <option value={36}>36 meses (3 anos)</option>
-                      <option value={48}>48 meses (4 anos)</option>
-                      <option value={60}>60 meses (5 anos)</option>
+                      {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 24, 36, 48, 60].map(m => (
+                        <option key={m} value={m}>
+                          {m} meses {m === 6 ? '(semestre)' : m === 12 ? '(1 ano)' : m === 18 ? '(1 ano e meio)' : m === 24 ? '(2 anos)' : m === 36 ? '(3 anos)' : m === 48 ? '(4 anos)' : m === 60 ? '(5 anos)' : ''}
+                        </option>
+                      ))}
                     </select>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
-                    💡 Serão criados lançamentos recorrentes automáticos para os próximos {recurringMonths} meses no valor de {formatCurrency(parsedAmount)}.
-                  </p>
+
+                  {/* Atalhos Rápidos */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Atalhos rápidos:</span>
+                    {[
+                      { label: '3 meses', value: 3 },
+                      { label: '6 meses', value: 6 },
+                      { label: '1 ano', value: 12 },
+                      { label: '2 anos', value: 24 },
+                    ].map(shortcut => (
+                      <button
+                        key={shortcut.value}
+                        type="button"
+                        onClick={() => setRecurringMonths(shortcut.value)}
+                        className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer ${
+                          recurringMonths === shortcut.value
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-200/70 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-700 dark:text-zinc-300'
+                        }`}
+                      >
+                        {shortcut.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Resumo Dinâmico antes de salvar */}
+                  {recurrenceSummary && (
+                    <div 
+                      id="recurrence-summary-box"
+                      className="p-3 bg-emerald-50/80 dark:bg-emerald-950/30 rounded-xl border border-emerald-200/80 dark:border-emerald-800/40 text-xs space-y-1"
+                    >
+                      <div className="flex items-center justify-between font-bold text-emerald-900 dark:text-emerald-200">
+                        <span>Resumo da Série:</span>
+                        <span className="font-mono-num">{formatCurrency(recurrenceSummary.totalAmount)} total</span>
+                      </div>
+                      <p className="text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                        Serão criados <strong>{recurrenceSummary.count} lançamentos</strong> ({formatCurrency(recurrenceSummary.unitAmount)}/mês), de <strong>{recurrenceSummary.startLabel}</strong> até <strong>{recurrenceSummary.endLabel}</strong>.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -276,19 +276,26 @@ export async function saveUserTransaction(
   }
 }
 
-// 3. Salvar lote de transações (parceladas ou recorrentes)
+// 3. Salvar lote de transações (parceladas ou recorrentes) com particionamento seguro
 export async function batchSaveUserTransactions(
   userId: string,
   transactions: Transaction[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    if (!transactions.length) return { success: true };
     const { db } = getFirebaseInstances();
-    const batch = writeBatch(db);
-    for (const tx of transactions) {
-      const txRef = doc(db, 'users', userId, 'transactions', tx.id);
-      batch.set(txRef, JSON.parse(JSON.stringify(tx)), { merge: true });
+
+    // Processa em lotes de até 400 operações atômicas (limite do Firestore é 500)
+    const chunkSize = 400;
+    for (let i = 0; i < transactions.length; i += chunkSize) {
+      const chunk = transactions.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      for (const tx of chunk) {
+        const txRef = doc(db, 'users', userId, 'transactions', tx.id);
+        batch.set(txRef, JSON.parse(JSON.stringify(tx)), { merge: true });
+      }
+      await batch.commit();
     }
-    await batch.commit();
     return { success: true };
   } catch (err: any) {
     console.error('Erro ao salvar lote de transações:', err);

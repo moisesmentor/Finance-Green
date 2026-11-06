@@ -86,7 +86,8 @@ import {
   getEffectivePlan
 } from './utils/permissions';
 
-import { DEFAULT_BUDGETS, CATEGORIES, DEFAULT_BANK_ACCOUNTS } from './utils/constants';
+import { DEFAULT_BUDGETS, CATEGORIES, DEFAULT_BANK_ACCOUNTS, MONTH_NAMES } from './utils/constants';
+import { getSaoPauloCurrentPeriod, getMonthLabelSaoPaulo, parseYearMonthFromDateStr } from './utils/brazilDate';
 import { useTheme } from './utils/useTheme';
 import { getDueDateStatus } from './utils/formatters';
 import { Wallet, AlertTriangle, ExternalLink } from 'lucide-react';
@@ -251,11 +252,8 @@ function FinanceApp() {
     return [...CATEGORIES, ...customCategories];
   }, [customCategories]);
 
-  // Período ativo do calendário
-  const [period, setPeriod] = useState<MonthPeriod>(() => {
-    const now = new Date();
-    return { year: now.getFullYear(), month: now.getMonth() };
-  });
+  // Período ativo do calendário (sempre inicializado no mês oficial de Brasília)
+  const [period, setPeriod] = useState<MonthPeriod>(() => getSaoPauloCurrentPeriod());
 
   // Modals state
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
@@ -346,10 +344,6 @@ function FinanceApp() {
         setBankDisplayMode(cachedDisplayMode);
 
 
-        // Se o usuário possuir transações em Outubro/2026, posiciona o calendário no mês correto
-        if (cachedTxs.some(t => t.date && t.date.startsWith('2026-10'))) {
-          setPeriod({ year: 2026, month: 9 });
-        }
       }
     });
 
@@ -370,6 +364,60 @@ function FinanceApp() {
     }
   }, []);
 
+  // 2.1 Monitoramento de Virada de Mês no Fuso Oficial de Brasília (ao vivo e ao retornar à aba)
+  useEffect(() => {
+    let lastKnownCurrent = getSaoPauloCurrentPeriod();
+
+    const checkMonthRollover = () => {
+      const nowCurrent = getSaoPauloCurrentPeriod();
+      if (nowCurrent.year !== lastKnownCurrent.year || nowCurrent.month !== lastKnownCurrent.month) {
+        const prevCurrent = { ...lastKnownCurrent };
+        lastKnownCurrent = { ...nowCurrent };
+        const newMonthLabel = getMonthLabelSaoPaulo(nowCurrent.year, nowCurrent.month);
+
+        setPeriod(currentViewing => {
+          // Se o usuário estava visualizando exatamente o mês que acabou de se encerrar:
+          if (currentViewing.year === prevCurrent.year && currentViewing.month === prevCurrent.month) {
+            showToast(`Virou o mês para ${newMonthLabel}! O calendário foi atualizado.`, 'info');
+            return nowCurrent;
+          } else {
+            // Se o usuário estava analisando histórico ou planejando o futuro: NÃO mudar a tela de surpresa!
+            showToast(`Virou o mês para ${newMonthLabel}.`, 'info', {
+              label: 'Ir para o mês atual',
+              onClick: () => setPeriod(nowCurrent),
+            });
+            return currentViewing;
+          }
+        });
+      }
+    };
+
+    const interval = setInterval(checkMonthRollover, 60000);
+
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        checkMonthRollover();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleVisibilityOrFocus);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleVisibilityOrFocus);
+      }
+    };
+  }, [showToast]);
+
   // 3. Conexão Realtime com as subcoleções Firestore do usuário autenticado: /users/{uid}/...
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -383,11 +431,6 @@ function FinanceApp() {
         setTransactions(remoteTxs);
         saveStoredTransactions(remoteTxs, currentUser.uid);
         setFirebaseStatus('connected');
-
-        // Se houver lançamentos em Outubro/2026, sincroniza o calendário
-        if (remoteTxs.some(t => t.date && t.date.startsWith('2026-10'))) {
-          setPeriod(prev => prev.month === 9 && prev.year === 2026 ? prev : { year: 2026, month: 9 });
-        }
       },
       (error) => {
         console.warn('Erro ao escutar transações do usuário:', error);
@@ -575,6 +618,19 @@ function FinanceApp() {
   ) => {
     if (!currentUser?.uid) return;
 
+    const txPeriod = parseYearMonthFromDateStr(data.date);
+    const isDifferentMonth = Boolean(
+      txPeriod && (txPeriod.year !== period.year || txPeriod.month !== period.month)
+    );
+    const targetMonthLabel = txPeriod ? getMonthLabelSaoPaulo(txPeriod.year, txPeriod.month) : '';
+    const targetMonthName = txPeriod ? (MONTH_NAMES[txPeriod.month] || `Mês ${txPeriod.month + 1}`) : '';
+    const diffMonthAction = txPeriod && isDifferentMonth
+      ? {
+          label: `Ver ${targetMonthName}`,
+          onClick: () => setPeriod({ year: txPeriod.year, month: txPeriod.month }),
+        }
+      : undefined;
+
     if (id) {
       // Edição de transação existente
       const existing = transactions.find(t => t.id === id);
@@ -638,19 +694,39 @@ function FinanceApp() {
 
       setTransactions(prev => prev.map(t => (t.id === id ? updatedTx : t)));
       await saveUserTransaction(currentUser.uid, updatedTx);
-      showToast('Transação atualizada com sucesso!');
+      if (isDifferentMonth) {
+        showToast(`Transação atualizada em ${targetMonthLabel}!`, 'info', diffMonthAction);
+      } else {
+        showToast('Transação atualizada com sucesso!');
+      }
     } else if (installmentsCount && installmentsCount > 1) {
       // Criação de parcelamento
       const installmentTxs = generateInstallmentTransactions(data, installmentsCount);
       setTransactions(prev => [...installmentTxs, ...prev]);
       await batchSaveUserTransactions(currentUser.uid, installmentTxs);
-      showToast(`${data.type === 'income' ? 'Receita parcelada' : 'Compra parcelada'} em ${installmentsCount}x cadastrada!`);
+      if (isDifferentMonth) {
+        showToast(
+          `${data.type === 'income' ? 'Receita parcelada' : 'Compra parcelada'} em ${installmentsCount}x cadastrada a partir de ${targetMonthLabel}!`,
+          'info',
+          diffMonthAction
+        );
+      } else {
+        showToast(`${data.type === 'income' ? 'Receita parcelada' : 'Compra parcelada'} em ${installmentsCount}x cadastrada!`);
+      }
     } else if (recurringMonths && recurringMonths > 1) {
       // Criação de lançamentos recorrentes
       const recurringTxs = generateRecurringTransactions(data, recurringMonths);
       setTransactions(prev => [...recurringTxs, ...prev]);
       await batchSaveUserTransactions(currentUser.uid, recurringTxs);
-      showToast(`Lançamento recorrente projetado para ${recurringMonths} meses!`);
+      if (isDifferentMonth) {
+        showToast(
+          `Lançamento recorrente (${recurringMonths} meses) cadastrado a partir de ${targetMonthLabel}!`,
+          'info',
+          diffMonthAction
+        );
+      } else {
+        showToast(`Lançamento recorrente projetado para ${recurringMonths} meses!`);
+      }
     } else {
       // Nova transação individual
       const newTx: Transaction = {
@@ -660,7 +736,11 @@ function FinanceApp() {
       };
       setTransactions(prev => [newTx, ...prev]);
       await saveUserTransaction(currentUser.uid, newTx);
-      showToast('Lançamento adicionado com sucesso!');
+      if (isDifferentMonth) {
+        showToast(`Lançamento salvo em ${targetMonthLabel}!`, 'info', diffMonthAction);
+      } else {
+        showToast('Lançamento adicionado com sucesso!');
+      }
     }
   };
 

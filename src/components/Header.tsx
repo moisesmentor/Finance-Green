@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { MonthPeriod, PlanTier, SubscriptionStatus, ThemeMode, UserProfile } from '../types';
 import { getMonthLabel, isCurrentMonth } from '../utils/formatters';
+import { getSaoPauloCurrentPeriod } from '../utils/brazilDate';
 
 interface HeaderProps {
   period: MonthPeriod;
@@ -138,8 +139,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const handleCurrentMonth = () => {
-    const now = new Date();
-    onPeriodChange({ year: now.getFullYear(), month: now.getMonth() });
+    onPeriodChange(getSaoPauloCurrentPeriod());
   };
 
   const isCurrent = isCurrentMonth(period.year, period.month);
@@ -188,15 +188,18 @@ export const Header: React.FC<HeaderProps> = ({
                 <ChevronRight className="w-4 h-4" />
               </button>
 
-              {!isCurrent && (
-                <button
-                  id="btn-today-month"
-                  onClick={handleCurrentMonth}
-                  className="ml-1 px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer whitespace-nowrap"
-                >
-                  Hoje
-                </button>
-              )}
+              <button
+                id="btn-today-month"
+                onClick={handleCurrentMonth}
+                title={isCurrent ? 'Você já está no mês atual' : 'Ir para o mês atual'}
+                className={`ml-1 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full transition-all cursor-pointer whitespace-nowrap ${
+                  isCurrent
+                    ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 shadow-xs'
+                    : 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800'
+                }`}
+              >
+                Hoje
+              </button>
             </div>
           </div>
 
