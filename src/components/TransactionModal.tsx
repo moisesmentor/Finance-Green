@@ -67,6 +67,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
+  // Valor numérico parseado da string de entrada
+  const parsedAmount = useMemo(() => {
+    return parseCurrencyInput(amountStr);
+  }, [amountStr]);
+
   // Custom Category Creation State
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 
@@ -166,8 +171,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   if (!isOpen) return null;
 
   const filteredCategories = allCategories.filter(c => c.type === type || c.type === 'both');
-
-  const parsedAmount = parseCurrencyInput(amountStr);
   const installmentValue = installmentsCount > 0 ? parsedAmount / installmentsCount : 0;
 
   const handleSubmit = (e: React.FormEvent) => {

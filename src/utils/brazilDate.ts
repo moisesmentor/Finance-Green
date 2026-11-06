@@ -31,28 +31,43 @@ export function getSaoPauloNow(input?: Date | number | string): SaoPauloDatePart
   // Se a data for inválida, faz fallback seguro para a data atual
   const validDate = isNaN(dateObj.getTime()) ? new Date() : dateObj;
 
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: BRAZIL_TIMEZONE,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric',
-    hour12: false
-  }).formatToParts(validDate);
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: BRAZIL_TIMEZONE,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false
+    }).formatToParts(validDate);
 
-  const get = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0', 10);
+    const get = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0', 10);
 
-  const year = get('year');
-  const month = get('month') - 1; // 0-indexed para compatibilidade com o ecossistema do app
-  const day = get('day');
-  const hour = get('hour') % 24;
-  const minute = get('minute');
-  const second = get('second');
-  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const year = get('year');
+    const month = get('month') - 1; // 0-indexed para compatibilidade com o ecossistema do app
+    const day = get('day');
+    const hour = get('hour') % 24;
+    const minute = get('minute');
+    const second = get('second');
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-  return { year, month, day, hour, minute, second, dateStr };
+    return { year, month, day, hour, minute, second, dateStr };
+  } catch (err) {
+    // Fallback à prova de falhas: calcula diretamente pelo offset UTC-3 oficial
+    const utcTime = validDate.getTime();
+    const brtTime = new Date(utcTime - (3 * 60 * 60 * 1000));
+    const year = brtTime.getUTCFullYear();
+    const month = brtTime.getUTCMonth();
+    const day = brtTime.getUTCDate();
+    const hour = brtTime.getUTCHours();
+    const minute = brtTime.getUTCMinutes();
+    const second = brtTime.getUTCSeconds();
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    return { year, month, day, hour, minute, second, dateStr };
+  }
 }
 
 /**
